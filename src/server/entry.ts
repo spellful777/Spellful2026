@@ -563,13 +563,14 @@ app.use(
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 // Strict limit on auth routes to prevent brute-force attacks
-const authLimiter = rateLimit({
+export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' },
-  skip: (req) => req.path.includes('/api/auth/get-session'), // allow session checks
+  // Express strips the /api/auth mount prefix before invoking this limiter.
+  skip: (req) => req.method === 'GET' && req.path === '/get-session',
 });
 app.use('/api/auth', authLimiter);
 

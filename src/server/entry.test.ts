@@ -3,6 +3,7 @@ import type { Server } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+	authLimiter,
 	apiErrorHandler,
 	finalErrorHandler,
 	renderSsrDocument,
@@ -496,4 +497,20 @@ describe("routeLabel", () => {
 		expect(routeLabel(reqWith({ path: "/api/bookings/:id" }))).toBe("/api/bookings/:id");
 		expect(routeLabel(reqWith({ path: /.*/ }))).toBe(".*");
 	});
+});
+
+describe("auth request budget", () => {
+  it("omits mounted session reads and counts sign-in requests", async () => {
+    const app = express();
+    app.use("/api/auth", authLimiter);
+    app.use((_req, res) => { res.sendStatus(200); });
+    await withServer(app, async base => {
+      const session = await fetch(base + "/api/auth/get-session");
+      expect(session.status).toBe(200);
+      expect(session.headers.has("ratelimit-remaining")).toBe(false);
+      const signIn = await fetch(base + "/api/auth/sign-in/email", { method: "POST" });
+      expect(signIn.status).toBe(200);
+      expect(signIn.headers.get("ratelimit-remaining")).toBe("19");
+    });
+  });
 });
