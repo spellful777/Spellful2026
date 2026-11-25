@@ -1,0 +1,52 @@
+{
+  "studioCard": {
+    "title": "Profile Design Studio",
+    "subtitle": "Themes, colors, layouts, social handles & more",
+    "body": "Make your profile uniquely yours — personalize every detail of how the world sees you."
+  },
+  "groups": {
+    "personalization": "Personalization",
+    "preferences": "Preferences",
+    "account": "Account"
+  },
+  "rows": {
+    "editProfile": {
+      "label": "Edit Profile",
+      "desc": "Name, username, bio, location"
+    },
+    "astrology": {
+      "label": "Astrology",
+      "desc": "Birth info, sun, moon & rising signs"
+    },
+    "privacy": {
+      "label": "Privacy",
+      "desc": "Visibility, messaging, discovery"
+    },
+    "security": {
+      "label": "Security",
+      "desc": "Password, two-factor, sessions"
+    },
+    "accessibility": {
+      "label": "Accessibility",
+      "desc": "Motion, text size, contrast"
+    },
+    "accountType": {
+      "label": "Account Type",
+      "desc": "Community member"
+    },
+    "accountTypePlus": {
+      "label": "Account Type",
+      "desc": "Spellful Plus member"
+    },
+    "adminAccess": {
+      "label": "Administrative Access",
+      "desc": "Command center & moderation tools"
+    },
+    "myApplications": {
+      "label": "My Applications",
+      "desc": "Creator & organization applications"
+    }
+  },
+  "signOut": "Sign Out",
+  "fallbackName": "Spellful Member"
+}

@@ -1,0 +1,27 @@
+{
+  "hero": {
+    "eyebrow": "Ancient Divination",
+    "headline": "The Runes Are Calling",
+    "description": "Discover the history and symbolism of the Elder Futhark. Set your intention, cast the runes, and explore what their ancient symbols can inspire in your life today.",
+    "supportingText": "24 ancient symbols · Three reading spreads · A journey of discovery",
+    "ctaCast": "Cast Runes",
+    "ctaHistory": "Explore Rune History"
+  },
+  "cast": {
+    "intentionLabel": "What wisdom are you seeking today?",
+    "intentionPlaceholder": "e.g. What do I need to reflect on today?",
+    "centeringText": "Center yourself. Trust your intuition.",
+    "suggestionQuestions": [
+      "What do I need to reflect on today?",
+      "What is holding me back?",
+      "How can I approach this differently?"
+    ],
+    "readingDisclaimer": "Rune readings are offered as a tool for reflection, not as predictions. The meaning you find is your own."
+  },
+  "historyIntro": "Runes are more than mysterious symbols. They are the characters of ancient writing systems used by Germanic-speaking peoples across northern Europe. Surviving inscriptions reveal a world of names, memorials, everyday communication, craftsmanship, and sometimes ritual or protective expressions. Today, many people also explore runes as symbols for spiritual reflection and personal growth. Understanding their history helps us appreciate the difference between ancient traditions and modern interpretations.",
+  "sourceNote": "The history above is a general orientation. For deeper reading, consult primary texts and peer-reviewed histories of runology and northern European archaeology. Spellful presents runes as a reflective practice and does not claim scientific validity for divinatory interpretations.",
+  "libraryIntro": "All 24 Elder Futhark runes, organized into the three conventional aettir. Rune names are largely reconstructed from later sources. Tap any rune to expand its profile.",
+  "howToIntro": "A beginner's guide to developing a reflective rune practice. There is no single correct method — the approaches below reflect common modern conventions.",
+  "magicIntro": "Contemporary ways to work with rune symbolism in your spiritual practice. The associations and methods below are modern — clearly labeled as such. They are offered as tools for reflection and intention, not as guaranteed magical results.",
+  "magicDisclaimer": "All magical associations on this page are contemporary. Spellful does not claim that rune work produces guaranteed outcomes. These practices are offered as tools for reflection, intention, and personal growth."
+}

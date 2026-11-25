@@ -1,0 +1,18 @@
+{
+  "loadingText": "Entering the realm…",
+  "privateTitle": "Private Realm",
+  "covenOnlyTitle": "Coven Members Only",
+  "notFoundTitle": "Realm Not Found",
+  "privateDesc": "This member has chosen to keep their realm private.",
+  "covenOnlyDesc": "You need to be in this member's coven to visit their realm.",
+  "notFoundDesc": "This profile doesn't exist or may have been removed.",
+  "memberSincePrefix": "Member since",
+  "exploreRealmLabel": "'s Realm",
+  "signInCta": "Sign in to connect",
+  "leaveNotePlaceholder": "Leave a note in their guestbook…",
+  "leaveNoteButton": "Leave a Note",
+  "sendingText": "Sending…",
+  "noteSuccessText": "Note sent! It may be reviewed before appearing.",
+  "noEntriesText": "No entries yet. Sign in to leave a note.",
+  "enteringRealmText": "Entering the realm…"
+}

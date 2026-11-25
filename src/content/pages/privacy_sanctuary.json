@@ -1,0 +1,93 @@
+{
+  "meta": {
+    "title": "My Privacy Sanctuary — Spellful",
+    "description": "Control who can see your profile, find you, message you, and how your information is shared."
+  },
+  "header": {
+    "title": "My Privacy Sanctuary",
+    "subtitle": "Control who sees you and how you're found",
+    "backLink": "Back to Account",
+    "saveButton": "Save changes",
+    "savingButton": "Saving…",
+    "savedButton": "Saved"
+  },
+  "sections": {
+    "profileVisibility": {
+      "title": "Profile visibility",
+      "description": "Who can view your full profile page",
+      "bioLabel": "Bio",
+      "locationLabel": "Location",
+      "zodiacLabel": "Zodiac signs",
+      "socialLinksLabel": "Social links",
+      "previewLink": "Preview as a logged-out visitor"
+    },
+    "discovery": {
+      "title": "Discovery & search",
+      "description": "Control whether others can find you",
+      "suggestionsLabel": "Appear in member suggestions",
+      "suggestionsDesc": "Show up in \"People you may know\" and coven suggestions",
+      "searchLabel": "Appear in on-site search",
+      "searchDesc": "Let other members find you by username or name"
+    },
+    "presence": {
+      "title": "Presence & online status",
+      "description": "Control whether others see when you're active",
+      "hideLabel": "Hide online status",
+      "hideDesc": "Others won't see the green dot or \"Active now\" indicator"
+    },
+    "messaging": {
+      "title": "Messaging",
+      "description": "Who can send you direct messages",
+      "everyoneDesc": "Any Spellful member can send you a message request.",
+      "covenDesc": "Only members you follow can message you directly.",
+      "nobodyDesc": "No one can send you new messages. Existing conversations are unaffected."
+    },
+    "birthday": {
+      "title": "Birthday",
+      "description": "Control how your birthday is shared",
+      "visibilityLabel": "Who can see your birthday",
+      "feedLabel": "Share birthday in community feed",
+      "feedDesc": "Post a birthday celebration in the Coven Hearth on your birthday"
+    },
+    "interactions": {
+      "title": "Interactions",
+      "description": "Control how others can interact with your profile",
+      "guestbookLabel": "Allow guestbook messages",
+      "guestbookDesc": "Let others leave public messages on your profile",
+      "mentionsLabel": "Allow @mentions",
+      "mentionsDesc": "Let others tag you in community posts and replies"
+    },
+    "notifications": {
+      "title": "Notification privacy",
+      "description": "Control what appears on your lock screen",
+      "lockScreenLabel": "Hide message content on lock screen",
+      "lockScreenDesc": "Show \"New message\" instead of the sender's name and message text on your device lock screen"
+    },
+    "blocked": {
+      "title": "Blocked accounts",
+      "description": "Members you've blocked cannot see your profile, message you, or interact with your content",
+      "manageLink": "Manage blocked accounts in Account Settings"
+    },
+    "dataRights": {
+      "badge": "Your rights",
+      "text": "You can download your data or request account deletion at any time from Account Settings. Read our Privacy Policy to learn exactly what we collect and how long we keep it.",
+      "downloadLink": "download your data",
+      "deletionLink": "request account deletion",
+      "privacyLink": "Privacy Policy"
+    }
+  },
+  "visibility": {
+    "publicLabel": "Everyone",
+    "publicDesc": "Visible to all visitors",
+    "covenLabel": "Coven only",
+    "covenDesc": "Only members you follow",
+    "privateLabel": "Only me",
+    "privateDesc": "Hidden from everyone else"
+  },
+  "messageOptions": {
+    "everyoneLabel": "Everyone",
+    "covenLabel": "Coven only",
+    "nobodyLabel": "Nobody"
+  },
+  "errorMessage": "Something went wrong. Please try again."
+}

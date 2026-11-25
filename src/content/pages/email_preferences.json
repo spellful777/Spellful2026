@@ -1,0 +1,11 @@
+{
+  "title": "Email Preferences",
+  "subtitle": "Choose which emails you receive from Spellful. You can update these at any time.",
+  "invalidTitle": "Link Expired",
+  "invalidBody": "This preferences link has expired or is invalid. Sign in to manage your email preferences from your account settings.",
+  "allOffNote": "You have turned off all marketing emails. You will still receive important account and security emails.",
+  "saveButton": "Save Preferences",
+  "savedMessage": "Preferences Saved",
+  "unsubscribeLabel": "Unsubscribe from all",
+  "unsubscribeNote": "To unsubscribe from all Spellful emails at once, use the unsubscribe link in any email we send you."
+}

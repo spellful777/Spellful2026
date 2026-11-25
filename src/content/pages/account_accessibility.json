@@ -1,0 +1,34 @@
+{
+  "title": "Accessibility",
+  "subtitle": "Changes apply immediately and are saved to this device.",
+  "backLabel": "Account",
+  "reduceMotion": {
+    "label": "Reduce Motion",
+    "desc": "Minimizes animations and transitions throughout the app."
+  },
+  "highContrast": {
+    "label": "High Contrast",
+    "desc": "Increases contrast for better readability."
+  },
+  "textSizeLabel": "Text Size",
+  "fontSizeOptions": [
+    {
+      "id": "opt-normal",
+      "value": "normal",
+      "label": "Normal",
+      "desc": "Default text size"
+    },
+    {
+      "id": "opt-large",
+      "value": "large",
+      "label": "Large",
+      "desc": "Slightly larger text"
+    },
+    {
+      "id": "opt-larger",
+      "value": "larger",
+      "label": "Larger",
+      "desc": "Maximum text size"
+    }
+  ]
+}

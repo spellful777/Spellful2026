@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "title": "Spellful Plus — Deepen Your Practice",
+    "description": "Unlock advanced profile customization, unlimited routines, celestial themes, and more with Spellful Plus."
+  },
+  "pricing": {
+    "price": "$4.99",
+    "name": "Spellful Plus",
+    "primaryCta": "Subscribe to Plus",
+    "secondaryCta": "Maybe later",
+    "billingNote": "Subscription renews automatically; cancel anytime."
+  },
+  "comparison": {
+    "freeLabel": "Spellful Free",
+    "plusLabel": "Spellful Plus",
+    "freeItems": [
+      "All Academy lessons and quizzes",
+      "Full Library and references",
+      "All tarot readings and meanings",
+      "Moon information and lunar guides",
+      "Community forums, groups, and connections",
+      "Basic journaling and saving",
+      "One practice routine",
+      "Creator and organization applications",
+      "Reporting, blocking, and safety tools",
+      "Account data access and deletion"
+    ],
+    "plusItems": [
+      "Everything in Free, plus:",
+      "My Practice Studio with rearrangeable widgets",
+      "Unlimited practice routines",
+      "Routine templates and advanced reminders",
+      "Celestial themes and alternate layouts",
+      "Upload a custom avatar photo",
+      "Upload custom banner artwork",
+      "10 exclusive Plus profile frames",
+      "Optional Supporter badge (opt-in)"
+    ]
+  },
+  "whyFree": {
+    "heading": "Why is so much free?",
+    "body": "Spellful believes spiritual education should be accessible to everyone. Plus supports the platform so we can keep the core experience free for all."
+  },
+  "faq": [
+    {
+      "id": "faq-1",
+      "question": "What is Spellful Plus?",
+      "answer": "Spellful Plus is a monthly subscription that unlocks advanced profile customization, unlimited practice routines, celestial themes, exclusive avatar frames, and more — while supporting free spiritual education for everyone."
+    },
+    {
+      "id": "faq-2",
+      "question": "Can I cancel anytime?",
+      "answer": "Yes. You can cancel your subscription at any time from your account settings. You'll keep Plus access until the end of your current billing period."
+    },
+    {
+      "id": "faq-3",
+      "question": "Will I lose my data if I cancel?",
+      "answer": "No. Your journal entries, readings, and saved content remain yours. Some Plus-exclusive features will become inaccessible, but your data is always safe."
+    },
+    {
+      "id": "faq-4",
+      "question": "Is Plus available on iOS and Android?",
+      "answer": "Yes. Spellful Plus is available on iOS, Android, and web. Your subscription works across all platforms."
+    },
+    {
+      "id": "faq-5",
+      "question": "What payment methods are accepted?",
+      "answer": "On iOS, payment is handled through Apple's App Store. On Android, through Google Play. On web, we accept major credit and debit cards."
+    }
+  ]
+}

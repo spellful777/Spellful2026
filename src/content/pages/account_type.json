@@ -1,0 +1,46 @@
+{
+  "title": "Account Type",
+  "backLabel": "Account",
+  "membership": {
+    "groupLabel": "Membership",
+    "plusLabel": "Spellful Plus",
+    "viewBenefits": "View benefits",
+    "communityLabel": "Community Member",
+    "communityDesc": "Free account",
+    "explorePlus": "Explore Plus"
+  },
+  "creator": {
+    "groupLabel": "Creator Status",
+    "becomeLabel": "Become a Creator",
+    "becomeDesc": "Apply to share spells, guides, and more",
+    "applyButton": "Apply"
+  },
+  "admin": {
+    "groupLabel": "Administrative Access",
+    "ownerLabel": "Platform Owner",
+    "adminLabel": "Administrator",
+    "adminDesc": "Full administrative access",
+    "links": [
+      {
+        "id": "cmd",
+        "to": "/admin/command-center",
+        "label": "Command Center"
+      },
+      {
+        "id": "roles",
+        "to": "/admin/roles",
+        "label": "Roles & Permissions"
+      },
+      {
+        "id": "apps",
+        "to": "/admin/applications",
+        "label": "Member Applications"
+      },
+      {
+        "id": "comm",
+        "to": "/admin/community",
+        "label": "Community Moderation"
+      }
+    ]
+  }
+}

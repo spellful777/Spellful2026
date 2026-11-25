@@ -1,0 +1,11 @@
+{
+  "title": "You have been unsubscribed",
+  "subtitle": "You will no longer receive marketing emails from Spellful. Transactional emails (password resets, security notices) are not affected.",
+  "manageLink": "Manage individual email preferences instead",
+  "returnLink": "Return to Spellful",
+  "errorTitle": "Something went wrong",
+  "errorBody": "We could not process your unsubscribe request. Please try again or contact us at support@spellful.com.",
+  "invalidTitle": "Invalid or expired link",
+  "invalidBody": "This unsubscribe link has expired or is invalid. Please use the link from a recent Spellful email, or sign in to manage your preferences.",
+  "signInLink": "Sign in to manage preferences"
+}
