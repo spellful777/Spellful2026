@@ -182,7 +182,7 @@ export async function runStartupMigration(): Promise<void> {
       await conn.execute(
         'ALTER TABLE dashboard_preferences ADD COLUMN first_week_progress JSON NULL DEFAULT NULL'
       );
-    } catch (_) { /* column already exists — safe to ignore */ }
+    } catch { /* column already exists — safe to ignore */ }
 
     // ── dashboard_widgets table ───────────────────────────────────────────────
     try {

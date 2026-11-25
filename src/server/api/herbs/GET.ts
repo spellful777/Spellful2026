@@ -66,7 +66,7 @@ export default async function handler(req: Request, res: Response) {
       total: results.length,
       categories: allCategories.map((r) => r.category).filter(Boolean).sort(),
     });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to search herbs', message: 'Internal server error' });
   }
 }

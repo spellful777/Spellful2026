@@ -1,0 +1,58 @@
+name: Upload Spellful to TestFlight
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: Unused App Store Connect build number for version 1.0
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency: spellful-testflight
+jobs:
+  upload:
+    if: github.ref == 'refs/heads/main'
+    environment: testflight
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run cap:sync:ios
+        env:
+          VITE_IOS_API_ORIGIN: ${{ vars.VITE_IOS_API_ORIGIN }}
+      - name: Sign archive and upload to App Store Connect
+        env:
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          ASC_TEAM: ${{ secrets.ASC_TEAM_ID }}
+          ASC_KEY: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_P8: ${{ secrets.ASC_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]]
+          : "${ASC_TEAM:?Set ASC_TEAM_ID}" "${ASC_KEY:?Set ASC_KEY_ID}" "${ASC_ISSUER:?Set ASC_ISSUER_ID}" "${ASC_P8:?Set ASC_PRIVATE_KEY}"
+          umask 077
+          key="$RUNNER_TEMP/AuthKey_$ASC_KEY.p8"
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$ASC_P8" > "$key"
+          unset ASC_P8
+          auth=(-allowProvisioningUpdates -authenticationKeyPath "$key" -authenticationKeyID "$ASC_KEY" -authenticationKeyIssuerID "$ASC_ISSUER")
+          archive="$RUNNER_TEMP/Spellful.xcarchive"
+          xcodebuild archive -project ios/App/App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath "$archive" "${auth[@]}" DEVELOPMENT_TEAM="$ASC_TEAM" CODE_SIGN_STYLE=Automatic CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
+          app="$archive/Products/Applications/App.app"
+          /usr/bin/codesign --verify --deep --strict "$app"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Info.plist")" = "$BUILD_NUMBER"
+          python3 - <<'PY'
+          import os, plistlib
+          for destination in ('export', 'upload'):
+              with open(os.path.join(os.environ['RUNNER_TEMP'], destination + '.plist'), 'wb') as f:
+                  plistlib.dump(dict(method='app-store-connect',destination=destination,teamID=os.environ['ASC_TEAM'],signingStyle='automatic',manageAppVersionAndBuildNumber=False),f)
+          PY
+          xcodebuild -exportArchive -archivePath "$archive" -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/ipa" "${auth[@]}"
+          xcodebuild -exportArchive -archivePath "$archive" -exportOptionsPlist "$RUNNER_TEMP/upload.plist" -exportPath "$RUNNER_TEMP/upload" "${auth[@]}"

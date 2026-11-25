@@ -1,4 +1,3 @@
-/// <reference path="./virtual-content-runtime.d.ts" />
 import content, { collectionRoots } from 'virtual:content-runtime';
 
 import {

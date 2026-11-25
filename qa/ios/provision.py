@@ -15,8 +15,13 @@ def call(url, body=None, token=None):
         args += ['-H', 'Authorization: Bearer ' + token]
     if url.startswith('https://spellful.com/'):
         args += ['-H', 'Origin: https://spellful.com']
-    raw = subprocess.check_output(args, input=json.dumps(body).encode())
-    return json.loads(raw)
+    # Honor rate-limit responses to reads without retrying account creation.
+    if body is None:
+        args += ['--retry', '5', '--retry-max-time', '120', '--retry-delay', '10']
+    result = subprocess.run(args, input=json.dumps(body).encode(), capture_output=True)
+    if result.returncode:
+        raise RuntimeError('Fixture service request failed: ' + url.split('?')[0] + ' (curl exit ' + str(result.returncode) + ')')
+    return json.loads(result.stdout)
 
 def items(value):
     return value if isinstance(value, list) else value.get('hydra:member', value.get('member', []))
@@ -37,7 +42,7 @@ def provision(domain, index):
             if code:
                 call(auth + '/email-otp/verify-email', {'email': email, 'otp': code[0]})
                 return account
-        time.sleep(5)
+        time.sleep(12)
     raise RuntimeError('Email verification did not arrive for iOS QA account')
 
 os.umask(0o077)

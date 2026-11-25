@@ -600,7 +600,7 @@ function OnboardingWizard({ onComplete }: { onComplete: (prefs: Partial<Dashboar
         credentials: 'include',
         body: JSON.stringify(prefs),
       });
-    } catch (_) { /* non-fatal */ }
+    } catch { /* non-fatal */ }
     onComplete(prefs);
   };
 
@@ -801,7 +801,7 @@ function CustomizeDrawer({
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       onSave(local);
-    } catch (_) { /* non-fatal */ }
+    } catch { /* non-fatal */ }
     setSaving(false);
   };
 

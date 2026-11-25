@@ -14,7 +14,7 @@ resources = %w[messaging.js purchases.js Spellful.storekit]
 resources << 'accounts.json' if fixtures && File.exist?(fixtures)
 resources.each { |f| test.resources_build_phase.add_file_reference(group.new_file(f)) }
 test.build_configurations.each do |config|
-  config.build_settings.merge!({'GENERATE_INFOPLIST_FILE'=>'YES','SWIFT_VERSION'=>'5.0','PRODUCT_BUNDLE_IDENTIFIER'=>'com.spellful.app.integrationtests','TEST_HOST'=>'$(BUILT_PRODUCTS_DIR)/App.app/App','BUNDLE_LOADER'=>'$(TEST_HOST)'})
+  config.build_settings.merge!({'PRODUCT_NAME'=>'SpellfulIntegration','EXECUTABLE_NAME'=>'SpellfulIntegration','GENERATE_INFOPLIST_FILE'=>'YES','SWIFT_VERSION'=>'5.0','PRODUCT_BUNDLE_IDENTIFIER'=>'com.spellful.app.integrationtests','TEST_HOST'=>'$(BUILT_PRODUCTS_DIR)/App.app/App','BUNDLE_LOADER'=>'$(TEST_HOST)'})
 end
 project.save
 scheme = Xcodeproj::XCScheme.new

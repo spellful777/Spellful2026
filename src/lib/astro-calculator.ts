@@ -45,7 +45,7 @@ const SIGNS = [
 function toRad(d: number) { return d * Math.PI / 180; }
 function toDeg(r: number) { return r * 180 / Math.PI; }
 function norm360(d: number) { return ((d % 360) + 360) % 360; }
-function norm180(d: number) { let n = norm360(d); return n > 180 ? n - 360 : n; }
+function norm180(d: number) { const n = norm360(d); return n > 180 ? n - 360 : n; }
 
 // Julian Day Number
 export function julianDay(year: number, month: number, day: number, hour: number): number {
@@ -81,7 +81,7 @@ function moonLongitude(jd: number): number {
   const F = norm360(93.2721 + 483202.0175 * t);
   const Mr = toRad(M); const Mpr = toRad(Mp);
   const Dr = toRad(D); const Fr = toRad(F);
-  let lon = L1
+  const lon = L1
     + 6.2888 * Math.sin(Mpr)
     + 1.2740 * Math.sin(2 * Dr - Mpr)
     + 0.6583 * Math.sin(2 * Dr)
@@ -275,8 +275,8 @@ function getHouseForPlanet(lon: number, houses: number[]): number {
     const next = houses[(i + 1) % 12];
     // eslint-disable-next-line security/detect-object-injection
     const curr = houses[i];
-    let end = next > curr ? next : next + 360;
-    let pos = lon >= curr ? lon : lon + 360;
+    const end = next > curr ? next : next + 360;
+    const pos = lon >= curr ? lon : lon + 360;
     if (pos >= curr && pos < end) return i + 1;
   }
   return 1;

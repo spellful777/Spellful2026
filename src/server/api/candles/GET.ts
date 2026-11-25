@@ -7,7 +7,7 @@ export default async function handler(req: Request, res: Response) {
   try {
     const { q = '', spellType = '' } = req.query as Record<string, string>;
 
-    let baseQuery = db.select().from(candles);
+    const baseQuery = db.select().from(candles);
 
     const conditions: ReturnType<typeof like>[] = [];
 
@@ -33,7 +33,7 @@ export default async function handler(req: Request, res: Response) {
       : await baseQuery;
 
     res.json({ results, total: results.length });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to search candles', message: 'Internal server error' });
   }
 }

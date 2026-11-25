@@ -583,7 +583,7 @@ const REFLECTION_PROMPTS = [
   'What is one small action this reading is calling you toward?',
 ];
 
-function StoryWeaver({ drawn, spreadName, onShare }: { drawn: DrawnCard[]; spreadName: string; onShare: () => void }) {
+function StoryWeaver({ drawn, onShare }: { drawn: DrawnCard[]; spreadName: string; onShare: () => void }) {
   const [mode, setMode] = useState<'short' | 'full'>('short');
   const narrative = useMemo(() => buildNarrative(drawn), [drawn]);
   const prompt = useMemo(() => {

@@ -14,7 +14,7 @@ export default async function handler(req: Request, res: Response) {
       db.select().from(academyBookmarks).where(eq(academyBookmarks.userId, session.user.id)),
     ]);
     res.json({ progress, bookmarks });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to fetch progress', message: 'Internal server error' });
   }
 }

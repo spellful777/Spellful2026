@@ -33,7 +33,7 @@ function getMoonEmoji(phase: string): string {
 }
 
 function formatMoonPhase(phase: string): string {
-  return phase.replace(/_/g, ' ').replace(/w/g, (c) => c.toUpperCase());
+  return phase.replace(/_/g, ' ').replace(/\bw/g, (c) => c.toUpperCase());
 }
 
 function isSameDay(a: Date, b: Date): boolean {

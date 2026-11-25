@@ -182,8 +182,8 @@ function DesktopThread({
   otherIsTyping, lastReadMsgId,
   replyTo, setReplyTo, editingMsg, setEditingMsg,
   reactionPickerMsgId, setReactionPickerMsgId, toggleReaction,
-  softDeleteMessage, wallpaper, isCoven, covenStatus, covenConnectionId, onCovenAction,
-  onOpenWallpaperPicker, onSaveWallpaper, activeConvId,
+  softDeleteMessage, wallpaper, isCoven, covenStatus, onCovenAction,
+  onSaveWallpaper, activeConvId,
   showSearch, onToggleSearch, onSearchJump, sendError,
   refreshOtherUserKey, deleteConversation,
 }: DesktopThreadProps) {

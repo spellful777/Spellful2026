@@ -10,6 +10,7 @@ export default [
   {
     ignores: ['dist', 'node_modules', '.next', '.vite', 'ios/App/App/public/**', 'ios/App/build/**', 'build/**'],
   },
+  { plugins: { security } },
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
@@ -53,7 +54,6 @@ export default [
       },
     },
     plugins: {
-      security,
       'no-unsanitized': noUnsanitized,
       '@typescript-eslint': tseslint,
       'react-hooks': reactHooks,
@@ -63,11 +63,12 @@ export default [
       ...js.configs.recommended.rules,
       ...tseslint.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
+      'no-undef': 'off', // TypeScript checks variable references, including type-only names.
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
       ],
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', ignoreRestSiblings: true }],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',

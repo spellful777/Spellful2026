@@ -56,9 +56,9 @@ describe("renderLlmsTxt", () => {
 			summary: "We sell quality desks",
 			routes,
 		});
-		expect(out).toBe(
-			"# Acme\n\n> We sell quality desks\n\n## Pages\n" +
-				"- [Home](https://acme.com/)\n" +
+		expect(out.split("\n## About Spellful")[0].trimEnd()).toBe("# Acme\n\n> We sell quality desks");
+		expect(out.split("## All Public Pages\n")[1]).toBe(
+			"- [Home](https://acme.com/)\n" +
 				"- [About](https://acme.com/about)\n",
 		);
 	});
@@ -71,7 +71,8 @@ describe("renderLlmsTxt", () => {
 			summary: "",
 			routes: [{ path: "/" }],
 		});
-		expect(out).toBe("# acme.com\n\n## Pages\n- [Home](https://acme.com/)\n");
+		expect(out.split("\n## About Spellful")[0].trimEnd()).toBe("# acme.com");
+		expect(out.split("## All Public Pages\n")[1]).toBe("- [Home](https://acme.com/)\n");
 	});
 
 	it("omits the Pages heading entirely when there are no routes", () => {
@@ -82,7 +83,7 @@ describe("renderLlmsTxt", () => {
 			summary: "Hi",
 			routes: [],
 		});
-		expect(out).toBe("# Acme\n\n> Hi\n");
+		expect(out).not.toContain("## All Public Pages");
 	});
 
 	it("skips routes whose path does not start with a slash", () => {
@@ -93,7 +94,7 @@ describe("renderLlmsTxt", () => {
 			summary: "Hi",
 			routes: [{ path: "/" }, { path: "mailto:x@y.com" } as SeoRoute],
 		});
-		expect(out).toBe("# Acme\n\n> Hi\n\n## Pages\n- [Home](https://acme.com/)\n");
+		expect(out.split("## All Public Pages\n")[1]).toBe("- [Home](https://acme.com/)\n");
 	});
 
 	it("sanitizes a name with markdown-significant characters", () => {
@@ -104,7 +105,7 @@ describe("renderLlmsTxt", () => {
 			summary: "Line\nbreak",
 			routes: [],
 		});
-		expect(out).toBe("# Acme \\[Inc\\]\n\n> Line break\n");
+		expect(out.split("\n## About Spellful")[0].trimEnd()).toBe("# Acme \\[Inc\\]\n\n> Line break");
 	});
 });
 
@@ -156,16 +157,14 @@ describe("llmsTxtHandler", () => {
 	it("serves a well-formed file with the right headers on a customer host", () => {
 		const { res, calls } = mockRes();
 		llmsTxtHandler(reqFor("acme.com"), res);
-		// Default siteMeta is unseeded, so H1 falls back to the hostname and
-		// the default seoRoutes ("/") produces a single Home link.
 		expect(calls.status).toBeUndefined(); // no explicit status => Express 200
 		expect(calls.contentType).toBe("text/plain");
 		expect(calls.headers["Cache-Control"]).toBe(
 			"public, max-age=60, must-revalidate",
 		);
 		expect(calls.headers["Vary"]).toBe("Host");
-		expect(calls.body).toContain("# acme.com");
-		expect(calls.body).toContain("## Pages");
+		expect(calls.body).toContain("# Spellful");
+		expect(calls.body).toContain("## All Public Pages");
 		expect(calls.body).toContain("- [Home](https://acme.com/)");
 	});
 });

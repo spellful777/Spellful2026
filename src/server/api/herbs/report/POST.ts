@@ -18,7 +18,7 @@ export default async function handler(req: Request, res: Response) {
     console.log(`[Herb Report] id=${herbId} reason="${reason}" details="${details ?? ''}"`);
 
     res.json({ ok: true, message: 'Thank you — your report has been submitted for editorial review.' });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to submit report', message: 'Internal server error' });
   }
 }

@@ -41,7 +41,7 @@ export default async function handler(req: Request, res: Response) {
     await db.update(user).set(updates).where(eq(user.id, session.user.id));
 
     res.json({ ok: true });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to save signup info', message: 'Internal server error' });
   }
 }

@@ -59,7 +59,7 @@ export default async function handler(req: Request, res: Response) {
     }
 
     res.json({ ok: true, ...data });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to save preferences', message: 'Internal server error' });
   }
 }

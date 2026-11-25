@@ -17,7 +17,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
       .where(and(eq(moonRituals.id, id), eq(moonRituals.userId, session.user.id)));
 
     res.json({ message: 'Ritual deleted' });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to delete ritual', message: 'Internal server error' });
   }
 }

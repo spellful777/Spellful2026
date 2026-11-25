@@ -15,7 +15,7 @@ export default async function handler(req: Request, res: Response) {
     }
     const results = await db.select().from(herbs).where(inArray(herbs.id, idList));
     res.json({ results });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to compare herbs', message: 'Internal server error' });
   }
 }

@@ -28,7 +28,7 @@ interface GrimoireOnboardingProps {
   onComplete?: () => void;
 }
 
-export function GrimoireOnboarding({ onComplete }: GrimoireOnboardingProps) {
+export function GrimoireOnboarding(_props: GrimoireOnboardingProps) {
   const [step, setStep] = useState(1);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
 

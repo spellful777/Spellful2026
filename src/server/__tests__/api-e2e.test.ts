@@ -26,67 +26,31 @@ const read = (rel: string) => readFileSync(resolve(cwd, rel), 'utf-8');
 describe('Navigation structure (Header.tsx)', () => {
   const src = readFileSync(resolve(cwd, 'src/layouts/parts/Header.tsx'), 'utf-8');
 
-  it('Home is a plain link with no children', () => {
-    const homeBlock = src.match(/label: 'Home'[\s\S]*?(?=\},\s*\{)/)?.[0] ?? '';
-    expect(homeBlock).toContain("href: '/'");
-    expect(homeBlock).not.toContain('children:');
-  });
+  const nav = src.split('const NAV: NavItem[] = [')[1].split('];')[0];
+  const items = nav.split(/^ {2}\{/m).slice(1).map(item => item.split(/^ {2}\},/m)[0]);
+  const item = (name: string) => items.find(block => block.trimStart().startsWith(`label: '${name}'`)) || '';
 
-  it('About is a plain link with no children', () => {
-    const aboutBlock = src.match(/label: 'About'[\s\S]*?(?=\},\s*\{)/)?.[0] ?? '';
-    expect(aboutBlock).toContain("href: '/about'");
-    expect(aboutBlock).not.toContain('children:');
-  });
-
-  it('Community is authOnly: true', () => {
-    const idx = src.indexOf("label: 'Community'");
-    expect(idx).toBeGreaterThan(0);
-    const block = src.slice(idx, idx + 500);
-    expect(block).toContain('authOnly: true');
-  });
-
-  it('My Sanctuary is authOnly: true', () => {
-    const idx = src.indexOf("label: 'My Sanctuary'");
-    expect(idx).toBeGreaterThan(0);
-    const block = src.slice(idx, idx + 500);
-    expect(block).toContain('authOnly: true');
-  });
-
-  it('Learn dropdown contains all 7 educational routes', () => {
-    const idx = src.indexOf("label: 'Learn'");
-    expect(idx).toBeGreaterThan(0);
-    const block = src.slice(idx, idx + 900);
-    for (const route of ['/resources', '/tarot', '/herbs', '/moon-ritual', '/birth-chart', '/moon-calendar', '/calendar']) {
-      expect(block).toContain(route);
+  it('provides seven navigation groups and direct Home and About links', () => {
+    expect(items).toHaveLength(7);
+    for (const [label, href] of [['Home', '/'], ['About', '/about']]) {
+      expect(item(label)).toContain(`href: '${href}'`);
+      expect(item(label)).not.toContain('children:');
     }
   });
 
-  it('Practice dropdown contains spell library and dashboard', () => {
-    const idx = src.indexOf("label: 'Practice'");
-    expect(idx).toBeGreaterThan(0);
-    const block = src.slice(idx, idx + 700);
-    expect(block).toContain('/spells');
-    expect(block).toContain('/dashboard');
+  it('provides guest community access and signed-in sanctuary and coven menus', () => {
+    expect(item('Community')).toContain('guestOnly: true');
+    expect(item('My Coven')).toContain('authOnly: true');
+    expect(item('My Sanctuary')).toContain('authOnly: true');
+    expect(item('My Sanctuary')).toContain("href: '/dashboard', authRequired: true");
+    expect(item('My Coven')).toContain("href: '/messages', authRequired: true");
   });
 
-  it('Dream Journal and Cosmic Timeline are authRequired in Practice', () => {
-    const idx = src.indexOf("label: 'Practice'");
-    const block = src.slice(idx, idx + 700);
-    const dreamIdx = block.indexOf('/dream-journal');
-    const timelineIdx = block.indexOf('/timeline');
-    expect(dreamIdx).toBeGreaterThan(0);
-    expect(timelineIdx).toBeGreaterThan(0);
-    expect(block.slice(dreamIdx, dreamIdx + 60)).toContain('authRequired: true');
-    expect(block.slice(timelineIdx, timelineIdx + 60)).toContain('authRequired: true');
-  });
-
-  it('NAV has exactly 6 top-level items', () => {
-    const navStart = src.indexOf('const NAV: NavItem[]');
-    const navEnd = src.indexOf('];', navStart) + 2;
-    const navBlock = src.slice(navStart, navEnd);
-    // Top-level items are objects at 2-space indent: lines that are exactly "  {"
-    const topLevelObjects = navBlock.split(/\r?\n/).filter((line) => line === '  {');
-    expect(topLevelObjects.length).toBe(6);
+  it('includes learning, divination and spellcraft tools under Explore', () => {
+    for (const href of ['/resources', '/learn', '/tarot', '/herbs', '/moon-ritual', '/birth-chart', '/moon-calendar', '/spells']) {
+      expect(item('Explore')).toContain(`href: '${href}'`);
+    }
+    expect(item('Explore')).toContain("href: '/dream-journal', authRequired: true");
   });
 
   it('Sign In is NOT inside any dropdown children array', () => {

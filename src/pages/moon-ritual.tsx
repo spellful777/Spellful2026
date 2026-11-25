@@ -59,12 +59,12 @@ function stepHasFlame(step: string): boolean {
 
 function smokeFreeStep(step: string): string {
   return step
-    .replace(/light(s|ed)? (a |an |the )?(candle|incense)/gi, 'place (or switch on) a battery candle / diffuser')
-    .replace(/burn(ing|s|ed)? (the |a |an )?(bay leaf|paper|letter|incense|herbs?)/gi, 'fold and keep (or safely discard) the $3')
-    .replace(/candle/gi, 'battery candle')
-    .replace(/incense/gi, 'essential oil diffuser')
-    .replace(/smoke/gi, 'scent')
-    .replace(/flame/gi, 'light');
+    .replace(/\blight(s|ed)? (a |an |the )?(candle|incense)\b/gi, 'place (or switch on) a battery candle / diffuser')
+    .replace(/\bburn(ing|s|ed)? (the |a |an )?(bay leaf|paper|letter|incense|herbs?)\b/gi, 'fold and keep (or safely discard) the $3')
+    .replace(/\bcandle\b/gi, 'battery candle')
+    .replace(/\bincense\b/gi, 'essential oil diffuser')
+    .replace(/\bsmoke\b/gi, 'scent')
+    .replace(/\bflame\b/gi, 'light');
 }
 
 function getQuickSteps(steps: string[]): string[] {

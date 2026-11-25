@@ -161,7 +161,6 @@ function ReplyCard({
   isAccepted,
   isPostAuthor,
   postType,
-  postId,
   onAccept,
   onLike,
   onReplyTo,
@@ -510,6 +509,14 @@ export default function PostThreadPage() {
   const [replyTo, setReplyTo] = useState<{ id: number; authorName: string | null } | null>(null);
   const [showShareToast, setShowShareToast] = useState(false);
 
+  const [postReportOpen, setPostReportOpen] = useState(false);
+  const [postEditMode, setPostEditMode] = useState(false);
+  const [postEditTitle, setPostEditTitle] = useState('');
+  const [postEditBody, setPostEditBody] = useState('');
+  const [postEditSaving, setPostEditSaving] = useState(false);
+  const [postConfirmDelete, setPostConfirmDelete] = useState(false);
+  const [postDeleting, setPostDeleting] = useState(false);
+
   if (!isPending && !session) {
     navigate('/login?redirect=/community');
     return null;
@@ -528,14 +535,6 @@ export default function PostThreadPage() {
     await fetch(`/api/community/posts/${post.id}/bookmark`, { method: 'POST' });
     setPost((p) => p ? { ...p, bookmarked: !p.bookmarked } : p);
   };
-
-  const [postReportOpen, setPostReportOpen] = useState(false);
-  const [postEditMode, setPostEditMode] = useState(false);
-  const [postEditTitle, setPostEditTitle] = useState('');
-  const [postEditBody, setPostEditBody] = useState('');
-  const [postEditSaving, setPostEditSaving] = useState(false);
-  const [postConfirmDelete, setPostConfirmDelete] = useState(false);
-  const [postDeleting, setPostDeleting] = useState(false);
 
   const savePostEdit = async () => {
     if (!post || postEditSaving) return;

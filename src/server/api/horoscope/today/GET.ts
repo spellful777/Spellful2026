@@ -31,7 +31,7 @@ export default async function handler(req: Request, res: Response) {
     const horoscope = generateDailyHoroscope(sign, today, profile.moonSign, profile.risingSign);
 
     res.json(horoscope);
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to generate horoscope', message: 'Internal server error' });
   }
 }

@@ -30,7 +30,7 @@ export default async function handler(req: Request, res: Response) {
     }
 
     res.json(prefs);
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Failed to fetch preferences', message: 'Internal server error' });
   }
 }

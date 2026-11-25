@@ -32,7 +32,7 @@ final class SpellfulIntegration: XCTestCase {
         defer { store.clearTransactions() }
         let web = try await appWebView()
         let script = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "purchases", withExtension: "js"))
-        let result = try await web.callAsyncJavaScript(String(contentsOf: script, encoding: .utf8), arguments: [:], in: nil, contentWorld: .page)
+        let result = try await web.callAsyncJavaScript(String(contentsOf: script, encoding: .utf8) + "\nreturn await runSpellfulCheck();", arguments: [:], in: nil, contentWorld: .page)
         XCTAssertEqual(result as? String, "passed")
     }
 
@@ -41,7 +41,7 @@ final class SpellfulIntegration: XCTestCase {
         let accounts = try JSONSerialization.jsonObject(with: Data(contentsOf: fixtures))
         let script = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "messaging", withExtension: "js"))
         let web = try await appWebView()
-        let result = try await web.callAsyncJavaScript(String(contentsOf: script, encoding: .utf8), arguments: ["accounts": accounts], in: nil, contentWorld: .page)
+        let result = try await web.callAsyncJavaScript(String(contentsOf: script, encoding: .utf8) + "\nreturn await runSpellfulCheck();", arguments: ["accounts": accounts], in: nil, contentWorld: .page)
         XCTAssertEqual(result as? String, "passed")
     }
 }

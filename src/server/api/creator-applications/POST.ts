@@ -43,7 +43,7 @@ function isValidUrl(s: string): boolean {
 
 function isValidHandle(s: string): boolean {
   if (!s) return true;
-  return /^[@]?[\w.\-]{1,100}$/.test(s);
+  return /^[@]?[\w.-]{1,100}$/.test(s);
 }
 
 export default async function handler(req: Request, res: Response): Promise<void> {

@@ -178,7 +178,7 @@ function generateStoryCanvas(horoscope: DailyHoroscope): Promise<Blob> {
     Promise.all([
       loadImage(templateUrl),
     ]).then(([bgImg]) => {
-      renderStory(resolve, horoscope, bgImg, templateUrl);
+      renderStory(resolve, horoscope, bgImg);
     });
   });
 }
@@ -187,7 +187,6 @@ function renderStory(
   resolve: (blob: Blob) => void,
   horoscope: DailyHoroscope,
   bgImg: HTMLImageElement | null,
-  templateUrl: string,
 ) {
   const W = 1080;
   const H = 1920;
