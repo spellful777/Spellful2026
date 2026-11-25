@@ -1108,6 +1108,12 @@ export async function runStartupMigration(): Promise<void> {
       console.error(JSON.stringify({ event: 'startup.migration.plus_subscriptions.error', msg: msg.slice(0, 120) }));
     }
 
+    try {
+      await conn.execute('ALTER TABLE plus_subscriptions ADD COLUMN apple_signed_date BIGINT NULL');
+    } catch (error) {
+      if ((error as { code?: string }).code !== 'ER_DUP_FIELDNAME') throw error;
+    }
+
     // ── plus_settings table ───────────────────────────────────────────────────
     try {
       await conn.execute(`

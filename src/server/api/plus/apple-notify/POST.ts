@@ -21,8 +21,6 @@ function mapNotificationTypeToStatus(
       return 'refunded';
     case 'REFUND':
       return 'refunded';
-    case 'DID_CHANGE_RENEWAL_STATUS':
-      return 'active'; // still active until expiry regardless of subtype
     case 'GRACE_PERIOD_EXPIRED':
       return 'expired';
     default:
@@ -45,6 +43,7 @@ export default async function handler(req: Request, res: Response): Promise<void
     if (!status || txn.productId !== 'com.spellful.plus.monthly' || !txn.originalTransactionId || !txn.expiresDate) {
       res.sendStatus(200); return;
     }
+    if (!notification.signedDate) { res.sendStatus(400); return; }
     const renewal = data.signedRenewalInfo ? await verifier.verifyAndDecodeRenewalInfo(data.signedRenewalInfo) : null;
     const environment = String(txn.environment);
     const expiresAt = txn.expiresDate ? new Date(txn.expiresDate) : null;
@@ -67,6 +66,7 @@ export default async function handler(req: Request, res: Response): Promise<void
       expiresAt,
       gracePeriodUntil: status === 'grace_period' && renewal?.gracePeriodExpiresDate ? new Date(renewal.gracePeriodExpiresDate) : null,
       cancelledAt,
+      signedDate: notification.signedDate,
       rawNotificationPayload: signedPayload.slice(0, 4000),
     });
 

@@ -1,4 +1,4 @@
-import { mysqlTable, int, tinyint, varchar, text, boolean, timestamp, json, index, uniqueIndex } from 'drizzle-orm/mysql-core';
+import { mysqlTable, bigint, int, tinyint, varchar, text, boolean, timestamp, json, index, uniqueIndex } from 'drizzle-orm/mysql-core';
 // Note: tinyint imported above; used for TINYINT columns
 
 // ─── BetterAuth tables ───────────────────────────────────────────────────────
@@ -1248,6 +1248,7 @@ export const plusSubscriptions = mysqlTable(
     expiresAt: timestamp('expires_at'),
     gracePeriodUntil: timestamp('grace_period_until'),
     cancelledAt: timestamp('cancelled_at'),
+    appleSignedDate: bigint('apple_signed_date', { mode: 'number' }),
     lastVerifiedAt: timestamp('last_verified_at'),
     rawNotificationPayload: text('raw_notification_payload'), // last Apple server notification (truncated)
     createdAt: timestamp('created_at').defaultNow(),

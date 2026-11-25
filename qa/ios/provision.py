@@ -51,4 +51,4 @@ accounts = []
 domain = items(call('https://api.mail.tm/domains'))[0]['domain']
 for index in range(2):
     accounts.append(provision(domain, index + 1))
-    fixtures.write_text(json.dumps(accounts))
+fixtures.write_text(json.dumps(accounts))

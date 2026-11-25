@@ -11,7 +11,7 @@
  */
 import { db } from '@/server/db/client.js';
 import { plusSubscriptions, plusSettings, user as userTable } from '@/server/db/schema.js';
-import { eq, and, or, gt, isNull } from 'drizzle-orm';
+import { eq, and, or, gt, isNull, lt, desc, sql } from 'drizzle-orm';
 
 // Platform roles that receive full Plus access without a subscription
 const ADMIN_ROLES = new Set(['owner', 'admin', 'moderator']);
@@ -97,7 +97,7 @@ export async function getEntitlement(userId: string): Promise<EntitlementResult>
       })
       .from(plusSubscriptions)
       .where(eq(plusSubscriptions.userId, userId))
-      .orderBy(plusSubscriptions.updatedAt)
+      .orderBy(desc(plusSubscriptions.updatedAt))
       .limit(1);
 
     const latest = anyRows[0] ?? null;
@@ -206,37 +206,33 @@ export interface UpsertSubscriptionInput {
   expiresAt: Date | null;
   gracePeriodUntil: Date | null;
   cancelledAt: Date | null;
+  signedDate: number;
   rawNotificationPayload?: string;
 }
 
 export async function upsertSubscription(input: UpsertSubscriptionInput): Promise<void> {
-  const now = new Date();
-  await db
-    .insert(plusSubscriptions)
-    .values({
+  const state = {
+    status: input.status,
+    expiresAt: input.expiresAt,
+    gracePeriodUntil: input.gracePeriodUntil,
+    cancelledAt: input.cancelledAt,
+    lastVerifiedAt: new Date(),
+    rawNotificationPayload: input.rawNotificationPayload?.slice(0, 4000) ?? null,
+    appleSignedDate: input.signedDate,
+  };
+  await db.transaction(async tx => {
+    // The unique original transaction ID serializes competing notifications and restores.
+    await tx.insert(plusSubscriptions).values({
       userId: input.userId,
       appleOriginalTransactionId: input.appleOriginalTransactionId,
       appleProductId: input.appleProductId,
-      status: input.status,
       environment: input.environment,
-      expiresAt: input.expiresAt,
-      gracePeriodUntil: input.gracePeriodUntil,
-      cancelledAt: input.cancelledAt,
-      lastVerifiedAt: now,
-      rawNotificationPayload: input.rawNotificationPayload
-        ? input.rawNotificationPayload.slice(0, 4000)
-        : null,
-    })
-    .onDuplicateKeyUpdate({
-      set: {
-        status: input.status,
-        expiresAt: input.expiresAt,
-        gracePeriodUntil: input.gracePeriodUntil,
-        cancelledAt: input.cancelledAt,
-        lastVerifiedAt: now,
-        rawNotificationPayload: input.rawNotificationPayload
-          ? input.rawNotificationPayload.slice(0, 4000)
-          : null,
-      },
-    });
+      ...state,
+    }).onDuplicateKeyUpdate({ set: { id: sql`id` } });
+    await tx.update(plusSubscriptions).set(state).where(and(
+      eq(plusSubscriptions.appleOriginalTransactionId, input.appleOriginalTransactionId),
+      eq(plusSubscriptions.userId, input.userId),
+      or(isNull(plusSubscriptions.appleSignedDate), lt(plusSubscriptions.appleSignedDate, input.signedDate)),
+    ));
+  });
 }

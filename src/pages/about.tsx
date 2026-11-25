@@ -660,6 +660,12 @@ export default function AboutPage() {
             </div>
           </section>
 
+          <section id="support" aria-labelledby="support-heading" className="my-12">
+            <h2 id="support-heading" className="text-3xl mb-3">Spellful support</h2>
+            <p>For help with your account, a subscription, or a community concern, email{' '}
+              <a className="underline" href="mailto:support@spellful.com">support@spellful.com</a>.
+            </p>
+          </section>
         </div>
       </main>
     </>

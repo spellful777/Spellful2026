@@ -22,7 +22,7 @@ export default async function handler(req: Request, res: Response): Promise<void
 
   try {
     const txn = await appleVerifier().verifyAndDecodeTransaction(signedTransaction);
-    if (!txn?.originalTransactionId || !txn?.productId || !txn.expiresDate) {
+    if (!txn?.originalTransactionId || !txn?.productId || !txn.expiresDate || !txn.signedDate) {
       res.status(400).json({ error: 'INVALID_TRANSACTION' });
       return;
     }
@@ -59,6 +59,7 @@ export default async function handler(req: Request, res: Response): Promise<void
       expiresAt,
       gracePeriodUntil: null,
       cancelledAt,
+      signedDate: txn.signedDate,
       rawNotificationPayload: signedTransaction.slice(0, 4000),
     });
 
