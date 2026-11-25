@@ -13,7 +13,7 @@ import { useSession } from '@/lib/auth/auth-client';
 import { plus } from 'virtual:content';
 import { ContentListContext } from '@airo/content';
 import { Capacitor } from '@capacitor/core';
-import { fetchPlusProduct, purchasePlus, restorePurchases } from '@/lib/storekit';
+import { fetchPlusProduct, purchasePlus, restorePurchases, retryUnfinishedPurchases } from '@/lib/storekit';
 import AvatarWithFrame, { FRAME_DEFS } from '@/components/AvatarWithFrame'; // frame picker
 
 const pricing = plus.pricing ?? {
@@ -447,7 +447,7 @@ function PurchaseCta({
           aria-label="Subscribe to Spellful Plus"
         >
           <Sparkles className="w-4 h-4 mr-2" />
-          {purchasing ? 'Processing…' : displayPrice ? `Subscribe for ${displayPrice}/month` : 'Store price unavailable'}
+          {purchasing ? 'Processing…' : displayPrice ? `Subscribe for ${displayPrice ? displayPrice + '/month' : 'Store price unavailable'}` : 'Store price unavailable'}
         </Button>
       ) : (
         <div className="flex flex-col items-center gap-1.5">
@@ -503,7 +503,8 @@ export default function PlusPage() {
 
   useEffect(() => {
     if (!session?.user) return;
-    fetch('/api/plus/entitlement', { credentials: 'include' })
+    retryUnfinishedPurchases(session.user.id).catch(() => undefined)
+      .then(() => fetch('/api/plus/entitlement', { credentials: 'include' }))
       .then((r) => r.json() as Promise<EntitlementState>)
       .then(setEntitlement)
       .catch(() => undefined);
@@ -734,7 +735,7 @@ export default function PlusPage() {
                 <p className="text-sm font-semibold" style={{ color: 'hsl(var(--primary))' }}>
                   {plus.comparison.plusLabel}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">{displayPrice}/month</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{displayPrice ? displayPrice + '/month' : 'Store price unavailable'}</p>
               </div>
             </div>
 

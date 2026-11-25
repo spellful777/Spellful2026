@@ -1,4 +1,6 @@
 import js from '@eslint/js';
+import security from 'eslint-plugin-security';
+import noUnsanitized from 'eslint-plugin-no-unsanitized';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from '@typescript-eslint/eslint-plugin';
@@ -6,7 +8,7 @@ import tsparser from '@typescript-eslint/parser';
 
 export default [
   {
-    ignores: ['dist', 'node_modules', '.next', '.vite'],
+    ignores: ['dist', 'node_modules', '.next', '.vite', 'ios/App/App/public/**', 'ios/App/build/**', 'build/**'],
   },
   {
     files: ['**/*.{ts,tsx}'],
@@ -51,6 +53,8 @@ export default [
       },
     },
     plugins: {
+      security,
+      'no-unsanitized': noUnsanitized,
       '@typescript-eslint': tseslint,
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,

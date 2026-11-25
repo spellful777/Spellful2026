@@ -78,6 +78,17 @@ export async function restorePurchases(): Promise<PurchaseResult> {
   }
 }
 
+export async function retryUnfinishedPurchases(userId: string): Promise<void> {
+  if (Capacitor.getPlatform() !== 'ios') return;
+  const token = await purchaseAccountToken(userId);
+  const { transactions } = await NativePurchases.getUnfinishedTransactions();
+  for (const transaction of transactions) {
+    if (transaction.productIdentifier === PLUS_PRODUCT_ID && transaction.appAccountToken?.toLowerCase() === token) {
+      await deliver(transaction);
+    }
+  }
+}
+
 async function verifyWithServer(signedTransaction: string): Promise<PurchaseResult> {
   try {
     const res = await fetch('/api/plus/verify-purchase', {

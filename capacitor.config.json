@@ -2,5 +2,12 @@
   "appId": "com.spellful.app",
   "appName": "Spellful",
   "webDir": "dist/client",
-  "plugins": { "CapacitorHttp": { "enabled": true } }
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "NativePurchases": {
+      "autoFinishTransactions": false
+    }
+  }
 }

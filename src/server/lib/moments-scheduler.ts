@@ -12,7 +12,7 @@
 
 import { db } from '@/server/db/client.js';
 import { sql } from 'drizzle-orm';
-import { sendEmail } from '@/server/lib/send-email.js';
+import { sendEmail } from '@/server/email.js';
 import { getEntitlement } from '@/server/lib/plus-entitlement.js';
 import { createMomentsToken } from '@/server/lib/moments-tokens.js';
 import {

@@ -51,12 +51,7 @@ export default async function handler(req: Request, res: Response): Promise<void
         const chunks: Buffer[] = [];
         let limitHit = false;
 
-        (file as NodeJS.ReadableStream & {
-          on(event: 'data', cb: (chunk: Buffer) => void): void;
-          on(event: 'end', cb: () => void): void;
-          on(event: 'limit', cb: () => void): void;
-          resume(): void;
-        }).on('data', (chunk: Buffer) => chunks.push(chunk))
+        file.on('data', (chunk: Buffer) => chunks.push(chunk))
           .on('limit', () => {
             limitHit = true;
             resolve({ error: 'File too large. Maximum 5 MB.', status: 413 });
