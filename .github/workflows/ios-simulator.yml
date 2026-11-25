@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
     paths: ['src/**', 'ios/**', 'package*.json', 'capacitor.config.json', 'qa/ios/**', '.github/workflows/ios-simulator.yml']
+  pull_request:
+    paths: ['ios/App/App/Assets.xcassets/**']
   workflow_dispatch:
 permissions:
   contents: read

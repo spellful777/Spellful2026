@@ -115,7 +115,7 @@
   },
   "logo/favicon": {
     "mediaType": "logo",
-    "currentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/94fc0a9c-3a62-4272-96e8-3f266e2dcb3a/session/d11f79b0-3a54-44da-9c98-1c437186b53c/favicon-transparent-29e49154-f83e-41ea-979d-bd7ff0ddfd95/logo-logo.png",
+    "currentUrl": "/airo-assets/uploads/spellful-icon-32.png",
     "searchQuery": "favicon",
     "alternatives": [
       "/airo-assets/uploads/logo-favicon-f7b9939e.png",
@@ -2504,17 +2504,18 @@
   },
   "pwa/app-icon": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/pwa-app-icon-b5693df9.png",
+    "currentUrl": "/airo-assets/uploads/spellful-icon-512.png",
     "searchQuery": "spellful app logo purple background",
     "alternatives": [],
     "userModified": true,
     "createdAt": "2026-11-19T02:58:57.504Z",
     "lastUpdated": "2026-11-19T02:58:57.504Z",
     "uploadSources": {
-      "/airo-assets/uploads/pwa-app-icon-b5693df9.png": "9udxg5wm87_1795057093100_file_uaX5Z8_YeL.png"
+      "/airo-assets/uploads/pwa-app-icon-b5693df9.png": "9udxg5wm87_1795057093100_file_uaX5Z8_YeL.png",
+      "/airo-assets/uploads/spellful-icon-512.png": "spellful-icon-512.png"
     },
-    "uploadContentHash": "964daa63c9183c190abf7409c031c223bc57e0aa2e2d60502bfaeb9b76f428a6",
-    "caption": "spellful app logo purple background"
+    "uploadContentHash": "0284a51ee7e5815daa34db33fd4038d354c4ddcb127d350534eda29383b7a979",
+    "caption": "Centered purple and gold Spellful app icon"
   },
   "pages/horoscope/story-template-3": {
     "mediaType": "image",
@@ -2699,19 +2700,20 @@
   },
   "logo/official-white": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/logo-official-white-8b86d830.png",
+    "currentUrl": "/airo-assets/uploads/spellful-wordmark.png",
     "searchQuery": "spellful text with moon and stars",
     "alternatives": [],
     "userModified": true,
     "createdAt": "2026-11-21T15:30:58.699Z",
     "lastUpdated": "2026-11-21T15:30:58.699Z",
     "uploadSources": {
-      "/airo-assets/uploads/logo-official-white-8b86d830.png": "9udxg5wm87_1795275043020_file_klj4T2INWv.png"
+      "/airo-assets/uploads/logo-official-white-8b86d830.png": "9udxg5wm87_1795275043020_file_klj4T2INWv.png",
+      "/airo-assets/uploads/spellful-wordmark.png": "spellful-wordmark.png"
     },
-    "uploadContentHash": "f354144cf6bff9486ec7ce7823a5c2a589d10096ff1ddda602f77ef60095889f",
+    "uploadContentHash": "09293ef9c721b5945ef3a573948d286dbb7f8d1de3023f3ea227710e244d4787",
     "naturalOrientation": "horizontal",
     "surfaceMode": "dark",
-    "darkSurfaceUrl": "/airo-assets/uploads/logo-official-white-8b86d830.png",
+    "darkSurfaceUrl": "/airo-assets/uploads/spellful-wordmark.png",
     "caption": "spellful text with moon and stars"
   },
   "logo/official-black": {

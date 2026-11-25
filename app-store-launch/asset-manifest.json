@@ -1,0 +1,234 @@
+[
+  {
+    "path": "assets/Spellful_Header_5244x2950.png",
+    "width": 5244,
+    "height": 2950,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 8609192
+  },
+  {
+    "path": "assets/Spellful_Search_1920x1280.jpg",
+    "width": 1920,
+    "height": 1280,
+    "mode": "RGB",
+    "format": "JPEG",
+    "bytes": 563696
+  },
+  {
+    "path": "assets/Spellful_Search_1920x1280.png",
+    "width": 1920,
+    "height": 1280,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 2052225
+  },
+  {
+    "path": "assets/Spellful_Search_Results_5244x2950.png",
+    "width": 5244,
+    "height": 2950,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 6785182
+  },
+  {
+    "path": "assets/app-icon-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 1091865
+  },
+  {
+    "path": "assets/brand-and-screenshots/1206x2622/01-daily-magic.png",
+    "width": 1206,
+    "height": 2622,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 859318
+  },
+  {
+    "path": "assets/brand-and-screenshots/1206x2622/02-tarot.png",
+    "width": 1206,
+    "height": 2622,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 870112
+  },
+  {
+    "path": "assets/brand-and-screenshots/1206x2622/03-grimoire.png",
+    "width": 1206,
+    "height": 2622,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 641075
+  },
+  {
+    "path": "assets/brand-and-screenshots/1206x2622/04-rituals.png",
+    "width": 1206,
+    "height": 2622,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 682375
+  },
+  {
+    "path": "assets/brand-and-screenshots/1206x2622/05-calendar.png",
+    "width": 1206,
+    "height": 2622,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 528278
+  },
+  {
+    "path": "assets/brand-and-screenshots/1206x2622/06-community.png",
+    "width": 1206,
+    "height": 2622,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 681565
+  },
+  {
+    "path": "assets/brand-and-screenshots/1320x2868/01-daily-magic.png",
+    "width": 1320,
+    "height": 2868,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 981836
+  },
+  {
+    "path": "assets/brand-and-screenshots/1320x2868/02-tarot.png",
+    "width": 1320,
+    "height": 2868,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 1007662
+  },
+  {
+    "path": "assets/brand-and-screenshots/1320x2868/03-grimoire.png",
+    "width": 1320,
+    "height": 2868,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 737609
+  },
+  {
+    "path": "assets/brand-and-screenshots/1320x2868/04-rituals.png",
+    "width": 1320,
+    "height": 2868,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 787829
+  },
+  {
+    "path": "assets/brand-and-screenshots/1320x2868/05-calendar.png",
+    "width": 1320,
+    "height": 2868,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 607921
+  },
+  {
+    "path": "assets/brand-and-screenshots/1320x2868/06-community.png",
+    "width": 1320,
+    "height": 2868,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 776524
+  },
+  {
+    "path": "assets/brand-and-screenshots/2064x2752/01-daily-magic.png",
+    "width": 2064,
+    "height": 2752,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 1036559
+  },
+  {
+    "path": "assets/brand-and-screenshots/2064x2752/02-tarot.png",
+    "width": 2064,
+    "height": 2752,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 1028041
+  },
+  {
+    "path": "assets/brand-and-screenshots/2064x2752/03-grimoire.png",
+    "width": 2064,
+    "height": 2752,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 776343
+  },
+  {
+    "path": "assets/brand-and-screenshots/2064x2752/04-rituals.png",
+    "width": 2064,
+    "height": 2752,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 820816
+  },
+  {
+    "path": "assets/brand-and-screenshots/2064x2752/05-calendar.png",
+    "width": 2064,
+    "height": 2752,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 715522
+  },
+  {
+    "path": "assets/brand-and-screenshots/2064x2752/06-community.png",
+    "width": 2064,
+    "height": 2752,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 814108
+  },
+  {
+    "path": "assets/brand-and-screenshots/banner-landscape.png",
+    "width": 1920,
+    "height": 1080,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 197114
+  },
+  {
+    "path": "assets/brand-and-screenshots/brand-kit.png",
+    "width": 1800,
+    "height": 1200,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 248030
+  },
+  {
+    "path": "assets/brand-and-screenshots/logo-transparent.png",
+    "width": 1511,
+    "height": 815,
+    "mode": "RGBA",
+    "format": "PNG",
+    "bytes": 127862
+  },
+  {
+    "path": "assets/brand-and-screenshots/preview.jpg",
+    "width": 1200,
+    "height": 460,
+    "mode": "RGB",
+    "format": "JPEG",
+    "bytes": 59773
+  },
+  {
+    "path": "assets/brand-and-screenshots/wallpaper-portrait.png",
+    "width": 1320,
+    "height": 2868,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 242554
+  },
+  {
+    "path": "assets/icon-approved-original.png",
+    "width": 1254,
+    "height": 1254,
+    "mode": "RGB",
+    "format": "PNG",
+    "bytes": 1610366
+  }
+]

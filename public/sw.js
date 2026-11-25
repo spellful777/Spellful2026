@@ -41,8 +41,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: '/airo-assets/images/pwa/app-icon',
-      badge: '/airo-assets/images/pwa/app-icon',
+      icon: '/assets/media/spellful-icon-192.png',
+      badge: '/assets/media/spellful-icon-192.png',
       tag: 'spellful-message',
       renotify: true,
       vibrate: [200, 100, 200],

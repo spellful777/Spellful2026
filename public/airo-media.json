@@ -19,7 +19,7 @@
   },
   "logo/favicon": {
     "mediaType": "logo",
-    "currentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/94fc0a9c-3a62-4272-96e8-3f266e2dcb3a/session/d11f79b0-3a54-44da-9c98-1c437186b53c/favicon-transparent-29e49154-f83e-41ea-979d-bd7ff0ddfd95/logo-logo.png"
+    "currentUrl": "/airo-assets/uploads/spellful-icon-32.png"
   },
   "pages/home/blog-1": {
     "mediaType": "image",
@@ -629,7 +629,7 @@
   },
   "pwa/app-icon": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/pwa-app-icon-b5693df9.png"
+    "currentUrl": "/airo-assets/uploads/spellful-icon-512.png"
   },
   "pages/horoscope/story-template-3": {
     "mediaType": "image",
@@ -685,8 +685,8 @@
   },
   "logo/official-white": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/logo-official-white-8b86d830.png",
-    "darkSurfaceUrl": "/airo-assets/uploads/logo-official-white-8b86d830.png",
+    "currentUrl": "/airo-assets/uploads/spellful-wordmark.png",
+    "darkSurfaceUrl": "/airo-assets/uploads/spellful-wordmark.png",
     "naturalOrientation": "horizontal"
   },
   "logo/official-black": {

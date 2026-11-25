@@ -141,7 +141,7 @@ function InstallBanner() {
       <div className="flex items-center gap-2.5 px-3 py-2">
         {/* App icon — compact 32px */}
         <img
-          src="/airo-assets/images/pwa/app-icon"
+          src="/assets/media/spellful-icon-192.png"
           alt="Spellful app icon"
           className="w-8 h-8 rounded-lg shrink-0"
           style={{ border: '1px solid hsl(var(--border))' }}
@@ -230,7 +230,7 @@ function InstallSection() {
         role="region"
         aria-label="Spellful app status"
       >
-        <img src="/airo-assets/images/pwa/app-icon" alt="" className="w-8 h-8 rounded-lg shrink-0" width={32} height={32} loading="lazy" aria-hidden="true" />
+        <img src="/assets/media/spellful-icon-192.png" alt="" className="w-8 h-8 rounded-lg shrink-0" width={32} height={32} loading="lazy" aria-hidden="true" />
         <div>
           <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))', fontFamily: 'var(--font-sans)' }}>You're using the Spellful app</p>
           <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>Installed from the App Store or Google Play.</p>
@@ -248,7 +248,7 @@ function InstallSection() {
         role="region"
         aria-label="Get Spellful on the App Store"
       >
-        <img src="/airo-assets/images/pwa/app-icon" alt="" className="w-10 h-10 rounded-xl shrink-0" width={40} height={40} loading="lazy" aria-hidden="true" />
+        <img src="/assets/media/spellful-icon-192.png" alt="" className="w-10 h-10 rounded-xl shrink-0" width={40} height={40} loading="lazy" aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))', fontFamily: 'var(--font-sans)' }}>Get the Spellful app</p>
           <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>Download on the App Store for the full experience.</p>
@@ -275,7 +275,7 @@ function InstallSection() {
         role="region"
         aria-label="Spellful app status"
       >
-        <img src="/airo-assets/images/pwa/app-icon" alt="" className="w-8 h-8 rounded-lg shrink-0" width={32} height={32} loading="lazy" aria-hidden="true" />
+        <img src="/assets/media/spellful-icon-192.png" alt="" className="w-8 h-8 rounded-lg shrink-0" width={32} height={32} loading="lazy" aria-hidden="true" />
         <div>
           <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))', fontFamily: 'var(--font-sans)' }}>Spellful is on your home screen ✦</p>
           <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>You're already running Spellful as an app.</p>
@@ -299,7 +299,7 @@ function InstallSection() {
         aria-controls={instructionsId}
       >
         <img
-          src="/airo-assets/images/pwa/app-icon"
+          src="/assets/media/spellful-icon-192.png"
           alt="Spellful app icon"
           className="w-10 h-10 rounded-xl shrink-0"
           style={{ border: '1px solid hsl(var(--border))' }}
