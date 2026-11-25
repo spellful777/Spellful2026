@@ -29,8 +29,10 @@ jobs:
           xcrun simctl install "$device" build/ios/Build/Products/Release-iphonesimulator/App.app
           xcrun simctl launch "$device" com.spellful.app
       - name: Package simulator app
+        if: github.event_name != 'pull_request'
         run: ditto -c -k --keepParent build/ios/Build/Products/Release-iphonesimulator/App.app "$RUNNER_TEMP/Spellful-simulator.zip"
       - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
         with:
           name: Spellful-iPhone-simulator
           path: ${{ runner.temp }}/Spellful-simulator.zip
@@ -42,7 +44,7 @@ jobs:
           SPELLFUL_QA_FIXTURES: ${{ runner.temp }}/spellful-qa-accounts.json
         run: python3 qa/ios/provision.py
       - name: Test purchases and restoration with Xcode StoreKit
-        if: success() || (failure() && steps.provision.outcome == 'failure')
+        if: github.event_name != 'pull_request' && (success() || (failure() && steps.provision.outcome == 'failure'))
         env:
           SPELLFUL_QA_FIXTURES: ${{ runner.temp }}/spellful-qa-accounts.json
         run: |
