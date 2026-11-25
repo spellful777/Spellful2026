@@ -1,3 +1,4 @@
+import { selectRows } from '@/server/db/select-rows';
 /**
  * GET /api/admin/command-center/dashboard
  * Owner-only KPI dashboard: total members, weekly active, Plus subscribers,
@@ -76,8 +77,8 @@ export default async function handler(req: Request, res: Response) {
   }
 
   type DayRow = { day: string; n: string | number };
-  const signupRows = (dailySignups[0] as DayRow[]) ?? [];
-  const postRows   = (dailyPosts[0]   as DayRow[]) ?? [];
+  const signupRows = (selectRows<DayRow>(dailySignups[0])) ?? [];
+  const postRows   = (selectRows<DayRow>(dailyPosts[0])) ?? [];
   const signupMap  = Object.fromEntries(signupRows.map(r => [r.day, Number(r.n)]));
   const postMap    = Object.fromEntries(postRows.map(r => [r.day, Number(r.n)]));
 

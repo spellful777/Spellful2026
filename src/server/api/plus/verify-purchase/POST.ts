@@ -2,6 +2,9 @@ import type { Request, Response } from 'express';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 import { upsertSubscription, getEntitlement } from '@/server/lib/plus-entitlement.js';
 import { appleVerifier, appleVerificationStatus } from '@/server/lib/apple-verification';
+import { db } from '@/server/db/client.js';
+import { plusSubscriptions } from '@/server/db/schema.js';
+import { eq } from 'drizzle-orm';
 import { purchaseAccountToken } from '@/lib/purchase-account';
 
 export default async function handler(req: Request, res: Response): Promise<void> {
@@ -11,7 +14,7 @@ export default async function handler(req: Request, res: Response): Promise<void
     return;
   }
 
-  const { signedTransaction } = req.body as { signedTransaction?: string };
+  const { signedTransaction } = (req.body ?? {}) as { signedTransaction?: string };
   if (!signedTransaction || typeof signedTransaction !== 'string') {
     res.status(400).json({ error: 'MISSING_TRANSACTION' });
     return;
@@ -24,8 +27,14 @@ export default async function handler(req: Request, res: Response): Promise<void
       return;
     }
 
-    // Security: if appAccountToken is present, it must match the session user
-    if (txn.appAccountToken?.toLowerCase() !== await purchaseAccountToken(session.user.id)) {
+    // Legacy StoreKit transactions can omit the account token. Restore those
+    // only for the Spellful account already bound to the original transaction.
+    const [known] = await db.select({ owner: plusSubscriptions.userId }).from(plusSubscriptions)
+      .where(eq(plusSubscriptions.appleOriginalTransactionId, txn.originalTransactionId)).limit(1);
+    const matches = txn.appAccountToken
+      ? txn.appAccountToken.toLowerCase() === await purchaseAccountToken(session.user.id)
+      : known?.owner === session.user.id;
+    if (!matches || (known && known.owner !== session.user.id)) {
       res.status(403).json({ error: 'ACCOUNT_MISMATCH' });
       return;
     }

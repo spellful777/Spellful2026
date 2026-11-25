@@ -61,7 +61,6 @@ export default function SignupPage() {
   const [signupSource, setSignupSource] = useState<string>(() => {
     // Auto-detect Apple App Store via Capacitor native platform
     if (typeof window !== 'undefined') {
-      const ua = navigator.userAgent;
       // Capacitor sets window.Capacitor when running natively
       const cap = (window as unknown as { Capacitor?: { getPlatform?: () => string } }).Capacitor;
       if (cap?.getPlatform?.() === 'ios') return 'apple_app_store';

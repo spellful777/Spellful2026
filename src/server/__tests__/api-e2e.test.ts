@@ -14,7 +14,7 @@
  * Run with: npm test -- src/server/__tests__/api-e2e.test.ts
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -217,7 +217,8 @@ describe('Seed script (scripts/seed.ts)', () => {
     expect(existsSync(resolve(cwd, 'scripts/seed.ts'))).toBe(true);
   });
 
-  const src = read('scripts/seed.ts');
+  let src: string;
+  beforeAll(() => { src = read('scripts/seed.ts'); });
 
   it('defines all 4 test users', () => {
     for (const email of ['admin@spellful.test', 'sage@spellful.test', 'raven@spellful.test', 'ember@spellful.test']) {

@@ -46,7 +46,7 @@ export default async function handler(req: Request, res: Response) {
 
   const next: PlatformConfig = { ...current, ...updates };
   await fs.writeFile(CONFIG_PATH, JSON.stringify(next, null, 2), 'utf-8');
-  await writeAuditEvent(actorId, 'update-platform-config', 'config', JSON.stringify(updates));
+  await writeAuditEvent({ actorId, action: 'update-platform-config', targetId: 'config', newValue: JSON.stringify(updates) });
 
   return res.json({ ok: true, config: next });
 }

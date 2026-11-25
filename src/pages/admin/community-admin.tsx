@@ -10,7 +10,6 @@ import { Navigate } from 'react-router';
 import { motion } from 'motion/react';
 import {
   Globe, Users, Pin, PinOff, RefreshCw, Plus, Trash2, Shield,
-  ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -87,7 +86,7 @@ export default function CommunityAdminConsolePage() {
     fetch('/api/admin/community/categories', { credentials: 'include' })
       .then((r) => r.json() as Promise<{ categories: Category[] }>)
       .then((d) => { setCategories(d.categories ?? []); setLoadingCats(false); })
-      .catch(() => setLoadingCats(false));
+      .catch(() => { setError('Could not load community categories.'); setLoadingCats(false); });
   }, []);
 
   const loadForumData = useCallback((forum: Category) => {

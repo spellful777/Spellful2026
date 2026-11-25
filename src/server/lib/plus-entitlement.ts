@@ -229,7 +229,6 @@ export async function upsertSubscription(input: UpsertSubscriptionInput): Promis
     })
     .onDuplicateKeyUpdate({
       set: {
-        userId: input.userId,
         status: input.status,
         expiresAt: input.expiresAt,
         gracePeriodUntil: input.gracePeriodUntil,

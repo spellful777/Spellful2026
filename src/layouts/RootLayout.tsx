@@ -3,6 +3,7 @@ import { type ReactElement } from 'react';
 import { ScrollRestoration } from 'react-router';
 import { useSession } from '@/lib/auth/auth-client';
 
+import HomepageSameAsJsonLd from '@/components/HomepageSameAsJsonLd';
 import Footer from '@/layouts/parts/Footer';
 import Header from '@/layouts/parts/Header';
 import MobileBottomNav from '@/components/MobileBottomNav';
@@ -48,6 +49,7 @@ function RootLayoutInner({ children }: RootLayoutProps) {
         <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
         <meta name="twitter:image:alt" content="Spellful — Witchcraft, Tarot &amp; Intuitive Resources" />
       </Helmet>
+      <HomepageSameAsJsonLd />
       <ScrollRestoration />
       <Header />
       {/* pt-16 md:pt-20 clears the fixed header (h-16 mobile / h-20 desktop).

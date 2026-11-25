@@ -698,7 +698,6 @@ export default function UserProfilePage() {
                   frameKey={profile.avatarFrame ?? ''}
                   size={96}
                   isPlus={isCovenMember || isOwn}
-                  accentKey={profile.accentColor ?? 'gold'}
                   alt={displayName}
                 />
                 {!profile.hideOnlineStatus && (

@@ -1,3 +1,4 @@
+import { selectRows } from '@/server/db/select-rows';
 /**
  * GET /api/admin/command-center/email-marketing
  * Owner-only Email Marketing Analytics.
@@ -159,12 +160,12 @@ export default async function handler(req: Request, res: Response) {
       `),
     ]);
 
-    const scheduler = (schedulerRows[0] as SchedulerRow[])[0] ?? null;
-    const kpi = ((kpiRows[0] as KpiRow[])[0]) ?? { total: 0, sent: 0, failed: 0, skipped: 0, unique_recipients: 0 };
-    const occasions = (occasionRows[0] as OccasionRow[]);
-    const days_series = (dayRows[0] as DayRow[]);
-    const consent = (consentRows[0] as ConsentRow[]);
-    const consentTotal = ((consentTotalRows[0] as ConsentTotalRow[])[0]) ?? { total_with_any_consent: 0, total_all_opted_in: 0 };
+    const scheduler = (selectRows<SchedulerRow>(schedulerRows[0]))[0] ?? null;
+    const kpi = ((selectRows<KpiRow>(kpiRows[0]))[0]) ?? { total: 0, sent: 0, failed: 0, skipped: 0, unique_recipients: 0 };
+    const occasions = (selectRows<OccasionRow>(occasionRows[0]));
+    const days_series = (selectRows<DayRow>(dayRows[0]));
+    const consent = (selectRows<ConsentRow>(consentRows[0]));
+    const consentTotal = ((selectRows<ConsentTotalRow>(consentTotalRows[0]))[0]) ?? { total_with_any_consent: 0, total_all_opted_in: 0 };
 
     // Delivery rate: sent / total (avoid div-by-zero)
     const deliveryRate = kpi.total > 0 ? Math.round((Number(kpi.sent) / Number(kpi.total)) * 1000) / 10 : null;

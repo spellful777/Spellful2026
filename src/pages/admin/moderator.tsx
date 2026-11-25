@@ -8,7 +8,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { Navigate } from 'react-router';
 import { motion } from 'motion/react';
 import {
-  Shield, AlertTriangle, RefreshCw, Check, X, ChevronUp, MessageSquare,
+  Shield, AlertTriangle, RefreshCw, Check, X, ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -53,7 +53,6 @@ export default function ModeratorConsolePage() {
 
   const [statusFilter, setStatusFilter] = useState('pending');
   const [reports, setReports] = useState<Report[]>([]);
-  const [hasMore, setHasMore] = useState(false);
   const [assignedForums, setAssignedForums] = useState<string[] | 'all'>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -74,7 +73,6 @@ export default function ModeratorConsolePage() {
       })
       .then((d) => {
         setReports(d.reports);
-        setHasMore(d.hasMore);
         setAssignedForums(d.assignedForums);
         setLoading(false);
       })

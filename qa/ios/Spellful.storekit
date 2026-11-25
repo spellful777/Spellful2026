@@ -1,0 +1,20 @@
+{
+  "identifier": "DBC475C1-6709-40C1-988A-F6BBC59B3796",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "settings": { "_locale": "en_US", "_storefront": "USA", "_failTransactionsEnabled": false },
+  "subscriptionGroups": [{
+    "id": "6738F8B7-ACED-4942-A65A-32BA5E000001",
+    "name": "Spellful Plus",
+    "localizations": [],
+    "subscriptions": [{
+      "adHocOffers": [], "codeOffers": [], "displayPrice": "4.99", "familyShareable": false,
+      "groupNumber": 1, "internalID": "DC3DAF71-C435-4CB1-B1C9-129D2C541652",
+      "introductoryOffer": null,
+      "localizations": [{ "description": "Monthly Spellful Plus membership", "displayName": "Spellful Plus", "locale": "en_US" }],
+      "productID": "com.spellful.plus.monthly", "recurringSubscriptionPeriod": "P1M", "referenceName": "Spellful Plus Monthly",
+      "subscriptionGroupID": "6738F8B7-ACED-4942-A65A-32BA5E000001", "type": "RecurringSubscription"
+    }]
+  }],
+  "version": { "major": 3, "minor": 0 }
+}

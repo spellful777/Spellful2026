@@ -36,7 +36,8 @@ export default async function handler(req: Request, res: Response) {
   const googleClientSecret = getSecret('GOOGLE_CLIENT_SECRET');
   const appleClientId      = getSecret('APPLE_CLIENT_ID');
   const appleClientSecret  = getSecret('APPLE_CLIENT_SECRET');
-  const appleRootCa        = getSecret('APPLE_ROOT_CA_G3_FINGERPRINT');
+  const appleAppId = Number(getSecret('APPLE_APP_ID'));
+  const purchaseVerifierConfigured = process.env.APPLE_STORE_ENVIRONMENT === 'Sandbox' || (Number.isSafeInteger(appleAppId) && appleAppId > 0);
   const vapidPublic        = getSecret('VAPID_PUBLIC_KEY');
   const vapidPrivate       = getSecret('VAPID_PRIVATE_KEY');
   const betterAuthSecret   = getSecret('BETTER_AUTH_SECRET');
@@ -130,10 +131,10 @@ export default async function handler(req: Request, res: Response) {
       id: 'apple-iap-webhook',
       name: 'Apple App Store Notifications',
       category: 'Payments',
-      status: appleRootCa ? 'ok' : 'warning',
-      note: appleRootCa
-        ? 'Webhook endpoint live at /api/plus/apple-notify'
-        : 'APPLE_ROOT_CA_G3_FINGERPRINT not set — JWS verification degraded',
+      status: purchaseVerifierConfigured ? 'ok' : 'warning',
+      note: purchaseVerifierConfigured
+        ? 'App Store signature verifier configured'
+        : 'Set the numeric APPLE_APP_ID for production signature verification',
       detail: 'Register https://spellful.com/api/plus/apple-notify in App Store Connect',
       docUrl: 'https://developer.apple.com/documentation/appstoreservernotifications',
     },

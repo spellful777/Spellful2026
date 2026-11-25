@@ -79,7 +79,7 @@ const STATUS_INFO: Record<string, { icon: React.ReactNode; bg: string; text: str
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function MyApplicationsPage() {
-  const { session, isPending, isAuthenticated } = useSession();
+  const { isPending, isAuthenticated } = useSession();
   const [apps, setApps] = useState<ApplicationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

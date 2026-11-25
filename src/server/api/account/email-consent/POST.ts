@@ -24,7 +24,7 @@ export default async function handler(req: Request, res: Response) {
   }
 
   const validSource = ['signup', 'settings'].includes(source ?? '') ? source : 'settings';
-  const validIds = new Set(MARKETING_CATEGORIES.map(c => c.id));
+  const validIds = new Set<string>(MARKETING_CATEGORIES.map(c => c.id));
   let updated = 0;
 
   for (const [cat, val] of Object.entries(categories)) {

@@ -1,3 +1,4 @@
+import { selectRows } from '@/server/db/select-rows';
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -629,14 +630,14 @@ app.post("/api/academy/progress", academy__progress__post);
 app.get("/api/account/activity", account__activity__get);
 app.get("/api/account/astrology", account__astrology__get);
 app.patch("/api/account/astrology", account__astrology__patch);
-app.post("/api/account/avatar", account__avatar__post);
+app.post("/api/account/avatar", uploadLimiter, account__avatar__post);
 app.post("/api/account/avatar/default", account__avatar__default__post);
 app.delete("/api/account/delete", account__delete__delete);
-app.post("/api/account/delete", account__delete__post);
+app.post("/api/account/delete", sensitiveAccountLimiter, account__delete__post);
 app.get("/api/account/email-consent", account__email_consent__get);
 app.post("/api/account/email-consent", account__email_consent__post);
 app.get("/api/account/export", account__export__get);
-app.post("/api/account/password", account__password__post);
+app.post("/api/account/password", sensitiveAccountLimiter, account__password__post);
 app.get("/api/account/privacy-settings", account__privacy_settings__get);
 app.patch("/api/account/privacy-settings", account__privacy_settings__patch);
 app.get("/api/account/profile", account__profile__get);
@@ -732,7 +733,7 @@ app.post("/api/community/posts/:id/share", community__posts__id__share__post);
 app.delete("/api/community/replies/:id", community__replies__id__delete);
 app.put("/api/community/replies/:id", community__replies__id__put);
 app.post("/api/community/replies/:id/like", community__replies__id__like__post);
-app.post("/api/community/reports", community__reports__post);
+app.post("/api/community/reports", reportLimiter, community__reports__post);
 app.get("/api/community/search", community__search__get);
 app.get("/api/community/stats", community__stats__get);
 app.get("/api/conversations", conversations__get);
@@ -741,7 +742,7 @@ app.post("/api/conversations", conversations__post);
 // and /:id/messages would otherwise swallow the /since segment as part of the path
 app.get("/api/conversations/:id/messages/since", conversations__id__messages__since__get);
 app.get("/api/conversations/:id/messages", conversations__id__messages__get);
-app.post("/api/conversations/:id/messages", conversations__id__messages__post);
+app.post("/api/conversations/:id/messages", messagingLimiter, conversations__id__messages__post);
 app.patch("/api/conversations/:id/read", conversations__id__read__patch);
 app.patch("/api/conversations/:id/state", conversations__id__state__patch);
 app.get("/api/conversations/:id/receipts", conversations__id__receipts__get);
@@ -775,7 +776,7 @@ app.get("/api/health", health__get);
 app.get("/api/health/db-cols", health__db_cols__get);
 app.get("/api/herbs", herbs__get);
 app.get("/api/herbs/compare", herbs__compare__get);
-app.post("/api/herbs/report", herbs__report__post);
+app.post("/api/herbs/report", reportLimiter, herbs__report__post);
 app.post("/api/horoscope/share", horoscope__share__post);
 app.get("/api/horoscope/today", horoscope__today__get);
 app.get("/api/keys", keys__get);
@@ -814,7 +815,7 @@ app.patch("/api/profile/collections/:id", profile__collections__id__patch);
 app.post("/api/profile/collections/:id/items", profile__collections__id__items__post);
 app.delete("/api/profile/collections/:id/items/:itemId", profile__collections__id__items__itemId__delete);
 app.patch("/api/profile/collections/:id/items/:itemId", profile__collections__id__items__itemId__patch);
-app.post("/api/profile/cover", profile__cover__post);
+app.post("/api/profile/cover", uploadLimiter, profile__cover__post);
 app.post("/api/profile/featured", profile__featured__post);
 app.delete("/api/profile/featured/:id", profile__featured__id__delete);
 app.post("/api/profile/gallery", profile__gallery__post);
@@ -865,7 +866,7 @@ app.delete("/api/spells/:slug/reviews/:reviewId", spells__slug__reviews__reviewI
 app.put("/api/spells/:slug/reviews/:reviewId", spells__slug__reviews__reviewId__put);
 app.post("/api/spells/:slug/reviews/:reviewId/helpful", spells__slug__reviews__reviewId__helpful__post);
 app.post("/api/spells/:slug/reviews/:reviewId/replies", spells__slug__reviews__reviewId__replies__post);
-app.post("/api/spells/:slug/reviews/:reviewId/report", spells__slug__reviews__reviewId__report__post);
+app.post("/api/spells/:slug/reviews/:reviewId/report", reportLimiter, spells__slug__reviews__reviewId__report__post);
 app.post("/api/spells/:slug/save", spells__slug__save__post);
 app.get("/api/synastry-partners", synastry_partners__get);
 app.post("/api/synastry-partners", synastry_partners__post);
@@ -1286,7 +1287,7 @@ if (import.meta.env.PROD && _isBuiltBundle && existsSync(_ssrClientDir)) {
 			const [rows] = await purgeDb.execute<{ id: string; email: string }>(
 				purgeSQL`SELECT id, email FROM \`user\` WHERE deletion_requested_at IS NOT NULL AND deletion_requested_at <= ${cutoff}`
 			);
-			const users = rows as { id: string; email: string }[];
+			const users = selectRows<{ id: string; email: string }>(rows);
 			if (users.length === 0) return;
 			for (const u of users) {
 				try {

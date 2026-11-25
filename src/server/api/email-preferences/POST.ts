@@ -20,7 +20,7 @@ export default async function handler(req: Request, res: Response) {
 
   if (!db) return res.status(503).json({ error: 'Database unavailable' });
 
-  const validIds = new Set(MARKETING_CATEGORIES.map(c => c.id));
+  const validIds = new Set<string>(MARKETING_CATEGORIES.map(c => c.id));
   const updates: { category: string; consented: boolean }[] = [];
 
   for (const [cat, val] of Object.entries(categories)) {

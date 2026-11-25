@@ -850,7 +850,7 @@ export default function ProfileStudioPage() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="font-serif font-semibold text-sm" style={{ color: 'hsl(var(--foreground))' }}>{displayName}</p>
-                  {session?.user?.username && <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>@{session.user.username}</p>}
+                  {(session?.user as SessionUser | undefined)?.username && <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>@{(session?.user as SessionUser).username}</p>}
                   {form.pronouns && <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{form.pronouns}</p>}
                   {form.profileStatus && <p className="text-xs mt-0.5 italic" style={{ color: accent }}>{form.profileStatus}</p>}
                 </div>
@@ -1978,7 +1978,7 @@ export default function ProfileStudioPage() {
             open={shareOpen}
             onClose={() => setShareOpen(false)}
             username={(session?.user as SessionUser | undefined)?.username ?? ''}
-            displayName={form.displayName || null}
+            displayName={form.name || null}
             bio={form.bio || null}
             isOwn
           />

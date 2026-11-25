@@ -273,6 +273,9 @@ export const messages = mysqlTable('messages', {
   iv: varchar('iv', { length: 64 }).notNull(), // base64 IV
   status: varchar('status', { length: 16 }).notNull().default('sent'), // sent | draft | trashed
   systemMessage: text('system_message'),       // plaintext for system-originated messages (no E2E)
+  replyToId: int('reply_to_id'),
+  editedAt: timestamp('edited_at'),
+  deletedAt: timestamp('deleted_at'),
   deliveredAt: timestamp('delivered_at'),      // set when recipient first fetches/polls the message
   readAt: timestamp('read_at'),                // set when recipient opens the thread
   createdAt: timestamp('created_at').defaultNow(),

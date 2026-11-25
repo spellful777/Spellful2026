@@ -9,7 +9,7 @@ import { Navigate, useSearchParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   FileText, Check, X, MessageSquare, ChevronLeft, ChevronRight,
-  RefreshCw, ExternalLink, Clock, User, Wand2, Globe, AlertTriangle,
+  RefreshCw, User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';

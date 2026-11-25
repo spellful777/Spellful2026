@@ -25,14 +25,15 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,json,md}\"",
     "clean": "rm -rf dist node_modules/.vite",
     "reset": "npm run clean && npm install",
-    "build:standalone": "vite build --config vite.config.standalone.ts && vite build --config vite.config.standalone.ts --ssr src/server/entry.ts",
+    "build:standalone": "npm run build",
     "cap:sync": "npm run build && npx cap sync",
     "cap:sync:ios": "npm run build && npx cap sync ios",
     "cap:sync:android": "npm run build && npx cap sync android",
     "cap:sync:ios:standalone": "npm run build:standalone && npx cap sync ios",
     "cap:sync:android:standalone": "npm run build:standalone && npx cap sync android",
     "cap:open": "npx cap open ios",
-    "cap:open:android": "npx cap open android"
+    "cap:open:android": "npx cap open android",
+    "capacitor:copy:after": "node scripts/prepare-ios-media.mjs"
   },
   "dependencies": {
     "@apple/app-store-server-library": "3.1.0",

@@ -1,3 +1,4 @@
+import { selectRows } from '@/server/db/select-rows';
 /**
  * GET /api/email-preferences?token=...
  * Returns the current marketing consent state for the user identified by the token.
@@ -32,7 +33,7 @@ export default async function handler(req: Request, res: Response) {
   );
 
   const consentMap: Record<string, boolean> = {};
-  for (const row of rows as ConsentRow[]) {
+  for (const row of selectRows<ConsentRow>(rows)) {
     consentMap[row.category] = Boolean(row.consented);
   }
 

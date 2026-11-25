@@ -1,7 +1,15 @@
 import { Capacitor } from '@capacitor/core';
 
+function iosApiOrigin(): string {
+  const url = new URL(import.meta.env.VITE_IOS_API_ORIGIN || 'https://spellful.com');
+  if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+    throw new Error('VITE_IOS_API_ORIGIN must be an HTTPS origin');
+  }
+  return url.origin;
+}
+
 export const apiOrigin = Capacitor.getPlatform() === 'ios'
-  ? 'https://spellful.com'
+  ? iosApiOrigin()
   : typeof window === 'undefined' ? '' : window.location.origin;
 
 // Keep bundled assets local. Send API requests through Capacitor's native

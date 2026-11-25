@@ -7,7 +7,8 @@ import { SignJWT, jwtVerify } from 'jose';
 import { getSecret } from '#airo/secrets';
 
 function getKey(): Uint8Array {
-  const secret = getSecret('BETTER_AUTH_SECRET') ?? 'spellful-moments-fallback-key-change-me';
+  const secret = getSecret('BETTER_AUTH_SECRET');
+  if (typeof secret !== 'string' || !secret) throw new Error('BETTER_AUTH_SECRET is required');
   return new TextEncoder().encode(secret);
 }
 

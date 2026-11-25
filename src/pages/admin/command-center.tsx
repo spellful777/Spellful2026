@@ -1656,49 +1656,6 @@ function SettingsTab() {
   );
 }
 
-// ─── Placeholder tab ──────────────────────────────────────────────────────────
-
-function PlaceholderTab({ id, label, icon: Icon, description, links }: {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-  description: string;
-  links?: { label: string; href: string }[];
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 px-4 text-center gap-4">
-      <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'hsl(var(--muted))' }}>
-        <Icon className="w-7 h-7" style={{ color: 'hsl(var(--primary))' }} />
-      </div>
-      <div>
-        <h2 className="text-xl font-bold mb-1" style={{ color: 'hsl(var(--foreground))', fontFamily: 'var(--font-heading)' }}>
-          {label}
-        </h2>
-        <p className="text-sm max-w-sm" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
-          {description}
-        </p>
-      </div>
-      {links && links.length > 0 && (
-        <div className="flex flex-wrap gap-2 justify-center mt-2">
-          {links.map(l => (
-            <Link
-              key={l.href}
-              to={l.href}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-              style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontFamily: 'var(--font-sans)' }}
-            >
-              {l.label}
-              <ExternalLink className="w-3 h-3" />
-            </Link>
-          ))}
-        </div>
-      )}
-      <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground) / 0.6)', fontFamily: 'var(--font-sans)' }}>
-        Tab ID: {id} — full build coming next
-      </p>
-    </div>
-  );
-}
 
 // ─── Integrations status tab ──────────────────────────────────────────────────
 

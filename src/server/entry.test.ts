@@ -11,6 +11,9 @@ import {
 	toLogError,
 } from "./entry";
 
+// The HTTP error and rendering tests do not perform database operations.
+vi.mock("./db/client", () => ({ db: undefined }));
+
 const publisherId = "ca-pub-1234567890123456";
 const canonicalScript = `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${publisherId}" crossorigin="anonymous"></script>`;
 

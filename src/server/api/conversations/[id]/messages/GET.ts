@@ -32,6 +32,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
       read_at      = COALESCE(read_at, NOW())
     WHERE conversation_id = ${convId}
       AND sender_id != ${myId}
+      AND status = 'sent'
       AND read_at IS NULL
   `);
 
@@ -109,10 +110,6 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   const mapped = msgs.map(m => ({
     ...m,
     systemMessage: m.systemMessage ?? null,
-    deliveredAt: (m as unknown as Record<string, unknown>).delivered_at ?? null,
-    replyToId: (m as unknown as Record<string, unknown>).reply_to_id ?? null,
-    editedAt: (m as unknown as Record<string, unknown>).edited_at ?? null,
-    deletedAt: (m as unknown as Record<string, unknown>).deleted_at ?? null,
     reactions: reactionsByMsg[m.id] ?? [],
   }));
 

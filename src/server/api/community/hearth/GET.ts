@@ -138,7 +138,7 @@ export default async function handler(_req: Request, res: Response) {
   // 3. Featured post - most-liked visible post in last 7 days
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   let featured: {
-    id: number; title: string; likeCount: number; replyCount: number;
+    id: number; title: string; likeCount: number | null; replyCount: number | null;
     username: string | null; createdAt: Date | null; categoryName: string | null;
   } | null = null;
 
@@ -163,7 +163,7 @@ export default async function handler(_req: Request, res: Response) {
   } catch { /* posts table may be empty */ }
 
   // 4. Recent discussions - 4 newest, excluding featured
-  type RecentPost = { id: number; title: string; replyCount: number; username: string | null; createdAt: Date | null; categoryName: string | null };
+  type RecentPost = { id: number; title: string; replyCount: number | null; username: string | null; createdAt: Date | null; categoryName: string | null };
   let recent: RecentPost[] = [];
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

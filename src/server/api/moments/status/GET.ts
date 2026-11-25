@@ -1,3 +1,4 @@
+import { selectRows } from '@/server/db/select-rows';
 /**
  * GET /api/moments/status
  * Owner-only: returns scheduler state, queue depth, and allows pause/resume.
@@ -45,8 +46,8 @@ export default async function handler(req: Request, res: Response) {
         ORDER BY created_at DESC LIMIT 20`,
   );
 
-  const state = (stateRows as StateRow[])[0] ?? null;
-  const queueDepth = Number((queueRows as { queued: number }[])[0]?.queued ?? 0);
+  const state = (selectRows<StateRow>(stateRows))[0] ?? null;
+  const queueDepth = Number((selectRows<{ queued: number }>(queueRows))[0]?.queued ?? 0);
 
   return res.json({
     paused: Boolean(state?.paused),

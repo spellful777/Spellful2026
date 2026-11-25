@@ -25,14 +25,6 @@ export type SeasonalEvent = MoonPhaseEvent | SabbatEvent;
 // Based on Jean Meeus "Astronomical Algorithms" simplified formula.
 // Accurate to within ~1 hour for dates 1900–2100.
 
-/** Julian Day Number from a calendar date */
-function julianDay(year: number, month: number, day: number): number {
-  if (month <= 2) { year -= 1; month += 12; }
-  const A = Math.floor(year / 100);
-  const B = 2 - A + Math.floor(A / 4);
-  return Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + B - 1524.5;
-}
-
 /** Calendar date from Julian Day Number */
 function fromJulianDay(jd: number): Date {
   const z = Math.floor(jd + 0.5);

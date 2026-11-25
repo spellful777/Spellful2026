@@ -10,7 +10,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { previewMediaSlot, revertMediaSlotPreview } from '../../../export-plugins/utils/media-slot-preview'
+
 
 const SCRIPT: string = readFileSync(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../public/airo-video-slots.js'),
@@ -332,6 +332,9 @@ describe('airo-video-slots.js reverse reconciliation', function reverseTests() {
   })
 
   it('keeps a committed poster sibling when an image preview replaces the host poster', async function previewImageKeepsCommittedSibling(): Promise<void> {
+    // The editor-only comparison requires the original authoring tools.
+    const helperPath = '../../../export-plugins/utils/media-slot-preview';
+    const { previewMediaSlot, revertMediaSlotPreview } = await import(/* @vite-ignore */ helperPath);
     document.body.innerHTML = `
       <div>
         <video src="/airo-assets/videos/pages/home/unrelated" poster="/airo-assets/images/${SLOT}" data-airo-video-patched="true" style="display: none;"></video>

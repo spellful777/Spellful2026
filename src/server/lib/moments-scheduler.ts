@@ -1,3 +1,4 @@
+import { selectRows } from '@/server/db/select-rows';
 /**
  * Spellful Moments — Daily Lifecycle Email Scheduler
  *
@@ -66,7 +67,7 @@ async function loadConsent(userIds: string[]): Promise<Map<string, Set<string>>>
         WHERE user_id IN (${sql.raw(placeholders)}) AND consented = TRUE`,
   );
   const map = new Map<string, Set<string>>();
-  for (const row of rows as ConsentRow[]) {
+  for (const row of selectRows<ConsentRow>(rows)) {
     if (!map.has(row.userId)) map.set(row.userId, new Set());
     map.get(row.userId)!.add(row.category);
   }
@@ -92,7 +93,7 @@ async function loadSentDedup(userIds: string[], dedupKeys: string[]): Promise<Se
           AND status IN ('queued','sent')`,
   );
   const set = new Set<string>();
-  for (const row of rows as { user_id: string; dedup_key: string }[]) {
+  for (const row of selectRows<{ user_id: string; dedup_key: string }>(rows)) {
     set.add(`${row.user_id}:${row.dedup_key}`);
   }
   return set;
@@ -161,7 +162,7 @@ export async function runMomentsScheduler(): Promise<{
     last_run_date: string | null;
   }>(sql`SELECT paused, last_run_date FROM moments_scheduler_state WHERE id = 1 LIMIT 1`);
 
-  const state = (stateRows as { paused: number; last_run_date: string | null }[])[0];
+  const state = (selectRows<{ paused: number; last_run_date: string | null }>(stateRows))[0];
   if (state?.paused) {
     console.log(JSON.stringify({ event: 'moments.scheduler.paused', date: today }));
     return { date: today, sent: 0, skipped: 0, errors: 0 };
@@ -189,7 +190,7 @@ export async function runMomentsScheduler(): Promise<{
             AND u.deletion_requested_at IS NULL
           GROUP BY u.id`,
     );
-    const users = userRows as EligibleUser[];
+    const users = selectRows<EligibleUser>(userRows);
     if (users.length === 0) {
       await updateSchedulerState(today, 0, 0, 0, null);
       return { date: today, sent: 0, skipped: 0, errors: 0 };

@@ -15,13 +15,8 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     // Use forks pool to isolate memory per test file (prevents OOM)
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        minForks: 1,
-        maxForks: 4, // Limit parallelism to prevent memory exhaustion
-        isolate: true, // Each test file runs in fresh process
-      },
-    },
+    maxWorkers: 4,
+    isolate: true,
     // Limit concurrent tests within each file
     maxConcurrency: 5,
     coverage: {
@@ -40,7 +35,7 @@ export default defineConfig({
       'virtual:format-overrides': path.resolve(__dirname, './src/test/format-overrides-module.ts'),
       'virtual:content-runtime': contentRuntimeAlias,
       '@airo/content': path.resolve(__dirname, './src/lib/content/index.ts'),
-      '@/': path.resolve(__dirname, './src/'),
+      '@': path.resolve(__dirname, './src'),
       '@/components': path.resolve(__dirname, './src/components'),
       '@/lib': path.resolve(__dirname, './src/lib'),
       '@/api': path.resolve(__dirname, './src/server/api'),

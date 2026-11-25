@@ -33,14 +33,20 @@ jobs:
           name: Spellful-iPhone-simulator
           path: ${{ runner.temp }}/Spellful-simulator.zip
           retention-days: 14
-      - name: Exercise signed-in messaging in the native WebView
+      - name: Provision accounts for explicitly requested live checks
         if: github.event_name == 'push' && contains(github.event.head_commit.message, '[ios-live-qa]')
+        env:
+          SPELLFUL_QA_FIXTURES: ${{ runner.temp }}/spellful-qa-accounts.json
+        run: python3 qa/ios/provision.py
+      - name: Test purchases and restoration with Xcode StoreKit
         env:
           SPELLFUL_QA_FIXTURES: ${{ runner.temp }}/spellful-qa-accounts.json
         run: |
           set -euo pipefail
           trap 'rm -f "$SPELLFUL_QA_FIXTURES" ios/App/SpellfulIntegration/accounts.json' EXIT
-          python3 qa/ios/provision.py
+          ruby -e "require 'xcodeproj'" || gem install --user-install xcodeproj -v 1.27.0 --no-document
           ruby qa/ios/add-test-target.rb
           device=$(xcrun simctl list devices booted -j | python3 -c 'import json,sys; print(next(d["udid"] for devices in json.load(sys.stdin)["devices"].values() for d in devices if d["name"].startswith("iPhone")))')
-          xcodebuild test -project ios/App/App.xcodeproj -scheme SpellfulIntegration -destination "id=$device" -parallel-testing-enabled NO -derivedDataPath build/ios CODE_SIGNING_ALLOWED=NO
+          flags=(-parallel-testing-enabled NO)
+          if [[ ! -f "$SPELLFUL_QA_FIXTURES" ]]; then flags+=('-skip-testing:SpellfulIntegration/SpellfulIntegration/testAuthenticatedMessaging'); fi
+          xcodebuild test -project ios/App/App.xcodeproj -scheme SpellfulIntegration -destination "id=$device" -derivedDataPath build/ios "${flags[@]}" CODE_SIGNING_ALLOWED=NO

@@ -89,7 +89,7 @@ export default async function handler(req: Request, res: Response): Promise<void
       tags: 'check-in,daily',
       metadata: { mood, intention, streak },
     });
-    grimoireEntryId = (result as { insertId: number }).insertId ?? null;
+    grimoireEntryId = result[0].insertId ?? null;
   }
 
   // Insert check-in

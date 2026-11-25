@@ -38,6 +38,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
       read_at      = COALESCE(read_at, NOW())
     WHERE conversation_id = ${convId}
       AND sender_id != ${myId}
+      AND status = 'sent'
       AND read_at IS NULL
   `);
 

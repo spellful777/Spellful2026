@@ -10,7 +10,7 @@ import {
   type FormatOverrideSidecar,
   type FormatOverrideTarget,
 } from '../format-overrides'
-import { SIZE_SCALE, lineHeightForFontSize, remForSizeClass } from '../../../export-plugins/utils/text-size'
+
 
 const expressionHash = `sha256:${'a'.repeat(64)}`
 const differentExpressionHash = `sha256:${'b'.repeat(64)}`
@@ -159,7 +159,10 @@ describe('format override runtime helpers', () => {
     expect(style).not.toHaveProperty('lineHeight')
   })
 
-  it('emits the same line-height the dev-tools preview uses, for every stepper size', () => {
+  it('emits the same line-height the dev-tools preview uses, for every stepper size', async () => {
+    // The editor-only comparison requires the original authoring tools.
+    const helperPath = '../../../export-plugins/utils/text-size';
+    const { SIZE_SCALE, lineHeightForFontSize, remForSizeClass } = await import(/* @vite-ignore */ helperPath);
     for (const size of SIZE_SCALE) {
       const rem: string = remForSizeClass(size)
       const published: string = String(buildFormatOverrideStyle({ fontSize: rem }).lineHeight)

@@ -9,7 +9,6 @@ import type { Request, Response } from 'express';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 import { db } from '@/server/db/client.js';
 import { communityFeedCursors } from '@/server/db/schema.js';
-import { eq } from 'drizzle-orm';
 
 export default async function handler(req: Request, res: Response) {
   const session = await getAuthSession(req);

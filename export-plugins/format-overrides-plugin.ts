@@ -9,7 +9,7 @@ const RESOLVED_FORMAT_OVERRIDES_MODULE_ID = `\0${FORMAT_OVERRIDES_MODULE_ID}`;
 const EMPTY_SIDECAR = { version: 1, overrides: {} };
 const EMPTY_BUNDLE = { version: 1, scopes: {} };
 
-function readSidecarFile(filePath: string): unknown {
+function readSidecarFile(filePath: string, scope: string): unknown {
   try {
     const parsed = JSON.parse(readFileSync(filePath, 'utf-8'));
     if (
@@ -19,10 +19,12 @@ function readSidecarFile(filePath: string): unknown {
       typeof parsed.overrides !== 'object' ||
       Array.isArray(parsed.overrides)
     ) {
+      console.warn(JSON.stringify({ event: 'format-overrides.sidecar.invalid', scope }));
       return EMPTY_SIDECAR;
     }
     return parsed;
   } catch {
+    console.warn(JSON.stringify({ event: 'format-overrides.sidecar.invalid', scope }));
     return EMPTY_SIDECAR;
   }
 }
@@ -50,7 +52,7 @@ function readSidecarBundle(root: string): unknown {
       .sort()
       .map((filePath) => {
         const scope = scopeFromFile(sidecarRoot, filePath);
-        return [scope, readSidecarFile(filePath)];
+        return [scope, readSidecarFile(filePath, scope)];
       }),
   );
 
@@ -65,6 +67,17 @@ function buildModule(root: string): string {
 export function formatOverridesPlugin(root: string = process.cwd()): Plugin {
   return {
     name: 'format-overrides',
+    configureServer(server) {
+      const directory = path.resolve(root, SIDECAR_DIRNAME);
+      const update = (file: string) => {
+        if (!path.resolve(file).startsWith(directory + path.sep) || !file.endsWith('.json')) return;
+        const mod = server.moduleGraph.getModuleById(RESOLVED_FORMAT_OVERRIDES_MODULE_ID);
+        if (mod) server.moduleGraph.invalidateModule(mod);
+        server.ws.send('format-overrides:update', readSidecarBundle(root));
+      };
+      server.watcher.add(directory);
+      for (const event of ['add', 'change', 'unlink'] as const) server.watcher.on(event, update);
+    },
     resolveId(id) {
       return id === FORMAT_OVERRIDES_MODULE_ID ? RESOLVED_FORMAT_OVERRIDES_MODULE_ID : null;
     },
