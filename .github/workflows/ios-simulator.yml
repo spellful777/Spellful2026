@@ -4,12 +4,14 @@ on:
     branches: [main]
     paths: ['src/**', 'ios/**', 'package*.json', 'capacitor.config.json', 'qa/ios/**', '.github/workflows/ios-simulator.yml']
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths: ['src/**', 'ios/**', 'package*.json', 'capacitor.config.json', 'qa/ios/**', '.github/workflows/ios-simulator.yml']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   simulator:
+    if: github.event.action != 'labeled' || (github.event.label.name == 'ios-live-qa' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: macos-26-intel
     timeout-minutes: 40
     steps:
@@ -39,7 +41,7 @@ jobs:
           retention-days: 14
       - name: Provision accounts for explicitly requested live checks
         id: provision
-        if: github.event_name == 'push' && contains(github.event.head_commit.message, '[ios-live-qa]')
+        if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[ios-live-qa]')) || (github.event.action == 'labeled' && github.event.label.name == 'ios-live-qa')
         env:
           SPELLFUL_QA_FIXTURES: ${{ runner.temp }}/spellful-qa-accounts.json
         run: python3 qa/ios/provision.py
