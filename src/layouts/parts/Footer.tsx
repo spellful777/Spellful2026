@@ -1,7 +1,7 @@
 import { useState, useEffect, type CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
-import { Bell, Heart, MessageSquare } from 'lucide-react';
+import { ArrowRight, Bell, MessageSquare } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
 import { COMMUNITY_FEED, COMMUNITY_GROUPS, COMMUNITY_UPDATES } from '@/lib/community-navigation';
 import { getMoonPhase } from '@/lib/moon-phase-engine';
@@ -197,27 +197,35 @@ export default function Footer() {
             className="pointer-events-none absolute -inset-x-7 -inset-y-3"
             style={{ background: 'radial-gradient(ellipse at 50% 32%, hsl(var(--footer-gold) / 0.13), transparent 72%)' }}
           />
-          <motion.h2
-            id="footer-coven-heading"
-            className="coven-footer-wordmark relative"
-            data-shimmer={wordmarkVisible ? 'true' : undefined}
-            style={{ '--coven-wordmark-image': `url("${myCovenWordmark}")` } as CSSProperties}
-            viewport={{ once: true, amount: 0.6 }}
-            onViewportEnter={() => setWordmarkVisible(true)}
+          <Link
+            to={COMMUNITY_FEED}
+            className="coven-press group relative inline-flex flex-col items-center gap-1 rounded-lg px-2 pb-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            <span className="sr-only">My Coven</span>
-            <img
-              src={myCovenWordmark}
-              alt=""
-              width={640}
-              height={211}
-              loading="lazy"
-              className="block h-auto w-52"
-            />
-          </motion.h2>
+            <motion.h2
+              id="footer-coven-heading"
+              className="coven-footer-wordmark relative"
+              data-shimmer={wordmarkVisible ? 'true' : undefined}
+              style={{ '--coven-wordmark-image': `url("${myCovenWordmark}")` } as CSSProperties}
+              viewport={{ once: true, amount: 0.6 }}
+              onViewportEnter={() => setWordmarkVisible(true)}
+            >
+              <span className="sr-only">My Coven</span>
+              <img
+                src={myCovenWordmark}
+                alt=""
+                width={640}
+                height={211}
+                loading="lazy"
+                className="block h-auto w-52"
+              />
+            </motion.h2>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[hsl(var(--footer-gold))] px-3 py-1.5 text-xs font-semibold text-[hsl(var(--coven-lilac-ink))] transition-colors group-hover:bg-[hsl(44_80%_78%)]">
+              Open feed
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </span>
+          </Link>
           <ul className="relative flex flex-wrap items-center justify-center gap-x-3 sm:justify-start">
             {[
-              { label: 'Feed', to: COMMUNITY_FEED, icon: Heart },
               { label: 'Updates', to: COMMUNITY_UPDATES, icon: Bell },
               { label: 'Groups', to: COMMUNITY_GROUPS, icon: MessageSquare },
             ].map(({ label, to, icon: Icon }) => (
