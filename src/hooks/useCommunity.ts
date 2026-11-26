@@ -2,7 +2,7 @@
  * useCommunity — shared data hook for community pages.
  * Fetches categories, posts (with filter/page), and notification count.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface CommunityCategory {
   id: number;
@@ -19,6 +19,7 @@ export interface CommunityPost {
   id: number;
   type: 'discussion' | 'question';
   title: string;
+  preview?: string;
   tags: string | null;
   isPinned: boolean;
   isLocked: boolean;
@@ -66,18 +67,34 @@ export function useCommunityPosts(filter: PostFilter, category?: string, page = 
   const [result, setResult] = useState<PostsResult>({ posts: [], total: 0, page: 1, pages: 0 });
   const [loading, setLoading] = useState(true);
 
+  const pending = useRef<AbortController | null>(null);
   const load = useCallback(() => {
+    pending.current?.abort();
+    const controller = new AbortController();
+    pending.current = controller;
     setLoading(true);
+
     const params = new URLSearchParams({ filter, page: String(page), limit: '20' });
     if (category) params.set('category', category);
-    fetch(`/api/community/posts?${params}`)
-      .then((r) => r.ok ? r.json() : Promise.resolve({ posts: [], total: 0, page: 1, pages: 0 }))
-      .then((data: PostsResult) => { if (Array.isArray(data?.posts)) setResult(data); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const empty: PostsResult = { posts: [], total: 0, page, pages: 0 };
+
+    fetch(`/api/community/posts?${params}`, { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : empty)
+      .then((data: PostsResult) => {
+        if (!controller.signal.aborted) setResult(Array.isArray(data?.posts) ? data : empty);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setResult(empty);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
   }, [filter, category, page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    return () => pending.current?.abort();
+  }, [load]);
 
   return { ...result, loading, reload: load };
 }

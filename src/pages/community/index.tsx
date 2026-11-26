@@ -186,6 +186,10 @@ function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'
               )}
             </div>
 
+            {post.preview && (
+              <p className="mt-1 line-clamp-3 break-words text-sm text-muted-foreground">{post.preview}</p>
+            )}
+
             {/* Tags */}
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1.5">

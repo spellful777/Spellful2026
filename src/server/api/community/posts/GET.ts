@@ -46,6 +46,7 @@ export default async function handler(req: Request, res: Response) {
       id: communityPosts.id,
       type: communityPosts.type,
       title: communityPosts.title,
+      preview: sql<string>`left(${communityPosts.body}, 280)`,
       tags: communityPosts.tags,
       isPinned: communityPosts.isPinned,
       isLocked: communityPosts.isLocked,
