@@ -6,7 +6,7 @@ import { followsPostAuthor, postAudienceAllows } from '@/server/lib/community-po
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityPosts, communityCategories, communityLikes, communityBookmarks, user } from '@/server/db/schema.js';
-import { eq, and, desc, gte, sql, inArray } from 'drizzle-orm';
+import { eq, and, desc, gt, gte, ne, sql, inArray } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -34,10 +34,33 @@ export default async function handler(req: Request, res: Response) {
   if (filter === 'mine' && myId) conditions.push(eq(communityPosts.userId, myId));
   const follows = followsPostAuthor(myId);
   if (filter === 'following') conditions.push(follows);
+  if (filter === 'discover') {
+    conditions.push(ne(communityPosts.userId, myId), sql`not ${follows}`);
+  }
+
+  if (typeof req.query.afterId === 'string') {
+    const afterId = Number(req.query.afterId);
+    if (!Number.isSafeInteger(afterId) || afterId < 0) {
+      return res.status(400).json({ error: 'Invalid post cursor' });
+    }
+    const [newPost] = await db.select({ id: communityPosts.id }).from(communityPosts)
+      .where(and(...conditions, gt(communityPosts.id, afterId))).limit(1);
+    return res.json({ hasNewPosts: Boolean(newPost) });
+  }
+
 
   const recent = [desc(communityPosts.createdAt), desc(communityPosts.id)];
   let orderBy = [desc(communityPosts.isPinned), ...recent];
-  if (filter === 'chronological') orderBy = recent;
+  if (filter === 'chronological' || (filter === 'following' && req.query.order === 'newest')) orderBy = recent;
+  if (filter === 'discover') {
+    const fresh = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    const priority = sql`case
+      when ${communityPosts.createdAt} >= ${fresh} and ${communityPosts.type} = 'question'
+        and coalesce(${communityPosts.replyCount}, 0) < 3 then 2
+      when ${communityPosts.createdAt} >= ${fresh} and coalesce(${communityPosts.replyCount}, 0) < 3 then 1
+      else 0 end`;
+    orderBy = [desc(priority), ...recent];
+  }
   if (filter === 'personalized') orderBy = [desc(follows), ...recent];
   if (filter === 'popular') orderBy = [desc(communityPosts.likeCount), desc(communityPosts.replyCount), ...recent];
 
@@ -48,13 +71,14 @@ export default async function handler(req: Request, res: Response) {
     orderBy = [desc(engagement), ...recent];
   }
 
-  const [posts, [{ total }]] = await Promise.all([
+  const [posts, [{ total, newestId }]] = await Promise.all([
     db.select({
       id: communityPosts.id,
       type: communityPosts.type,
       title: communityPosts.title,
       preview: sql<string>`left(${communityPosts.body}, 280)`,
       tags: communityPosts.tags,
+      imageUrl: communityPosts.imageUrl,
       isPinned: communityPosts.isPinned,
       isLocked: communityPosts.isLocked,
       likeCount: communityPosts.likeCount,
@@ -77,7 +101,7 @@ export default async function handler(req: Request, res: Response) {
       .orderBy(...orderBy)
       .limit(limit)
       .offset(offset),
-    db.select({ total: sql<number>`count(*)` }).from(communityPosts).where(and(...conditions)),
+    db.select({ total: sql<number>`count(*)`, newestId: sql<number | null>`max(${communityPosts.id})` }).from(communityPosts).where(and(...conditions)),
   ]);
 
   // Attach liked/bookmarked state for authenticated user
@@ -97,6 +121,7 @@ export default async function handler(req: Request, res: Response) {
   res.json({
     posts: posts.map((p) => ({ ...p, liked: likedIds.has(p.id), bookmarked: bookmarkedIds.has(p.id) })),
     total,
+    newestId: newestId ?? 0,
     page,
     pages,
   });

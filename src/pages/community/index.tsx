@@ -121,12 +121,13 @@ const FILTERS: { value: PostFilter; label: string }[] = [
 ];
 
 // ── Post card ─────────────────────────────────────────────────────────────────
-function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'][number] }) {
+export function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'][number] }) {
   const tags = post.tags ? post.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
   const ago = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
 
   return (
     <article
+      data-feed-post-id={post.id}
       className="group relative rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 focus-within:border-primary"
     >
       {/* Top row */}
@@ -200,6 +201,16 @@ function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'
           )}
         </div>
       </div>
+
+      {post.imageUrl && /^https:\/\//i.test(post.imageUrl) && (
+        <img
+          src={post.imageUrl}
+          alt="Image attached to the post"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          className="mt-3 aspect-video w-full rounded-lg bg-muted object-contain"
+        />
+      )}
 
       {/* Stats row */}
       <div className="flex items-center gap-4 mt-2.5 pl-11 text-xs text-muted-foreground">
