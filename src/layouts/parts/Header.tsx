@@ -1,5 +1,5 @@
 import SparkIcon from '@/components/SparkIcon';
-import { COMMUNITY_FEED, COMMUNITY_GROUPS } from '@/lib/community-navigation';
+import { COMMUNITY_FEED, COMMUNITY_GROUPS, SPARK_COMPOSE, COMMUNITY_FAVORITES } from '@/lib/community-navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router';
 import { Menu, X, User, BookOpen, ChevronDown, Users, Bookmark, Bell, Sparkles, Star, MessageCircle, Moon } from 'lucide-react';
@@ -77,9 +77,9 @@ const NAV: NavItem[] = [
     children: [
       { label: 'Feed', href: COMMUNITY_FEED, authRequired: true, icon: 'discussions' },
       { label: 'Groups', href: COMMUNITY_GROUPS, authRequired: true, icon: 'discussions' },
-      { label: 'Spark it', href: '/community/new', authRequired: true, icon: 'newpost' },
+      { label: 'Spark it', href: SPARK_COMPOSE, authRequired: true, icon: 'newpost' },
       { label: 'Messages', href: '/messages', authRequired: true, icon: 'messages' },
-      { label: 'Bookmarks', href: '/community/bookmarks', authRequired: true, icon: 'bookmark' },
+      { label: 'Favorites', href: COMMUNITY_FAVORITES, authRequired: true, icon: 'bookmark' },
       { label: 'Notifications', href: '/community/notifications', authRequired: true, icon: 'bell' },
     ],
   },
@@ -181,8 +181,8 @@ const DROPDOWN_SECTIONS: Record<string, SectionConfig[]> = {
     { label: 'Tools', hrefs: ['/grimoire', '/reminders'] },
   ],
   'Coven': [
-    { label: 'Community', hrefs: [COMMUNITY_FEED, COMMUNITY_GROUPS, '/community/new'] },
-    { label: 'Inbox', hrefs: ['/messages', '/community/bookmarks', '/community/notifications'] },
+    { label: 'Community', hrefs: [COMMUNITY_FEED, COMMUNITY_GROUPS, SPARK_COMPOSE] },
+    { label: 'Inbox', hrefs: ['/messages', COMMUNITY_FAVORITES, '/community/notifications'] },
   ],
 };
 

@@ -1,3 +1,5 @@
+import SparkFavoriteButton from '@/components/SparkFavoriteButton';
+import { SPARK_LIMIT, countSparkCharacters } from '@/lib/sparks';
 import SparkHeartButton from '@/components/SparkHeartButton';
 import { useState, useRef, useEffect } from 'react';
 import { Link, useParams, useNavigate, useLocation } from 'react-router';
@@ -498,6 +500,7 @@ export default function PostThreadPage() {
   const [postEditTitle, setPostEditTitle] = useState('');
   const [postEditBody, setPostEditBody] = useState('');
   const [postEditSaving, setPostEditSaving] = useState(false);
+  const [postEditError, setPostEditError] = useState(false);
   const [postConfirmDelete, setPostConfirmDelete] = useState(false);
   const [postDeleting, setPostDeleting] = useState(false);
 
@@ -515,16 +518,24 @@ export default function PostThreadPage() {
   };
 
   const savePostEdit = async () => {
-    if (!post || postEditSaving) return;
+    if (!post || postEditSaving || (post.type === 'spark' && countSparkCharacters(postEditTitle) > SPARK_LIMIT)) return;
     setPostEditSaving(true);
-    await fetch(`/api/community/posts/${post.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: postEditTitle, body: postEditBody }),
-    });
-    setPostEditSaving(false);
-    setPostEditMode(false);
-    setPost((p) => p ? { ...p, title: postEditTitle, body: postEditBody } : p);
+    setPostEditError(false);
+    const title = post.type === 'spark' ? postEditTitle.trim() : postEditTitle;
+    try {
+      const response = await fetch(`/api/community/posts/${post.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(post.type === 'spark' ? { title } : { title, body: postEditBody }),
+      });
+      if (!response.ok) throw new Error('Post edit failed');
+      setPostEditMode(false);
+      setPost((current) => current?.id === post.id ? { ...current, title, body: postEditBody } : current);
+    } catch {
+      setPostEditError(true);
+    } finally {
+      setPostEditSaving(false);
+    }
   };
 
   const deletePost = async () => {
@@ -656,7 +667,7 @@ export default function PostThreadPage() {
                 )}
                 {post.isPinned && <Badge variant="outline" className="gap-1 text-primary border-primary/40 text-xs"><Pin className="w-3 h-3" /> Pinned</Badge>}
                 {post.isLocked && <Badge variant="outline" className="gap-1 text-muted-foreground text-xs"><Lock className="w-3 h-3" /> Locked</Badge>}
-                {post.categoryName && (
+                {post.type !== 'spark' && post.categoryName && (
                   <Link to={`/community/${post.categorySlug}`}>
                     <Badge variant="secondary" className="text-xs hover:bg-secondary/80 transition-colors">{post.categoryName}</Badge>
                   </Link>
@@ -664,7 +675,7 @@ export default function PostThreadPage() {
               </div>
 
               {/* Title */}
-              <h1 className="font-heading text-xl md:text-2xl text-foreground mb-4 leading-snug">{post.title}</h1>
+              <h1 className="font-heading text-xl md:text-2xl text-foreground mb-4 whitespace-pre-wrap break-words leading-snug">{post.title}</h1>
 
               {/* Author */}
               <div className="flex items-center gap-2 mb-4">
@@ -701,7 +712,7 @@ export default function PostThreadPage() {
               )}
 
               {/* Body */}
-              <CommunityPostBody html={post.body} />
+              {post.type !== 'spark' && <CommunityPostBody html={post.body} />}
 
               {/* Poll */}
               {post.poll && (
@@ -724,6 +735,7 @@ export default function PostThreadPage() {
               <div className="flex items-center gap-2 mt-5 pt-4 border-t border-border/50 flex-wrap">
                 <SparkHeartButton key={post.id} postId={post.id} liked={post.liked} likeCount={post.likeCount} />
 
+                {post.type === 'spark' ? <SparkFavoriteButton key={post.id} postId={post.id} bookmarked={post.bookmarked} /> : (
                 <button
                   onClick={toggleBookmark}
                   className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
@@ -735,6 +747,7 @@ export default function PostThreadPage() {
                   <Bookmark className="w-3.5 h-3.5" />
                   {post.bookmarked ? community_post.savedLabel : community_post.saveLabel}
                 </button>
+                )}
 
                 {post.audience === 'public' && !post.isHidden && (
                   <Link
@@ -768,7 +781,7 @@ export default function PostThreadPage() {
                 {session?.user?.id === post.userId ? (
                   <div className="ml-auto flex items-center gap-1">
                     <button
-                      onClick={() => { setPostEditTitle(post.title); setPostEditBody(post.body); setPostEditMode(true); }}
+                      onClick={() => { setPostEditTitle(post.title); setPostEditBody(post.body); setPostEditError(false); setPostEditMode(true); }}
                       className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <Pencil className="w-3.5 h-3.5" /> Edit
@@ -835,7 +848,16 @@ export default function PostThreadPage() {
                 exit={{ opacity: 0 }}
                 className="rounded-xl border border-primary/40 bg-card p-5 space-y-4"
               >
-                <h2 className="text-sm font-semibold text-foreground">Edit post</h2>
+                <h2 className="text-sm font-semibold text-foreground">{post.type === 'spark' ? 'Edit Spark' : 'Edit post'}</h2>
+                {post.type === 'spark' ? (
+                  <div>
+                    <label className="sr-only" htmlFor="edit-spark">Your Spark</label>
+                    <textarea id="edit-spark" rows={3} value={postEditTitle} onChange={event => setPostEditTitle(event.target.value)}
+                      aria-describedby="edit-spark-count" className="w-full rounded-lg border border-border bg-muted px-3 py-2" />
+                    <p id="edit-spark-count" className="text-xs text-muted-foreground">{countSparkCharacters(postEditTitle)}/{SPARK_LIMIT} characters</p>
+                  </div>
+                ) : (
+                  <>
                 <div className="space-y-2">
                   <label className="text-xs text-muted-foreground">Title</label>
                   <input
@@ -854,6 +876,9 @@ export default function PostThreadPage() {
                     className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-sm text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
+                  </>
+                )}
+                {postEditError && <p role="alert" className="text-sm text-destructive">Couldn’t save your changes. Try again.</p>}
                 <div className="flex gap-2 justify-end">
                   <button
                     onClick={() => setPostEditMode(false)}
@@ -863,7 +888,7 @@ export default function PostThreadPage() {
                   </button>
                   <button
                     onClick={savePostEdit}
-                    disabled={postEditSaving || !postEditTitle.trim()}
+                    disabled={postEditSaving || !postEditTitle.trim() || (post.type === 'spark' && countSparkCharacters(postEditTitle) > SPARK_LIMIT)}
                     className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                   >
                     {postEditSaving ? 'Saving…' : 'Save changes'}

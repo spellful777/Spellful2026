@@ -1,7 +1,7 @@
 import { followsPostAuthor, postAudienceAllows } from '@/server/lib/community-post-access.js';
 /**
  * GET /api/community/posts
- * Query params: filter (all|latest|chronological|personalized|popular|trending|unanswered|following|mine), category, page, limit
+ * Query params: filter (all|latest|chronological|personalized|popular|trending|unanswered|following|mine), category, kind (spark|discussion), page, limit
  */
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
@@ -29,6 +29,8 @@ export default async function handler(req: Request, res: Response) {
   }
 
   const conditions = [eq(communityPosts.isHidden, false), postAudienceAllows(myId)];
+  if (req.query.kind === 'spark') conditions.push(eq(communityPosts.type, 'spark'));
+  if (req.query.kind === 'discussion') conditions.push(ne(communityPosts.type, 'spark'));
   if (categoryId) conditions.push(eq(communityPosts.categoryId, categoryId));
   if (filter === 'unanswered') conditions.push(eq(communityPosts.replyCount, 0));
   if (filter === 'mine' && myId) conditions.push(eq(communityPosts.userId, myId));

@@ -17,7 +17,7 @@ export default function HomeFeed({ username }: { username?: string | null }) {
   const [newPosts, setNewPosts] = useState(false);
   const anchor = useRef<{ id: string; top: number; scrollY: number } | null>(null);
   const list = useRef<HTMLDivElement>(null);
-  const { posts, loading, error, reload, pages, newestId } = useCommunityPosts(filter, undefined, page, 'newest');
+  const { posts, loading, error, reload, pages, newestId } = useCommunityPosts(filter, undefined, page, 'newest', true, 'spark');
 
   useEffect(() => {
     setNewPosts(false);
@@ -27,7 +27,7 @@ export default function HomeFeed({ username }: { username?: string | null }) {
     async function check() {
       try {
         if (!document.hidden) {
-          const params = new URLSearchParams({ filter, afterId: String(newestId) });
+          const params = new URLSearchParams({ filter, kind: 'spark', afterId: String(newestId) });
           const response = await fetch(`/api/community/posts?${params}`, { signal: controller.signal });
           if (response.ok) {
             const data = await response.json() as { hasNewPosts?: boolean };
@@ -79,7 +79,7 @@ export default function HomeFeed({ username }: { username?: string | null }) {
       </nav>
       {filter === 'discover' && (
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-          <h2 className="font-medium text-foreground">Public posts</h2>
+          <h2 className="font-medium text-foreground">Public Sparks</h2>
           <Link to="/community/discover" className="min-h-11 inline-flex items-center text-primary hover:underline">Find members</Link>
         </div>
       )}
@@ -95,7 +95,7 @@ export default function HomeFeed({ username }: { username?: string | null }) {
             {visiblePosts.slice(0, 2).map(post => <PostCard key={post.id} post={post} />)}
             {loading && !anchor.current && <p role="status">Loading posts…</p>}
             {!loading && !posts.length && (
-              <p role="status">{filter === 'following' ? 'Follow members to see their posts here.' : 'No public posts to explore yet.'}</p>
+              <p role="status">{filter === 'following' ? 'Follow members to see their Sparks here.' : 'No public Sparks to explore yet.'}</p>
             )}
           </>
         )}

@@ -1,3 +1,4 @@
+import { SPARK_LIMIT, countSparkCharacters, sparkBodyHtml } from '@/lib/sparks';
 import { renderSharedReading, sharedReadingSchema } from '@/lib/shared-reading';
 import { notifyCommunityMentions } from '@/server/lib/community-mention-notifications.js';
 /**
@@ -6,7 +7,7 @@ import { notifyCommunityMentions } from '@/server/lib/community-mention-notifica
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityPosts, communityCategories, communityPolls } from '@/server/db/schema.js';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { visiblePostForMember } from '@/server/lib/community-post-access.js';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
@@ -26,6 +27,29 @@ export default async function handler(req: Request, res: Response) {
     sharedReading?: unknown;
     poll?: { question: string; choices: string[]; closesAt?: string };
   };
+
+  if (type === 'spark') {
+    if (typeof body !== 'string' || !body.trim() || countSparkCharacters(body) > SPARK_LIMIT) {
+      return res.status(400).json({ error: `A Spark must have 1–${SPARK_LIMIT} characters` });
+    }
+    if (title !== undefined || tags || imageUrl || poll || quotedPostId !== undefined || sharedReading !== undefined) {
+      return res.status(400).json({ error: 'Sparks are short text posts. Use a discussion for other content.' });
+    }
+    if (audience !== 'public' && audience !== 'coven') {
+      return res.status(400).json({ error: 'Invalid audience' });
+    }
+    const [category] = await db.select({ id: communityCategories.id }).from(communityCategories)
+      .where(eq(communityCategories.isActive, true))
+      .orderBy(desc(sql`${communityCategories.slug} = 'witches-lounge'`), asc(communityCategories.sortOrder), asc(communityCategories.id))
+      .limit(1);
+    if (!category) return res.status(503).json({ error: 'Sparks are temporarily unavailable' });
+
+    const text = body.trim();
+    const [spark] = await db.insert(communityPosts).values({
+      userId: session.user.id, categoryId: category.id, type, title: text, body: sparkBodyHtml(text), audience,
+    }).$returningId();
+    return res.status(201).json({ id: spark.id });
+  }
 
   if (!categoryId || typeof title !== 'string' || !title.trim() || typeof body !== 'string' ||
       (!body.trim() && sharedReading === undefined)) {

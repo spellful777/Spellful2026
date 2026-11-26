@@ -17,7 +17,7 @@ export interface CommunityCategory {
 
 export interface CommunityPost {
   id: number;
-  type: 'discussion' | 'question';
+  type: 'discussion' | 'question' | 'spark';
   title: string;
   preview?: string;
   imageUrl?: string | null;
@@ -65,7 +65,7 @@ export function useCommunityCategories() {
   return { categories, loading };
 }
 
-export function useCommunityPosts(filter: PostFilter, category?: string, page = 1, order?: 'newest', enabled = true) {
+export function useCommunityPosts(filter: PostFilter, category?: string, page = 1, order?: 'newest', enabled = true, kind?: 'spark' | 'discussion') {
   const [result, setResult] = useState<PostsResult>({ posts: [], total: 0, page: 1, pages: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -81,6 +81,7 @@ export function useCommunityPosts(filter: PostFilter, category?: string, page = 
     const params = new URLSearchParams({ filter, page: String(page), limit: '20' });
     if (category) params.set('category', category);
     if (order) params.set('order', order);
+    if (kind) params.set('kind', kind);
     const empty: PostsResult = { posts: [], total: 0, page, pages: 0 };
 
     fetch(`/api/community/posts?${params}`, { signal: controller.signal })
@@ -101,7 +102,7 @@ export function useCommunityPosts(filter: PostFilter, category?: string, page = 
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
-  }, [filter, category, page, order]);
+  }, [filter, category, page, order, kind]);
 
   useEffect(() => {
     if (!enabled) return;

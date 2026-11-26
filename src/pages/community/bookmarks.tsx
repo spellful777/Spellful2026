@@ -18,7 +18,7 @@ interface BookmarkedPost {
   bookmarkId: number;
   bookmarkedAt: string;
   id: number | null;
-  type: 'discussion' | 'question' | null;
+  type: 'discussion' | 'question' | 'spark' | null;
   title: string | null;
   tags: string | null;
   likeCount: number | null;

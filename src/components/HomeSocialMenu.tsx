@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpRight, Bell, Compass, MessageSquare, Pencil, User } from 'lucide-react';
+import { ArrowUpRight, Bell, Compass, MessageSquare, Pencil, Star, User } from 'lucide-react';
 import { Link } from 'react-router';
 import { getMoonPhase, moonGlyph, type MoonPhaseResult } from '@/lib/moon-phase-engine';
 import SparkItLink from '@/components/SparkItLink';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { COMMUNITY_FEED, COMMUNITY_CONNECTIONS, COMMUNITY_REQUESTS, HOME_EXPLORE } from '@/lib/community-navigation';
+import { COMMUNITY_FEED, COMMUNITY_CONNECTIONS, COMMUNITY_REQUESTS, COMMUNITY_FAVORITES, HOME_EXPLORE } from '@/lib/community-navigation';
 
 function HomeMoonLink() {
   const [moon, setMoon] = useState<MoonPhaseResult | null>(null);
@@ -97,6 +97,7 @@ export default function HomeSocialMenu({ username }: { username?: string | null 
               <DropdownMenuItem asChild><Link to={COMMUNITY_FEED}><MessageSquare aria-hidden="true" />Community</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to={HOME_EXPLORE}><Compass aria-hidden="true" />Explore</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to={COMMUNITY_REQUESTS}><Bell aria-hidden="true" />Coven requests</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to={COMMUNITY_FAVORITES}><Star aria-hidden="true" />Favorites</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
               {username && <DropdownMenuItem asChild><Link to={profile}><User aria-hidden="true" />View my profile</Link></DropdownMenuItem>}
               <DropdownMenuItem asChild><Link to="/account/edit-profile"><Pencil aria-hidden="true" />{username ? 'Edit my profile' : 'Set up my profile'}</Link></DropdownMenuItem>

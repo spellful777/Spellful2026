@@ -113,7 +113,7 @@ export default function CategoryPage() {
 
   const { categories, loading: catsLoading } = useCommunityCategories();
   const category = categories.find((c) => c.slug === slug);
-  const { posts, total, pages, loading: postsLoading } = useCommunityPosts(filter, slug, page);
+  const { posts, total, pages, loading: postsLoading } = useCommunityPosts(filter, slug, page, undefined, true, 'discussion');
 
   if (!isPending && !session) {
     navigate('/login?redirect=/community');

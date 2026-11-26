@@ -33,7 +33,7 @@ export interface CommunityReply {
 
 export interface CommunityPostDetail {
   id: number;
-  type: 'discussion' | 'question';
+  type: 'discussion' | 'question' | 'spark';
   title: string;
   body: string;
   imageUrl: string | null;

@@ -10,6 +10,8 @@ import {
   Pin, Lock, Eye, ChevronRight, Search, Users, Star, Building2,
 } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
+import SparkCard from '@/components/SparkCard';
+import { SPARK_COMPOSE, COMMUNITY_FAVORITES } from '@/lib/community-navigation';
 import SparkHeartButton from '@/components/SparkHeartButton';
 import SparkIcon from '@/components/SparkIcon';
 import SparkItLink from '@/components/SparkItLink';
@@ -126,6 +128,7 @@ const FILTERS: { value: PostFilter; label: string }[] = [
 
 // ── Post card ─────────────────────────────────────────────────────────────────
 export function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'][number] }) {
+  if (post.type === 'spark') return <SparkCard post={post} />;
   const tags = post.tags ? post.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
   const ago = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
 
@@ -232,7 +235,7 @@ export function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>[
 
 // ── Trending sidebar ──────────────────────────────────────────────────────────
 function TrendingSidebar({ onSelectTrending }: { onSelectTrending: () => void }) {
-  const { posts, loading, error, reload } = useCommunityPosts('trending');
+  const { posts, loading, error, reload } = useCommunityPosts('trending', undefined, 1, undefined, true, 'discussion');
   const top = posts.slice(0, 5);
   const topics = getTrendingTopics(posts);
 
@@ -297,9 +300,9 @@ function TrendingSidebar({ onSelectTrending }: { onSelectTrending: () => void })
         </h3>
         <nav className="space-y-1.5">
           {[
-            { to: '/community/bookmarks', icon: Bookmark, label: 'Saved Posts', desc: 'Your bookmarked discussions' },
+            { to: COMMUNITY_FAVORITES, icon: Bookmark, label: 'Favorites', desc: 'Your saved Sparks and discussions' },
             { to: '/community/notifications', icon: Bell, label: 'Notifications', desc: 'Replies & mentions' },
-            { to: '/community/new', icon: SparkIcon, label: 'Spark it', desc: 'Start a conversation' },
+            { to: SPARK_COMPOSE, icon: SparkIcon, label: 'Spark it', desc: 'Start a conversation' },
             { to: '/creators', icon: Star, label: 'Creators', desc: 'Browse verified creators' },
             { to: '/organizations', icon: Building2, label: 'Organizations', desc: 'Shops, studios & collectives' },
           ].map(({ to, icon: Icon, label, desc }) => (
@@ -358,7 +361,7 @@ export default function CommunityPage() {
   const setPage = isFeed ? setFeedPage : setGroupPage;
   const { categories, loading: catsLoading } = useCommunityCategories();
   const { posts, total, pages, loading: postsLoading, error: postsError, reload: reloadPosts, newestId } =
-    useCommunityPosts(postFilter, isFeed ? undefined : activeCategory, page, isFeed ? 'newest' : undefined, showPosts && !!session);
+    useCommunityPosts(postFilter, isFeed ? undefined : activeCategory, page, isFeed ? 'newest' : undefined, showPosts && !!session, isFeed ? 'spark' : 'discussion');
   const unread = useCommunityNotifications();
 
   useEffect(() => {
@@ -368,7 +371,7 @@ export default function CommunityPage() {
     async function checkForPosts() {
       if (document.hidden) return;
       try {
-        const response = await fetch(`/api/community/posts?filter=following&afterId=${newestId}`, {
+        const response = await fetch(`/api/community/posts?filter=following&kind=spark&afterId=${newestId}`, {
           signal: controller.signal,
           cache: 'no-store',
         });
@@ -716,6 +719,7 @@ export default function CommunityPage() {
               <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
                 Choose a group to browse its conversations.
               </p>
+              <Button asChild variant="outline" className="mt-3"><Link to="/community/new">Start a discussion</Link></Button>
             </div>
 
             {(() => {
@@ -864,7 +868,7 @@ export default function CommunityPage() {
               {showPosts && session && (<>
               {isFeed ? (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="font-heading text-xl">Posts from people you follow</h2>
+                  <h2 className="font-heading text-xl">Sparks from people you follow</h2>
                   {hasNewFeedPosts && <Button size="sm" onClick={reloadPosts}>Show new posts</Button>}
                 </div>
               ) : (
@@ -930,7 +934,7 @@ export default function CommunityPage() {
                   ) : (
                     <Link to="/community/new" className="mt-4 inline-block">
                       <Button size="sm" variant="outline" className="gap-2 mt-3">
-                        <SparkIcon className="size-4" /> {community.emptyStates.ctaLabel}
+                        Start a discussion
                       </Button>
                     </Link>
                   )}

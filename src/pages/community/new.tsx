@@ -9,8 +9,8 @@ import {
 import { useSession } from '@/lib/auth/auth-client';
 import { usePostDetail } from '@/hooks/useCommunityPost';
 import { useCommunityCategories } from '@/hooks/useCommunity';
-import SparkIcon from '@/components/SparkIcon';
-import { sparkActionClass } from '@/components/SparkItLink';
+import { sparkBodyHtml } from '@/lib/sparks';
+import SparkComposer from '@/components/SparkComposer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -245,6 +245,11 @@ function PostPreview({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function NewPostPage() {
+  const [params] = useSearchParams();
+  return params.get('kind') === 'spark' ? <SparkComposer /> : <DiscussionComposer />;
+}
+
+function DiscussionComposer() {
   const { session, isPending } = useSession();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -268,7 +273,7 @@ export default function NewPostPage() {
   const [postType, setPostType] = useState<PostType>('discussion');
   const [categoryId, setCategoryId] = useState<number | ''>('');
   const [title, setTitle] = useState(reading ? 'My tarot reading' : '');
-  const [body, setBody] = useState('');
+  const [body, setBody] = useState(() => typeof location.state?.discussionBody === 'string' ? `<p>${sparkBodyHtml(location.state.discussionBody)}</p>` : '');
   const [tags, setTags] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [audience, setAudience] = useState<'public' | 'coven'>('public');
@@ -644,10 +649,9 @@ export default function NewPostPage() {
                   <Button
                     type="submit"
                     disabled={submitting || (followUpPostId !== null && !canPostFollowUp)}
-                    variant={followUpPostId ? 'default' : 'outline'}
-                    className={followUpPostId ? undefined : sparkActionClass}
+
                   >
-                    {followUpPostId ? <Sparkles className="size-4" /> : <SparkIcon className="size-5" monochrome />}
+                    <Sparkles className="size-4" />
                     {submitting ? community_new.submittingLabel : followUpPostId ? 'Post follow-up' : community_new.submitLabel}
                   </Button>
                   <Link to={destination}>
