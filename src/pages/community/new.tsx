@@ -9,6 +9,8 @@ import {
 import { useSession } from '@/lib/auth/auth-client';
 import { usePostDetail } from '@/hooks/useCommunityPost';
 import { useCommunityCategories } from '@/hooks/useCommunity';
+import SparkIcon from '@/components/SparkIcon';
+import { sparkActionClass } from '@/components/SparkItLink';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -642,9 +644,10 @@ export default function NewPostPage() {
                   <Button
                     type="submit"
                     disabled={submitting || (followUpPostId !== null && !canPostFollowUp)}
-                    className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                    variant={followUpPostId ? 'default' : 'outline'}
+                    className={followUpPostId ? undefined : sparkActionClass}
                   >
-                    <Sparkles className="w-4 h-4" />
+                    {followUpPostId ? <Sparkles className="size-4" /> : <SparkIcon className="size-5" />}
                     {submitting ? community_new.submittingLabel : followUpPostId ? 'Post follow-up' : community_new.submitLabel}
                   </Button>
                   <Link to={destination}>

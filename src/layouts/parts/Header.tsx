@@ -1,7 +1,8 @@
+import SparkIcon from '@/components/SparkIcon';
 import { COMMUNITY_FEED, COMMUNITY_GROUPS } from '@/lib/community-navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router';
-import { Menu, X, User, BookOpen, ChevronDown, Users, Bookmark, Bell, Sparkles, Star, PenLine, MessageCircle, Moon } from 'lucide-react';
+import { Menu, X, User, BookOpen, ChevronDown, Users, Bookmark, Bell, Sparkles, Star, MessageCircle, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSession } from '@/lib/auth/auth-client';
 import MessagingBell from '@/components/MessagingBell';
@@ -76,7 +77,7 @@ const NAV: NavItem[] = [
     children: [
       { label: 'Feed', href: COMMUNITY_FEED, authRequired: true, icon: 'discussions' },
       { label: 'Groups', href: COMMUNITY_GROUPS, authRequired: true, icon: 'discussions' },
-      { label: 'New Post', href: '/community/new', authRequired: true, icon: 'newpost' },
+      { label: 'Spark it', href: '/community/new', authRequired: true, icon: 'newpost' },
       { label: 'Messages', href: '/messages', authRequired: true, icon: 'messages' },
       { label: 'Bookmarks', href: '/community/bookmarks', authRequired: true, icon: 'bookmark' },
       { label: 'Notifications', href: '/community/notifications', authRequired: true, icon: 'bell' },
@@ -151,7 +152,7 @@ function ChildIcon({ icon, unread }: { icon?: string; unread?: number }) {
   if (icon === 'grimoire')    return <BookOpen size={sz} strokeWidth={sw} />;
   if (icon === 'reminders')   return <Moon size={sz} strokeWidth={sw} />;
   if (icon === 'discussions') return <Users size={sz} strokeWidth={sw} />;
-  if (icon === 'newpost')     return <PenLine size={sz} strokeWidth={sw} />;
+  if (icon === 'newpost')     return <SparkIcon />;
   if (icon === 'messages')    return <MessageCircle size={sz} strokeWidth={sw} />;
   if (icon === 'bookmark')    return <Bookmark size={sz} strokeWidth={sw} />;
   if (icon === 'bell') return (

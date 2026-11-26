@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Bell, Compass, MessageSquare, Pencil, User } from 'lucide-react';
 import { Link } from 'react-router';
+import SparkItLink from '@/components/SparkItLink';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { COMMUNITY_FEED, COMMUNITY_CONNECTIONS, COMMUNITY_REQUESTS, HOME_EXPLORE } from '@/lib/community-navigation';
@@ -55,7 +56,7 @@ export default function HomeSocialMenu({ username }: { username?: string | null 
       <div className="flex items-center justify-between gap-2">
         <h1 className="font-heading text-3xl">Home</h1>
         <div className="flex items-center gap-2">
-          <Button asChild><Link to="/community/new">Create post</Link></Button>
+          <SparkItLink />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon" aria-label="Social menu" className="h-11 w-11 shrink-0 rounded-full">

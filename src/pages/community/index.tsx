@@ -6,10 +6,12 @@ import { community } from 'virtual:content';
 import { motion } from 'motion/react';
 import {
   Wand2, Layers, Moon, Leaf, Heart, BookOpen, Sparkles, Globe,
-  PenLine, Bell, Bookmark, TrendingUp, MessageSquare, HelpCircle,
+  Bell, Bookmark, TrendingUp, MessageSquare, HelpCircle,
   Pin, Lock, ThumbsUp, Eye, ChevronRight, Search, Users, Star, Building2,
 } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
+import SparkIcon from '@/components/SparkIcon';
+import SparkItLink from '@/components/SparkItLink';
 import MyCoven from '@/components/MyCoven';
 import { UsernameSetupModal } from '@/components/UsernameSetupModal';
 import { useCommunityCategories, useCommunityPosts, useCommunityNotifications, type PostFilter } from '@/hooks/useCommunity';
@@ -298,7 +300,7 @@ function TrendingSidebar({ onSelectTrending }: { onSelectTrending: () => void })
           {[
             { to: '/community/bookmarks', icon: Bookmark, label: 'Saved Posts', desc: 'Your bookmarked discussions' },
             { to: '/community/notifications', icon: Bell, label: 'Notifications', desc: 'Replies & mentions' },
-            { to: '/community/new', icon: PenLine, label: 'New Discussion', desc: 'Start a conversation' },
+            { to: '/community/new', icon: SparkIcon, label: 'Spark it', desc: 'Start a conversation' },
             { to: '/creators', icon: Star, label: 'Creators', desc: 'Browse verified creators' },
             { to: '/organizations', icon: Building2, label: 'Organizations', desc: 'Shops, studios & collectives' },
           ].map(({ to, icon: Icon, label, desc }) => (
@@ -614,19 +616,7 @@ export default function CommunityPage() {
               transition={{ duration: 0.45, delay: 0.28, ease: 'easeOut' as const }}
               className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-2xl pb-8 md:pb-10"
             >
-              {/* Primary CTA */}
-              <Link to="/community/new" className="shrink-0">
-                <Button
-                  size="sm"
-                  className="gap-2 font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 bg-primary text-primary-foreground hover:bg-primary/90"
-                  style={{ boxShadow: `0 0 14px hsl(var(--hero-gold) / 0.35)` }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 24px hsl(var(--hero-gold) / 0.6)`; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 14px hsl(var(--hero-gold) / 0.35)`; }}
-                >
-                  <PenLine className="w-4 h-4" />
-                  {community.hero.ctaLabel}
-                </Button>
-              </Link>
+              <SparkItLink />
 
               {/* Search */}
               <form onSubmit={handleSearch} className="relative flex-1 w-full sm:max-w-xs">
@@ -941,7 +931,7 @@ export default function CommunityPage() {
                   ) : (
                     <Link to="/community/new" className="mt-4 inline-block">
                       <Button size="sm" variant="outline" className="gap-2 mt-3">
-                        <PenLine className="w-3.5 h-3.5" /> {community.emptyStates.ctaLabel}
+                        <SparkIcon className="size-4" /> {community.emptyStates.ctaLabel}
                       </Button>
                     </Link>
                   )}
