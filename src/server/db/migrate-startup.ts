@@ -33,6 +33,7 @@ export async function runStartupMigration(): Promise<void> {
     const existing = new Set(cols.map((c) => c.Field));
 
     const userAlters: Array<{ col: string; sql: string }> = [
+      { col: 'featured_about', sql: 'ALTER TABLE user ADD COLUMN featured_about JSON NULL' },
       { col: 'is_admin',            sql: 'ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT FALSE' },
       { col: 'phone_number',        sql: 'ALTER TABLE user ADD COLUMN phone_number VARCHAR(30)' },
       { col: 'two_factor_enabled',  sql: 'ALTER TABLE user ADD COLUMN two_factor_enabled BOOLEAN DEFAULT FALSE' },

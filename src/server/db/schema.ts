@@ -1,3 +1,4 @@
+import type { ProfileFeature } from '@/lib/profile-feature';
 import type { SparkMedia } from '@/lib/spark-media';
 import { mysqlTable, bigint, int, tinyint, varchar, text, boolean, timestamp, json, index, uniqueIndex } from 'drizzle-orm/mysql-core';
 // Note: tinyint imported above; used for TINYINT columns
@@ -49,6 +50,7 @@ export const user = mysqlTable('user', {
   avatarFrame: varchar('avatar_frame', { length: 50 }).default(''),             // moon | celestial | botanical | crystal | ornate | ''
   practiceLabels: json('practice_labels').$type<string[]>(),                   // e.g. ['Green Witch', 'Tarot Reader']
   profileStatus: varchar('profile_status', { length: 100 }).default(''),       // short mood/status
+  featuredAbout: json('featured_about').$type<ProfileFeature>(),
   profileSections: json('profile_sections').$type<{ id: string; enabled: boolean; order: number }[]>(), // modular sections config
   // Profile 4.0 fields
   profileLayout: varchar('profile_layout', { length: 20 }).default('classic'), // compact | classic | immersive

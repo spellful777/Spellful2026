@@ -1,3 +1,8 @@
+import { ProfileActivity, type ProfileTab } from '@/components/ProfileActivity';
+import { ACCENTS, COVER_PRESETS as STUDIO_COVERS } from '@/lib/profile-look';
+import type { ProfileFeature } from '@/lib/profile-feature';
+import { ChevronDown, Bookmark, Bell } from 'lucide-react';
+import { COMMUNITY_FAVORITES } from '@/lib/community-navigation';
 /**
  * /u/:username — Immersive public member profile (Redesign v2)
  *
@@ -29,11 +34,11 @@ import { COMMUNITY_REQUESTS, COMMUNITY_CONNECTIONS } from '@/lib/community-navig
 import { useSession } from '@/lib/auth/auth-client';
 import { Button } from '@/components/ui/button';
 import {
-  MapPin, Users, Lock, Check, MessageCircle,
-  ExternalLink, Settings, MoreHorizontal, Share2,
+  MapPin, Users, Lock, Check,
+  ExternalLink, MoreHorizontal, Share2,
   Star, Sparkles, BookOpen, Heart, Image as ImageIcon,
   Music, Scroll, Globe, FileText,
-  Wand2, Layers, UserPlus, X, ChevronLeft, ChevronRight,
+  Wand2, UserPlus, X, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import AvatarWithFrame from '@/components/AvatarWithFrame';
 import { OnlineDot } from '@/components/OnlineDot';
@@ -69,6 +74,7 @@ type Profile = {
   avatarPreset: string | null;
   practiceLabels: string[] | null;
   profileStatus: string | null;
+  featuredAbout?: ProfileFeature | null;
   profileSections: { id: string; enabled: boolean; order: number }[] | null;
   hideOnlineStatus: boolean | null;
   profileLayout: string | null;
@@ -85,6 +91,7 @@ type ProfileData = {
   isOwn: boolean;
   covenCount: number;
   followerCount: number;
+  followingCount?: number;
   isFollowing: boolean;
   canViewFollowing: boolean;
   canRequestCoven: boolean;
@@ -128,6 +135,7 @@ type Soundscape = {
   url: string;
   provider?: string | null;
   coverImage?: string | null;
+  description?: string | null;
 };
 
 type GuestbookEntry = {
@@ -331,33 +339,8 @@ function Lightbox({ items, startIndex, onClose }: {
 }
 
 /** Section card with animated entrance */
-function RealmSection({ id, title, icon, children, className = '', headerRight }: {
-  id?: string;
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-  headerRight?: React.ReactNode;
-}) {
-  return (
-    <motion.section
-      id={id}
-      initial={{ opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration: 0.38, ease: 'easeOut' as const }}
-      className={`rounded-2xl border border-border bg-card p-4 ${className}`}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <span className="text-primary">{icon}</span>
-          {title}
-        </h2>
-        {headerRight}
-      </div>
-      {children}
-    </motion.section>
-  );
+function RealmSection({ children }: { id?: string; title: string; icon: React.ReactNode; children: React.ReactNode; headerRight?: React.ReactNode }) {
+  return <div className="profile-section-content">{children}</div>;
 }
 
 /** Social platform SVG icon */
@@ -417,7 +400,7 @@ function ProfileRequests() {
   const summary = useSocialSummary();
   return (
     <Link to={COMMUNITY_REQUESTS} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border px-3 text-xs text-muted-foreground hover:text-primary focus-visible:outline focus-visible:outline-primary">
-      <strong className="text-foreground">{summary?.pendingRequests.toLocaleString() ?? '—'}</strong> Requests
+      <Bell className="size-4" /> Requests {Boolean(summary?.pendingRequests) && <strong className="profile-request-badge">{summary?.pendingRequests}</strong>}
     </Link>
   );
 }
@@ -427,10 +410,34 @@ export default function UserProfilePage() {
   const navigate = useNavigate();
   const { data: session } = useSession();
   const loaderData = useLoaderData() as { seoProfile: { name?: string | null; username?: string | null; bio?: string | null } | null } | null;
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const tab: ProfileTab = requestedTab === 'replies' || requestedTab === 'media' || requestedTab === 'about' ? requestedTab : 'sparks';
+  const [openSection, setOpenSection] = useState<string | null>(null);
+  const [bioExpanded, setBioExpanded] = useState(false);
+  const [bioClipped, setBioClipped] = useState(false);
+  const bioRef = useRef<HTMLParagraphElement>(null);
+  function openTab(next: ProfileTab, section?: string) {
+    const params = new URLSearchParams(searchParams);
+    if (next === 'sparks') params.delete('tab');
+    else params.set('tab', next);
+    if (section) setOpenSection(section);
+    setSearchParams(params, { preventScrollReset: true });
+  }
   const previewMode = searchParams.get('preview');
 
+  useEffect(() => {
+    const bio = bioRef.current;
+    if (!bio || bioExpanded) return;
+    const measure = () => setBioClipped(bio.scrollHeight > bio.clientHeight + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(bio);
+    return () => observer.disconnect();
+  });
+
   // Core profile
+  const [audienceVersion, setAudienceVersion] = useState(0);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [identity, setIdentity] = useState<IdentityData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -482,34 +489,43 @@ export default function UserProfilePage() {
     const controller = new AbortController();
     const { signal } = controller;
     const u = encodeURIComponent(username);
-    const pq = previewMode ? `?preview=${previewMode}` : '';
+    const pq = previewMode ? `?preview=${encodeURIComponent(previewMode)}` : '';
 
     Promise.all([
       fetch(`/api/profile/${u}${pq}`, { signal }).then(r => r.json()),
-      fetch(`/api/profile/${u}/identity`, { signal }).then(r => r.ok ? r.json() : null),
-      fetch(`/api/profile/${u}/gallery`, { signal }).then(r => r.ok ? r.json() : null),
-      fetch(`/api/profile/${u}/featured`, { signal }).then(r => r.ok ? r.json() : null),
-      fetch(`/api/profile/${u}/collections`, { signal }).then(r => r.ok ? r.json() : null),
-      fetch(`/api/profile/${u}/milestones`, { signal }).then(r => r.ok ? r.json() : null),
-      fetch(`/api/profile/${u}/soundscapes`, { signal }).then(r => r.ok ? r.json() : null),
-      fetch(`/api/profile/${u}/guestbook`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/identity${pq}`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/gallery${pq}`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/featured${pq}`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/collections${pq}`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/milestones${pq}`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/soundscapes${pq}`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/guestbook${pq}`, { signal }).then(r => r.ok ? r.json() : null),
     ]).then(([pd, id, gal, feat, col, mil, snd, gb]) => {
       if (signal.aborted) return;
       if (pd?.error) { setError(pd.error); setLoading(false); return; }
       setProfileData(pd);
-      setIdentity(id?.identity ?? null);
+      const identityFields = Object.fromEntries((id?.fields ?? []).map((field: { fieldKey: string; value: string }) => [field.fieldKey, field.value]));
+      setIdentity(id?.identity ?? {
+        magicalName: identityFields.magical_name, magicalPath: identityFields.magical_path,
+        personalMotto: identityFields.personal_motto, experienceLevel: identityFields.experience_level,
+        favoriteElement: identityFields.favorite_element,
+      });
       setGallery(gal?.items ?? []);
       setFeaturedPosts(feat?.posts ?? []);
-      setCollections(col?.collections ?? []);
+      setCollections((col?.collections ?? []).map((item: Collection & { title?: string }) => ({ ...item, name: item.name ?? item.title ?? "Collection" })));
       setMilestones(mil?.milestones ?? []);
-      setSoundscapes(snd?.soundscapes ?? []);
-      setGuestbook(gb ?? null);
+      setSoundscapes((snd?.playlists ?? snd?.soundscapes ?? []).map((item: Soundscape & { customTitle?: string; canonicalUrl?: string }) => ({
+        ...item, title: item.title || item.customTitle || 'Playlist', url: item.url || item.canonicalUrl || '',
+      })));
+      setGuestbook(gb ? { ...gb, entries: (gb.entries ?? []).map((entry: GuestbookEntry & { text?: string }) => ({ ...entry, content: entry.content ?? entry.text ?? "", authorName: entry.authorName ?? entry.authorUsername })) } : null);
       setLoading(false);
     }).catch(() => {
       if (!signal.aborted) { setError('Failed to load profile'); setLoading(false); }
     });
     return () => controller.abort();
-  }, [username, previewMode, viewerId]);
+  }, [username, previewMode, viewerId, audienceVersion]);
+
+  const acceptedConnection = profileData?.connectionStatus === 'accepted';
 
   useEffect(() => {
     if (!profileUrl || loading || error || followLoading || covenActionLoading || previewMode) return;
@@ -523,7 +539,12 @@ export default function UserProfilePage() {
         const updated = response.ok ? await response.json() as ProfileData : null;
         if (controller.signal.aborted) return;
         if (updated) {
-          setProfileData(current => current?.profile.id === updated.profile.id ? updated : current);
+          if ((updated.connectionStatus === 'accepted') !== acceptedConnection) {
+            setLoading(true);
+            setAudienceVersion(version => version + 1);
+          } else {
+            setProfileData(current => current?.profile.id === updated.profile.id ? updated : current);
+          }
         } else if (response.status === 403 || response.status === 404) {
           setProfileData(null);
           setError('Profile unavailable');
@@ -541,7 +562,7 @@ export default function UserProfilePage() {
       clearInterval(timer);
       window.removeEventListener('focus', updateRelationships);
     };
-  }, [profileUrl, viewerId, loading, error, followLoading, covenActionLoading, previewMode]);
+  }, [profileUrl, viewerId, loading, error, followLoading, covenActionLoading, previewMode, acceptedConnection]);
 
   async function handleFollow() {
     if (!profileData || followLoading) return;
@@ -598,6 +619,7 @@ export default function UserProfilePage() {
         });
         if (!response.ok) throw new Error('Could not accept Coven request');
         updated = { connectionStatus: 'accepted', covenCount: profileData.covenCount + 1 };
+        setAudienceVersion(version => version + 1);
       } else {
         return;
       }
@@ -618,7 +640,7 @@ export default function UserProfilePage() {
       const r = await fetch(`/api/profile/${encodeURIComponent(username)}/guestbook`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: guestbookText.trim() }),
+        body: JSON.stringify({ text: guestbookText.trim() }),
       });
       if (r.ok) { setGuestbookSuccess(true); setGuestbookText(''); }
     } finally {
@@ -660,7 +682,7 @@ export default function UserProfilePage() {
     );
   }
 
-  const { profile, connectionStatus, isOwn, covenCount, followerCount, isFollowing, canViewFollowing, canRequestCoven } = profileData;
+  const { profile, connectionStatus, isOwn, covenCount, followerCount, followingCount, isFollowing, canViewFollowing, canRequestCoven } = profileData;
   const isCovenMember = connectionStatus === 'accepted';
 
   // Field-level visibility guard (belt-and-suspenders; server already strips values)
@@ -672,7 +694,6 @@ export default function UserProfilePage() {
   }
 
   const displayName = profile.name ?? profile.username ?? 'Witch';
-  const firstName = displayName.split(' ')[0];
   const handle = profile.username ? `@${profile.username}` : '';
   const showBio = canSeeField(profile.bioVisibility) && !!profile.bio;
   const showLocation = canSeeField(profile.locationVisibility) && !!profile.location;
@@ -681,20 +702,22 @@ export default function UserProfilePage() {
 
   const coverStyle: React.CSSProperties = profile.coverImage
     ? { backgroundImage: `url(${profile.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : { background: COVER_PRESETS[profile.coverPreset ?? 'celestial'] ?? COVER_PRESETS.celestial };
+    : { background: STUDIO_COVERS.find(item => item.key === profile.coverPreset)?.style ?? COVER_PRESETS[profile.coverPreset ?? 'celestial'] ?? COVER_PRESETS.celestial };
 
-  // Section navigator tiles — only show tiles for sections that have data
-  const sectionTiles = [
-    { id: 'about-path',     label: 'About\nMy Path',       icon: <BookOpen className="w-5 h-5" />,  show: showBio || !!identity },
-    { id: 'interests',      label: 'Magical\nInterests',    icon: <Sparkles className="w-5 h-5" />,  show: (profile.interestTags?.length ?? 0) > 0 || (profile.practiceLabels?.length ?? 0) > 0 },
-    { id: 'sacred-space',   label: 'Sacred\nSpace',         icon: <ImageIcon className="w-5 h-5" />, show: gallery.length > 0 },
-    { id: 'featured-posts', label: 'Featured\nPosts',       icon: <FileText className="w-5 h-5" />,  show: featuredPosts.length > 0 },
-    { id: 'my-coven',       label: 'My\nCoven',             icon: <Users className="w-5 h-5" />,     show: covenCount > 0 },
-    { id: 'favorites',      label: 'Favorites',             icon: <Heart className="w-5 h-5" />,     show: collections.length > 0 },
-    { id: 'soundscapes',    label: 'Magical\nSoundscapes',  icon: <Music className="w-5 h-5" />,     show: soundscapes.length > 0 },
-    { id: 'guestbook',      label: 'Guestbook',             icon: <Scroll className="w-5 h-5" />,    show: guestbook?.enabled === true },
-    { id: 'milestones',     label: 'Milestones',            icon: <Star className="w-5 h-5" />,      show: milestones.length > 0 },
-  ].filter(t => t.show);
+  const links = showSocialLinks ? Object.entries(profile.socialLinks ?? {}).flatMap(([platform, value]) => {
+    if (!value) return [];
+    try {
+      const url = new URL(value.startsWith('https://') || value.startsWith('http://') ? value : 'https://' + value);
+      return url.username || url.password ? [] : [{ platform, url: url.href }];
+    } catch { return []; }
+  }) : [];
+  const renderSocial = (items: typeof links) => items.map(({ platform, url }) => <a key={platform} href={url}
+    target="_blank" rel="noopener noreferrer"><SocialIcon platform={platform} /><span>{platform}</span></a>);
+  const theme = THEME_OVERRIDES[profile.profileTheme ?? ''];
+  const chosenAccent = ACCENTS.find(item => item.key === profile.accentColor)?.color;
+  const featured = profile.featuredAbout;
+  const playlist = featured?.kind === 'playlist' && (isOwn || profile.profileSections?.find(item => item.id === 'soundscapes')?.enabled !== false) ? soundscapes.find(item => Number(item.id) === featured.id && item.url) : null;
+  const canInteract = !!viewerId && !previewMode;
 
   const seoName = loaderData?.seoProfile?.name ?? displayName;
   const seoBio = loaderData?.seoProfile?.bio ?? '';
@@ -713,44 +736,13 @@ export default function UserProfilePage() {
         <meta name="twitter:card" content="summary" />
       </Helmet>
 
-      <main className="min-h-screen pb-24" style={{ backgroundColor: (THEME_OVERRIDES[profile.profileTheme ?? ''] as Record<string,string> | undefined)?.['--profile-bg'] ?? 'hsl(var(--background))', ...THEME_OVERRIDES[profile.profileTheme ?? ''] }}>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            REALM HERO — cover banner + star field + avatar + identity
-        ══════════════════════════════════════════════════════════════════ */}
-        <div className="relative w-full">
-          {/* Cover banner */}
-          <div className="w-full h-52 md:h-64 relative" style={coverStyle}>
-            <StarField />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/85 pointer-events-none" />
-          </div>
-
-          {/* Top action bar */}
-          <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-safe-top pt-4 z-10">
-            <button
-              onClick={() => navigate(-1)}
-              className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center text-white backdrop-blur-sm"
-              aria-label="Go back"
-            >
-              <ChevronRight className="w-4 h-4 rotate-180" />
-            </button>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowShareSheet(true)}
-                className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center text-white backdrop-blur-sm"
-                aria-label="Share profile"
-              >
-                <Share2 className="w-4 h-4" />
-              </button>
-              {isOwn && (
-                <Link
-                  to="/account/profile"
-                  className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center text-white backdrop-blur-sm"
-                  aria-label="Edit profile"
-                >
-                  <Settings className="w-4 h-4" />
-                </Link>
-              )}
+      <main className="member-profile" data-layout={profile.profileLayout}
+        style={{ ...theme, ...(chosenAccent ? { '--profile-accent': chosenAccent } : {}) } as CSSProperties}>
+        <header className="profile-hero">
+          <div className="profile-cover" style={coverStyle}><StarField /></div>
+          <div className="profile-hero-options">
+            {isOwn && <button type="button" className="profile-share bg-card/70" aria-label="Share profile"
+              onClick={() => setShowShareSheet(true)}><Share2 className="size-4" /></button>}
               {!isOwn && (
                 <div className="relative" ref={menuRef}>
                   <button
@@ -769,6 +761,8 @@ export default function UserProfilePage() {
                         transition={{ duration: 0.15 }}
                         className="absolute right-0 top-11 w-44 rounded-xl border border-border bg-card shadow-xl z-50 overflow-hidden"
                       >
+                        {canInteract && <button type="button" className="w-full text-left px-4 py-3 text-sm hover:bg-muted"
+                          onClick={() => navigate(`/messages?user=${profile.id}`)}>Message</button>}
                         <button
                           onClick={() => { setShowReportModal(true); setShowMenu(false); }}
                           className="w-full text-left px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors"
@@ -788,76 +782,33 @@ export default function UserProfilePage() {
                   </AnimatePresence>
                 </div>
               )}
-            </div>
+
           </div>
-
-          {/* Avatar + name — overlaps cover bottom */}
-          <div className="px-4 -mt-16 relative z-10">
-            <div className="flex items-end gap-3 mb-3">
-              {/* Avatar with frame — shared AvatarWithFrame component */}
-              <div className="relative shrink-0">
-                <AvatarWithFrame
-                  src={profile.image}
-                  avatarPreset={profile.avatarPreset ?? undefined}
-                  frameKey={profile.avatarFrame ?? ''}
-                  size={96}
-                  isPlus={isCovenMember || isOwn}
-                  alt={displayName}
-                />
-                {!profile.hideOnlineStatus && (
-                  <div className="absolute bottom-1 right-1" style={{ zIndex: 4 }}>
-                    <OnlineDot userId={profile.id} />
-                  </div>
-                )}
-              </div>
-
-              {/* Name + handle + pronouns */}
-              <div className="pb-1 min-w-0 flex-1">
-                <h1 className="text-2xl font-bold text-foreground leading-tight">{displayName}</h1>
-                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                  {handle && <span className="text-muted-foreground text-sm">{handle}</span>}
-                  {profile.pronouns && <span className="text-muted-foreground text-sm">· {profile.pronouns}</span>}
-                </div>
-              </div>
+          <div className="profile-identity">
+            <div className="profile-framed-avatar">
+              <AvatarWithFrame src={profile.image} avatarPreset={profile.avatarPreset?.replace(/^default-/, '')}
+                frameKey={profile.avatarFrame ?? ''} size={66} isPlus alt={displayName} />
+              {!profile.hideOnlineStatus && !previewMode && <span className="absolute bottom-1 right-1"><OnlineDot userId={profile.id} /></span>}
             </div>
-
-            {/* Status / motto */}
-            {profile.profileStatus && (
-              <p className="text-sm italic mb-3 flex items-center gap-1.5 text-accent-foreground/80">
-                <span className="text-primary">🌙</span>
-                <span>{profile.profileStatus}</span>
-                <span className="text-primary">✨</span>
-              </p>
-            )}
-
-            {/* Coven + follower count pills */}
-            {(isOwn || covenCount > 0 || followerCount > 0 || canViewFollowing || !!viewerId) && (
-              <div className="flex items-center gap-3 text-muted-foreground text-xs mb-3 flex-wrap">
-                {(followerCount > 0 || viewerId) && (
-                  <div className="flex items-center gap-1.5">
-                    <Heart className="w-3.5 h-3.5" />
-                    <span aria-live="polite"><strong className="text-foreground">{followerCount.toLocaleString()}</strong> {followerCount === 1 ? 'follower' : 'followers'}</span>
-                  </div>
-                )}
-                {isOwn && (
-                  <Link to={COMMUNITY_CONNECTIONS} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border px-3 text-xs text-muted-foreground hover:text-primary focus-visible:outline focus-visible:outline-primary">
-                    <strong className="text-foreground">{covenCount.toLocaleString()}</strong> Coven
-                  </Link>
-                )}
-                {isOwn && <ProfileRequests />}
-                {!isOwn && covenCount > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5" />
-                    <span aria-live="polite"><strong className="text-foreground">{covenCount}</strong> coven {covenCount === 1 ? 'member' : 'members'}</span>
-                  </div>
-                )}
-                {canViewFollowing && profile.username && (
-                  <ProfileFollowingDialog key={profile.id} username={profile.username} />
-                )}
-              </div>
-            )}
-
-            {!isOwn && viewerId && (
+            <h1>{displayName}</h1>
+            <p className="profile-handle">{handle}{profile.pronouns && <span> · {profile.pronouns}</span>}</p>
+            {showBio && <div>
+              <p ref={bioRef} className={bioExpanded ? 'profile-bio' : 'profile-bio line-clamp-2'}>{profile.bio}</p>
+              {(bioClipped || bioExpanded) && <button type="button" className="profile-more" aria-expanded={bioExpanded}
+                onClick={() => setBioExpanded(value => !value)}>{bioExpanded ? 'Less' : 'More'}</button>}
+            </div>}
+            <div className="profile-stats">
+              {isOwn ? <Link className="profile-stat" to={COMMUNITY_CONNECTIONS}><strong>{covenCount}</strong>Coven</Link>
+                : <button className="profile-stat" disabled={!covenCount} onClick={() => openTab('about', 'coven')}><strong>{covenCount}</strong>Coven</button>}
+              <ProfileFollowingDialog key={profile.id + '-followers'} username={profile.username ?? username ?? ''} kind="followers" count={followerCount} preview={previewMode} />
+              {canViewFollowing ? <ProfileFollowingDialog key={profile.id + '-following'} username={profile.username ?? username ?? ''} count={followingCount} preview={previewMode} />
+                : <span className="profile-stat"><strong>{followingCount ?? 0}</strong>Following</span>}
+            </div>
+            {isOwn && <div className="profile-owner-actions">
+              <Link to="/account/edit-profile">Edit profile</Link><Link className="profile-gold" to="/account/profile">Profile Studio</Link>
+              <ProfileRequests /><Link to={COMMUNITY_FAVORITES}><Bookmark className="size-4" /> Saved</Link>
+            </div>}
+            {!isOwn && canInteract && (
               <>
                 <div data-coven-controls className="mb-1 flex flex-wrap gap-2">
                   <Button
@@ -878,20 +829,18 @@ export default function UserProfilePage() {
                     </span>
                   ) : connectionStatus === 'pending_sent' ? (
                     <Button size="sm" variant="outline" className="min-h-10" onClick={handleCovenAction} disabled={covenActionLoading}>
-                      Cancel Coven Request
+                      Requested · Cancel
                     </Button>
                   ) : connectionStatus === 'pending_received' ? (
                     <Button size="sm" variant="outline" className="min-h-10" onClick={handleCovenAction} disabled={covenActionLoading}>
-                      Accept Coven Request
+                      Accept request
                     </Button>
                   ) : !connectionStatus && canRequestCoven && (
                     <Button size="sm" variant="outline" className="coven-action min-h-10" onClick={handleCovenAction} disabled={covenActionLoading}>
-                      <Users className="h-4 w-4" aria-hidden="true" /> Send Coven Request
+                      <Users className="h-4 w-4" aria-hidden="true" /> Add to Coven
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" className="min-h-10" onClick={() => navigate(`/messages?user=${profile.id}`)}>
-                    <MessageCircle className="h-4 w-4" aria-hidden="true" /> Message
-                  </Button>
+                  <button type="button" className="profile-share" onClick={() => setShowShareSheet(true)} aria-label="Share profile"><Share2 className="size-4" /></button>
                 </div>
                 <div aria-live="polite" className="text-sm text-muted-foreground">
                   {connectionStatus === 'pending_sent' && 'Coven request sent.'}
@@ -901,21 +850,31 @@ export default function UserProfilePage() {
                 {covenError && <p role="alert" className="text-sm text-destructive">{covenError}</p>}
               </>
             )}
-            {!isOwn && !viewerId && (
-              <div className="flex gap-2 mb-1">
-                <Button size="sm" className="flex-1 text-xs" onClick={() => navigate(`/login?redirect=${encodeURIComponent(`/u/${profile.username}`)}`)}>
-                  {pageContent.signInCta}
-                </Button>
-              </div>
-            )}
+
+            {!isOwn && !viewerId && <div className="profile-visitor-actions">
+              <Link className="profile-gold" to={`/login?redirect=${encodeURIComponent('/u/' + profile.username)}`}>Follow</Link>
+              {canRequestCoven && <Link to={`/login?redirect=${encodeURIComponent('/u/' + profile.username)}`}>Add to Coven</Link>}
+              <button type="button" className="profile-share" aria-label="Share profile" onClick={() => setShowShareSheet(true)}><Share2 className="size-4" /></button>
+            </div>}
+            {links.length > 0 && <div className="profile-social">{renderSocial(links.slice(0, 3))}</div>}
           </div>
-        </div>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            CONTENT MODULES
-        ══════════════════════════════════════════════════════════════════ */}
-        <div className="px-4 space-y-3 mt-3">
-
+        </header>
+        <nav className="profile-tabs" aria-label="Profile sections">
+          {(['sparks', 'replies', 'media', 'about'] as const).map(item => <button type="button" key={item}
+            aria-current={tab === item ? 'page' : undefined} onClick={() => openTab(item)}>{item}</button>)}
+        </nav>
+        {tab !== 'about' ? <ProfileActivity key={profile.id + tab + previewMode + viewerId + audienceVersion}
+          endpoint={profileUrl} tab={tab} preview={previewMode} canInteract={canInteract} /> : <div className="profile-about">
+          {playlist && <div className="profile-about-feature">
+            {playlist.coverImage ? <img src={playlist.coverImage} alt="" /> : <img className="profile-playlist-art" src="/airo-assets/images/pages/home/resource-moon-cycles" alt="" />}
+            <div><span className="profile-feature-label">Featured playlist</span><strong>{playlist.title}</strong>
+              {playlist.description && <small>{playlist.description}</small>}</div>
+            <a href={playlist.url} target="_blank" rel="noopener noreferrer">Open</a>
+          </div>}
+          {featured?.kind === 'link' && <div className="profile-about-feature"><Globe className="size-5" /><div><strong>{featured.title}</strong></div><a href={featured.url} target="_blank" rel="noopener noreferrer">Open</a></div>}
+          {featured?.kind === 'spark' && <div className="profile-about-feature"><Sparkles className="size-5" /><div><strong>Featured Spark</strong></div><Link to={'/community/post/' + featured.id}>Open</Link></div>}
+          {[
+{ id: 'about', title: 'About My Path', show: showBio || showLocation || showZodiac || !!profile.profileStatus || !!profile.witchPath || !!(identity && Object.values(identity).some(Boolean)), body: <>
           {/* ── Astrology signature row ──────────────────────────────────── */}
           {showZodiac && (
             <motion.div
@@ -948,9 +907,11 @@ export default function UserProfilePage() {
           {/* ── MODULE 1 + Magical Identity ─────────────────────────────── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* About My Path */}
-            {showBio && (
+            {(showBio || showLocation || profile.profileStatus || profile.witchPath) && (
               <RealmSection title="About My Path ✨" icon={<BookOpen className="w-4 h-4" />} id="about-path">
-                <p className="text-sm text-muted-foreground leading-relaxed">{profile.bio}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{showBio ? profile.bio : null}</p>
+                {profile.profileStatus && <p>{profile.profileStatus}</p>}
+                {profile.witchPath && <p>{profile.witchPath}</p>}
                 {showLocation && (
                   <div className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground">
                     <MapPin className="w-3.5 h-3.5 shrink-0" />
@@ -984,6 +945,9 @@ export default function UserProfilePage() {
             )}
           </div>
 
+
+</> },
+{ id: 'interests', title: 'Magical Interests', show: (profile.interestTags?.length ?? 0) + (profile.practiceLabels?.length ?? 0) > 0, body: <>
           {/* ── MODULE 2 — Magical Interests ────────────────────────────── */}
           {((profile.interestTags?.length ?? 0) > 0 || (profile.practiceLabels?.length ?? 0) > 0) && (
             <RealmSection title="✦ Magical Interests" icon={<Sparkles className="w-4 h-4" />} id="interests">
@@ -1002,38 +966,9 @@ export default function UserProfilePage() {
             </RealmSection>
           )}
 
-          {/* ── Section Navigator ────────────────────────────────────────── */}
-          {sectionTiles.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.35 }}
-              className="rounded-2xl border border-border bg-card p-4"
-            >
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-                <span className="text-primary"><Layers className="w-4 h-4" /></span>
-                ✦ Explore {firstName}{pageContent.exploreRealmLabel}
-              </h2>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                {sectionTiles.map(tile => (
-                  <a
-                    key={tile.id}
-                    href={`#${tile.id}`}
-                    onClick={e => {
-                      e.preventDefault();
-                      document.getElementById(tile.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }}
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-muted/50 p-3 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    <span className="text-primary">{tile.icon}</span>
-                    <span className="text-xs text-foreground leading-tight whitespace-pre-line">{tile.label}</span>
-                  </a>
-                ))}
-              </div>
-            </motion.div>
-          )}
 
+</> },
+{ id: 'gallery', title: 'Sacred Space', show: gallery.length > 0, body: <>
           {/* ── MODULE 3 — Sacred Space (gallery + lightbox) ─────────────── */}
           {gallery.length > 0 && (
             <RealmSection title="🌿 Sacred Space" icon={<ImageIcon className="w-4 h-4" />} id="sacred-space">
@@ -1065,6 +1000,9 @@ export default function UserProfilePage() {
             </RealmSection>
           )}
 
+
+</> },
+{ id: 'featured', title: 'Featured Posts', show: featuredPosts.length > 0, body: <>
           {/* ── MODULE 4 — Featured Posts ────────────────────────────────── */}
           {featuredPosts.length > 0 && (
             <RealmSection title="📌 Featured Posts" icon={<FileText className="w-4 h-4" />} id="featured-posts">
@@ -1091,6 +1029,9 @@ export default function UserProfilePage() {
             </RealmSection>
           )}
 
+
+</> },
+{ id: 'coven', title: 'My Coven', show: covenCount > 0, body: <>
           {/* ── MODULE 5 — My Coven ──────────────────────────────────────── */}
           {covenCount > 0 && (
             <RealmSection title="🌙 My Coven" icon={<Users className="w-4 h-4" />} id="my-coven">
@@ -1113,6 +1054,9 @@ export default function UserProfilePage() {
             </RealmSection>
           )}
 
+
+</> },
+{ id: 'favorites', title: 'Favorites', show: collections.length > 0, body: <>
           {/* ── MODULE 6 — Favorites Collections ────────────────────────── */}
           {collections.length > 0 && (
             <RealmSection title="💎 Favorites" icon={<Heart className="w-4 h-4" />} id="favorites">
@@ -1145,13 +1089,14 @@ export default function UserProfilePage() {
             </RealmSection>
           )}
 
-          {/* ── MODULE 7 + MODULE 9 — Soundscapes + Milestones side by side */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+</> },
+{ id: 'soundscapes', title: 'Magical Soundscapes', show: soundscapes.length > 0, body: <>
             {/* Magical Soundscapes */}
             {soundscapes.length > 0 && (
               <RealmSection title="🎵 Magical Soundscapes" icon={<Music className="w-4 h-4" />} id="soundscapes">
                 <div className="space-y-2">
-                  {soundscapes.slice(0, 4).map(s => {
+                  {soundscapes.map(s => {
                     const isActive = activeSoundscape === s.id;
                     return (
                       <a
@@ -1182,36 +1127,9 @@ export default function UserProfilePage() {
               </RealmSection>
             )}
 
-            {/* Milestones */}
-            {milestones.length > 0 && (
-              <RealmSection title="✦ Milestones" icon={<Star className="w-4 h-4" />} id="milestones">
-                <div>
-                  {milestones.slice(0, 6).map((m, i) => (
-                    <div key={m.id} className="flex items-start gap-3">
-                      <div className="flex flex-col items-center pt-1.5 shrink-0">
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                        {i < Math.min(milestones.length, 6) - 1 && (
-                          <div className="w-px bg-border mt-1" style={{ height: 28 }} />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1 pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-medium text-foreground leading-tight">{m.title}</p>
-                          {m.milestoneDate && (
-                            <span className="text-xs text-muted-foreground shrink-0 tabular-nums">{formatMilestoneDate(m.milestoneDate)}</span>
-                          )}
-                        </div>
-                        {m.note && <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{m.note}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </RealmSection>
-            )}
-          </div>
 
-          {/* ── MODULE 8 + Social Links side by side ────────────────────── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+</> },
+{ id: 'guestbook', title: 'Guestbook', show: !!guestbook?.enabled && (!!guestbook.entries.length || (canInteract && !isOwn && (guestbook.settings?.allowedSubmitters === "members" || (guestbook.settings?.allowedSubmitters === "coven" && isCovenMember)))), body: <>
             {/* Guestbook */}
             {guestbook?.enabled && (
               <RealmSection
@@ -1251,7 +1169,7 @@ export default function UserProfilePage() {
                 )}
 
                 {/* Submit form */}
-                {viewerId && !isOwn && !guestbookSuccess && (() => {
+                {canInteract && !isOwn && !guestbookSuccess && (() => {
                   const allowed = guestbook.settings?.allowedSubmitters ?? 'members';
                   const canSubmit = allowed === 'members' || (allowed === 'coven' && isCovenMember);
                   return canSubmit ? (
@@ -1284,34 +1202,52 @@ export default function UserProfilePage() {
               </RealmSection>
             )}
 
-            {/* Social Links */}
-            {showSocialLinks && profile.socialLinks && (
-              <RealmSection title="🔗 Find Me Elsewhere" icon={<Globe className="w-4 h-4" />} id="social-links">
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {Object.entries(profile.socialLinks).filter(([, v]) => v).map(([platform, url]) => (
-                    <a
-                      key={platform}
-                      href={url.startsWith('http') ? url : `https://${url}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-muted/40 p-3 hover:border-primary/40 hover:bg-primary/5 transition-colors"
-                    >
-                      <span className="text-foreground"><SocialIcon platform={platform} /></span>
-                      <span className="text-xs text-muted-foreground capitalize">{platform}</span>
-                    </a>
+
+</> },
+{ id: 'milestones', title: 'Milestones', show: milestones.length > 0, body: <>
+            {/* Milestones */}
+            {milestones.length > 0 && (
+              <RealmSection title="✦ Milestones" icon={<Star className="w-4 h-4" />} id="milestones">
+                <div>
+                  {milestones.slice(0, 6).map((m, i) => (
+                    <div key={m.id} className="flex items-start gap-3">
+                      <div className="flex flex-col items-center pt-1.5 shrink-0">
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                        {i < Math.min(milestones.length, 6) - 1 && (
+                          <div className="w-px bg-border mt-1" style={{ height: 28 }} />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1 pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium text-foreground leading-tight">{m.title}</p>
+                          {m.milestoneDate && (
+                            <span className="text-xs text-muted-foreground shrink-0 tabular-nums">{formatMilestoneDate(m.milestoneDate)}</span>
+                          )}
+                        </div>
+                        {m.note && <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{m.note}</p>}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </RealmSection>
             )}
-          </div>
 
-          {/* Member since footer */}
-          {profile.createdAt && (
-            <p className="text-center text-xs text-muted-foreground py-2">
-              ✦ {pageContent.memberSincePrefix} {new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} ✦
-            </p>
-          )}
-        </div>
+</> },
+{ id: 'social', title: 'Social Links', show: links.length > 3, body: <>
+<div className="profile-social flex-wrap">{renderSocial(links.slice(3))}</div>
+</> },
+
+          ].filter(section => section.show && profile.profileSections?.find(item => item.id === section.id)?.enabled !== false)
+            .sort((a, b) => (profile.profileSections?.find(item => item.id === a.id)?.order ?? 99) - (profile.profileSections?.find(item => item.id === b.id)?.order ?? 99))
+            .map(section => <section key={section.id} className="profile-about-section">
+              <button type="button" aria-expanded={openSection === section.id} aria-controls={'profile-' + section.id}
+                onClick={() => setOpenSection(current => current === section.id ? null : section.id)}>
+                {section.title}<ChevronDown className="size-4" />
+              </button>
+              <div id={'profile-' + section.id} hidden={openSection !== section.id}>{section.body}</div>
+            </section>)}
+          {profile.createdAt && <p className="profile-empty">{pageContent.memberSincePrefix} {new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>}
+        </div>}
       </main>
 
       {/* ── Lightbox ─────────────────────────────────────────────────────── */}

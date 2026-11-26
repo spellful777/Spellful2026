@@ -8,7 +8,9 @@ interface FollowingPage {
   next: number | null;
 }
 
-export default function ProfileFollowingDialog({ username }: { username: string }) {
+export default function ProfileFollowingDialog({ username, kind = 'following', count, preview }: {
+  username: string; kind?: 'following' | 'followers'; count?: number; preview?: string | null;
+}) {
   const [open, setOpen] = useState(false);
   const [cursors, setCursors] = useState<number[]>([]);
   const [page, setPage] = useState<FollowingPage | null>(null);
@@ -20,7 +22,8 @@ export default function ProfileFollowingDialog({ username }: { username: string 
     if (!open) return;
     const controller = new AbortController();
     async function load() {
-      const params = new URLSearchParams({ following: '1' });
+      const params = new URLSearchParams({ [kind]: '1' });
+      if (preview) params.set('preview', preview);
       if (before !== undefined) params.set('before', String(before));
       try {
         const response = await fetch(`/api/profile/${encodeURIComponent(username)}?${params}`, { signal: controller.signal });
@@ -47,7 +50,7 @@ export default function ProfileFollowingDialog({ username }: { username: string 
     void load();
     const timer = setInterval(() => { if (!document.hidden) void load(); }, 15_000);
     return () => { controller.abort(); clearInterval(timer); };
-  }, [before, open, retry, username]);
+  }, [before, open, retry, username, kind, preview]);
 
   function changePage(next: number[]) {
     setPage(null);
@@ -61,12 +64,12 @@ export default function ProfileFollowingDialog({ username }: { username: string 
       if (!next) changePage([]);
     }}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="coven-press rounded-full">Following list</Button>
+        <button type="button" className="profile-stat"><strong>{count ?? 0}</strong>{kind === 'following' ? 'Following' : 'Followers'}</button>
       </DialogTrigger>
       <DialogContent className="max-h-[80dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Following</DialogTitle>
-          <DialogDescription>People @{username} follows.</DialogDescription>
+          <DialogTitle>{kind === 'following' ? 'Following' : 'Followers'}</DialogTitle>
+          <DialogDescription>{kind === 'following' ? `People @${username} follows.` : `People who follow @${username}.`}</DialogDescription>
         </DialogHeader>
         {error ? (
           <div>
