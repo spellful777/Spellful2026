@@ -3,7 +3,7 @@ import type { SparkMedia, OriginalSpark } from '@/lib/spark-media';
 /**
  * Community post & reply types, plus data hooks for the thread page.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface CommunityPoll {
   id: number;
@@ -77,43 +77,89 @@ export interface CommunityPostDetail {
   muted: boolean;
 }
 
-export function usePostDetail(postId: number | null) {
+export function usePostDetail(postId: number | null, viewerId?: string | null) {
+  const key = postId ? `${postId}:${viewerId ?? ''}` : null;
+  const [scope, setScope] = useState<string | null>(null);
   const [post, setPost] = useState<CommunityPostDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(postId));
   const [error, setError] = useState<string | null>(null);
+  const active = useRef<AbortController | null>(null);
 
   const load = useCallback(() => {
+    active.current?.abort();
     if (!postId) return;
+    const request = new AbortController();
+    active.current = request;
     setLoading(true);
     setError(null);
-    fetch(`/api/community/posts/${postId}`)
-      .then((r) => {
-        if (!r.ok) throw new Error('Not found');
-        return r.json();
+    fetch(`/api/community/posts/${postId}`, { signal: request.signal })
+      .then(response => {
+        if (!response.ok) throw new Error(response.status === 404 ? 'Not found' : 'Could not load the conversation');
+        return response.json() as Promise<CommunityPostDetail>;
       })
-      .then((data: CommunityPostDetail) => setPost(data))
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [postId]);
+      .then(data => { if (!request.signal.aborted) setPost(data); })
+      .catch((failure: Error) => {
+        if (!request.signal.aborted) { setPost(null); setError(failure.message); }
+      })
+      .finally(() => {
+        if (!request.signal.aborted) { setScope(key); setLoading(false); }
+      });
+  }, [key, postId]);
 
-  useEffect(() => { load(); }, [load]);
-  return { post, loading, error, reload: load, setPost };
+  useEffect(() => {
+    load();
+    return () => active.current?.abort();
+  }, [load]);
+  return {
+    post: scope === key ? post : null,
+    loading: Boolean(key) && (scope !== key || loading),
+    error: scope === key ? error : null,
+    reload: load,
+    setPost,
+  };
 }
 
-export function useReplies(postId: number | null, sort: 'chrono' | 'liked' = 'chrono') {
+export function useReplies(postId: number | null, sort: 'chrono' | 'liked' = 'chrono', viewerId?: string | null) {
+  const key = postId ? `${postId}:${viewerId ?? ''}:${sort}` : null;
+  const [scope, setScope] = useState<string | null>(null);
   const [replies, setReplies] = useState<CommunityReply[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(postId));
+  const [error, setError] = useState(false);
+  const active = useRef<AbortController | null>(null);
 
   const load = useCallback(() => {
+    active.current?.abort();
     if (!postId) return;
+    const request = new AbortController();
+    active.current = request;
     setLoading(true);
-    fetch(`/api/community/posts/${postId}/replies?sort=${sort}`)
-      .then((r) => r.ok ? r.json() : Promise.resolve([]))
-      .then((data: CommunityReply[]) => { if (Array.isArray(data)) setReplies(data); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [postId, sort]);
+    setError(false);
+    fetch(`/api/community/posts/${postId}/replies?sort=${sort}`, { signal: request.signal })
+      .then(response => {
+        if (!response.ok) throw new Error();
+        return response.json() as Promise<CommunityReply[]>;
+      })
+      .then(data => {
+        if (!Array.isArray(data)) throw new Error();
+        if (!request.signal.aborted) setReplies(data);
+      })
+      .catch(() => {
+        if (!request.signal.aborted) { setReplies([]); setError(true); }
+      })
+      .finally(() => {
+        if (!request.signal.aborted) { setScope(key); setLoading(false); }
+      });
+  }, [key, postId, sort]);
 
-  useEffect(() => { load(); }, [load]);
-  return { replies, loading, reload: load, setReplies };
+  useEffect(() => {
+    load();
+    return () => active.current?.abort();
+  }, [load]);
+  return {
+    replies: scope === key ? replies : [],
+    loading: Boolean(key) && (scope !== key || loading),
+    error: scope === key && error,
+    reload: load,
+    setReplies,
+  };
 }

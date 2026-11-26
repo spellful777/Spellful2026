@@ -26,7 +26,7 @@ export default function SparkComposer() {
   const topic = topicChoice ?? (reading?.type === 'natal' ? 'Astrology' : reading?.type === 'tarot' ? 'Tarot' : '');
   const quote = Number(params.get('quote'));
   const quotedPostId = Number.isSafeInteger(quote) && quote > 0 ? quote : undefined;
-  const { post: original, loading: originalLoading } = usePostDetail(quotedPostId ?? null);
+  const { post: original, loading: originalLoading } = usePostDetail(quotedPostId ?? null, session?.user.id);
   const attachments = useSparkAttachments(Boolean(session && !quotedPostId && !readingId));
   const canPublish = !attachments.busy && !attachments.replacement &&
     (!!text.trim() || attachments.uploads.length > 0 || !!reading) &&

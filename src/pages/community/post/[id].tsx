@@ -550,20 +550,20 @@ export default function PostThreadPage() {
   const navigate = useNavigate();
   const postId = id ? parseInt(id) : null;
 
-  const { post, loading: postLoading, error, reload: reloadPost, setPost } = usePostDetail(postId);
+  const { post, loading: postLoading, error, reload: reloadPost, setPost } = usePostDetail(postId, session?.user.id);
   const [sort, setSort] = useState<'chrono' | 'liked'>('chrono');
-  const { replies, loading: repliesLoading, reload: reloadReplies, setReplies } = useReplies(postId, sort);
+  const { replies, loading: repliesLoading, error: repliesError, reload: reloadReplies, setReplies } = useReplies(postId, sort, session?.user.id);
   const { hash, pathname } = useLocation();
   const [missingReply, setMissingReply] = useState(false);
   useEffect(() => {
-    if (postLoading || repliesLoading) return;
+    if (postLoading || repliesLoading || repliesError) return;
     if (!/^#reply-\d+$/.test(hash)) { setMissingReply(false); return; }
     const target = document.getElementById(hash.slice(1));
     setMissingReply(!target);
     if (!target) return;
     target.focus({ preventScroll: true });
     target.scrollIntoView({ block: 'start' });
-  }, [hash, postLoading, repliesLoading]);
+  }, [hash, postLoading, repliesLoading, repliesError]);
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [showShareToast, setShowShareToast] = useState(false);
 
@@ -1062,6 +1062,8 @@ export default function PostThreadPage() {
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
                 </div>
+              ) : repliesError ? (
+                <p role="status" className="py-2 text-sm">Couldn’t load replies. <button type="button" onClick={reloadReplies} className="text-primary underline">Try again</button></p>
               ) : replies.length === 0 ? (
                 <div className="rounded-xl border border-border bg-card p-8 text-center">
                   <Sparkles className="w-6 h-6 text-primary/40 mx-auto mb-2" />

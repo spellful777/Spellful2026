@@ -256,7 +256,7 @@ function DiscussionComposer() {
   const quotedPostId = Number.isSafeInteger(quote) && quote > 0 ? quote : undefined;
   const followUp = Number(params.get('followUp'));
   const followUpPostId = Number.isSafeInteger(followUp) && followUp > 0 ? followUp : null;
-  const { post: originalPost, loading: originalLoading } = usePostDetail(followUpPostId);
+  const { post: originalPost, loading: originalLoading } = usePostDetail(followUpPostId, session?.user.id);
   const destination = followUpPostId ? `/community/post/${followUpPostId}` : '/community';
   const canPostFollowUp = originalPost?.id === followUpPostId && originalPost?.userId === session?.user?.id && !originalPost?.isLocked;
   const { categories, loading: catsLoading } = useCommunityCategories();
