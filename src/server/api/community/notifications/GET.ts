@@ -16,7 +16,7 @@ export default async function handler(req: Request, res: Response) {
 
   const viewer = session.user.id;
   const visible = and(eq(communityNotifications.userId, viewer), sql`(
-    ${communityNotifications.type} <> 'mention' or (
+    ${communityNotifications.type} not in ('mention', 'follow_up') or (
       exists (select 1 from ${communityPosts}
         where ${communityPosts.id} = ${communityNotifications.postId}
           and ${communityPosts.isHidden} = false and ${postAudienceAllows(viewer)})

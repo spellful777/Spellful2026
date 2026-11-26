@@ -16,7 +16,7 @@ import { community_notifications } from 'virtual:content';
 
 interface CommunityNotification {
   id: number;
-  type: 'reply' | 'like' | 'mention' | 'answer' | 'follow' | 'system';
+  type: 'reply' | 'like' | 'mention' | 'follow_up' | 'answer' | 'follow' | 'system';
   postId: number | null;
   replyId: number | null;
   message: string | null;
@@ -37,6 +37,7 @@ interface NotifResponse {
 function NotifIcon({ type }: { type: CommunityNotification['type'] }) {
   const cls = 'w-4 h-4 shrink-0';
   switch (type) {
+    case 'follow_up':
     case 'reply':   return <MessageSquare className={`${cls} text-accent`} />;
     case 'like':    return <Heart className={`${cls} text-destructive`} />;
     case 'mention': return <AtSign className={`${cls} text-primary`} />;

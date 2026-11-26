@@ -383,31 +383,44 @@ function ReplyComposer({
   onClear,
   onSubmitted,
   isLocked,
+  canFollowUp,
 }: {
   postId: number;
   replyTo: { id: number; authorName: string | null } | null;
   onClear: () => void;
   onSubmitted: () => void;
   isLocked: boolean;
+  canFollowUp: boolean;
 }) {
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [followUp, setFollowUp] = useState(false);
+  const [error, setError] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const submit = async () => {
     const trimmed = body.trim();
     if (!trimmed || submitting) return;
     setSubmitting(true);
-    const res = await fetch(`/api/community/posts/${postId}/replies`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: trimmed, parentId: replyTo?.id ?? null }),
-    });
-    setSubmitting(false);
-    if (res.ok) {
+    setError('');
+    try {
+      const res = await fetch(`/api/community/posts/${postId}/replies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: trimmed, parentId: replyTo?.id ?? null, followUp: canFollowUp && !replyTo && followUp }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? 'Could not post your reply.');
+      }
       setBody('');
+      setFollowUp(false);
       onClear();
       onSubmitted();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Could not post your reply.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -427,6 +440,13 @@ function ReplyComposer({
           <button onClick={onClear} className="text-muted-foreground hover:text-foreground transition-colors">✕</button>
         </div>
       )}
+      {canFollowUp && !replyTo && (
+        <label className="mb-3 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={followUp} onChange={event => setFollowUp(event.target.checked)} />
+          Post an author follow-up
+        </label>
+      )}
+      {error && <p role="alert" className="mb-2 text-sm text-destructive">{error}</p>}
       <textarea
         ref={textareaRef}
         value={body}
@@ -443,7 +463,7 @@ function ReplyComposer({
           className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <Send className="w-3.5 h-3.5" />
-          {submitting ? community_post.postingLabel : community_post.postReplyLabel}
+          {submitting ? community_post.postingLabel : canFollowUp && !replyTo && followUp ? 'Post follow-up' : community_post.postReplyLabel}
         </Button>
       </div>
     </div>
@@ -919,6 +939,7 @@ export default function PostThreadPage() {
           {/* ── Composer ── */}
           {post && (
             <ReplyComposer
+              canFollowUp={session?.user?.id === post.userId}
               postId={post.id}
               replyTo={replyTo}
               onClear={() => setReplyTo(null)}

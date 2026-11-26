@@ -1,3 +1,4 @@
+import { notifyCommunityFollowUp } from '@/server/lib/community-follow-up.js';
 import { notifyCommunityMentions } from '@/server/lib/community-mention-notifications.js';
 import { visiblePostForMember } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
@@ -21,8 +22,15 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   if (!post) return res.status(404).json({ error: 'Post not found' });
   if (post.isLocked) return res.status(403).json({ error: 'Post is locked' });
 
-  const { body, parentId } = req.body as { body?: string; parentId?: number };
+  const { body, parentId, followUp = false } = req.body as { body?: string; parentId?: number; followUp?: boolean };
   if (typeof body !== 'string' || !body.trim()) return res.status(400).json({ error: 'body is required' });
+
+  if (typeof followUp !== 'boolean' || (followUp && parentId != null)) {
+    return res.status(400).json({ error: 'A follow-up must be a top-level reply' });
+  }
+  if (followUp && post.userId !== session.user.id) {
+    return res.status(403).json({ error: 'Only the author can add a follow-up' });
+  }
 
   let depth = 0;
   if (parentId != null) {
@@ -44,7 +52,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
       postId,
       userId: session.user.id,
       parentId: parentId ?? null,
-      body: body.trim(),
+      body: followUp ? `<p><strong>Author follow-up</strong></p>${body.trim()}` : body.trim(),
       depth,
     });
     await tx.update(communityPosts).set({ replyCount: sql`COALESCE(reply_count, 0) + 1` })
@@ -62,6 +70,13 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
       replyId,
       message: 'Someone replied to your post.',
     }).catch(() => {});
+  }
+
+  if (followUp) {
+    await notifyCommunityFollowUp(postId, replyId, session.user.id).catch(() => {
+      console.error('community.follow-up-notifications.failed');
+    });
+    return res.status(201).json({ id: replyId });
   }
 
   await notifyCommunityMentions({ html: body, actorId: session.user.id, postId, replyId, alreadyNotified: post.userId }).catch(() => {
