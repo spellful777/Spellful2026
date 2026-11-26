@@ -809,6 +809,10 @@ html.high-contrast {
     padding-inline-end: 4.5rem;
   }
 
+  body:has([role='dialog'][aria-modal='true']) .home-floating-spark {
+    visibility: hidden;
+  }
+
   body:has(.home-floating-spark) .back-to-top-btn {
     display: none;
   }

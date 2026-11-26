@@ -28,11 +28,11 @@ export default function HomeFeed({ username }: { username?: string | null }) {
     if (!button) return;
     const mobile = window.matchMedia('(max-width: 767px)');
 
-    function update() {
+    const update = () => {
       const show = mobile.matches && button.getBoundingClientRect().bottom <= 0;
-      if (!show && document.activeElement === floatingSparkLink.current) button.focus({ preventScroll: true });
+      if (!show && floatingSparkLink.current && document.activeElement === floatingSparkLink.current) button.focus({ preventScroll: true });
       setFloatingSpark(show);
-    }
+    };
 
     const observer = new IntersectionObserver(update);
     observer.observe(button);
@@ -129,7 +129,7 @@ export default function HomeFeed({ username }: { username?: string | null }) {
         </nav>
       )}
       {floatingSpark && (
-        <div className="home-floating-spark fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-[45] md:hidden">
+        <div className="home-floating-spark fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-[51] md:hidden">
           <SparkItLink iconOnly linkRef={floatingSparkLink} />
         </div>
       )}
