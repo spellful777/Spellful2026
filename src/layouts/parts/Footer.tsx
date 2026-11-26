@@ -110,7 +110,7 @@ export default function Footer() {
             <ArrowRight className="size-4 shrink-0 text-[hsl(var(--footer-gold))]" aria-hidden="true" />
           </Link>
         </h2>
-        <p className="mt-1.5 text-sm text-[hsl(var(--footer-ivory)/0.76)]">Catch up with your circle.</p>
+        <p className="mt-1.5 text-sm text-[hsl(var(--footer-ivory)/0.76)]">Connect with friends and follow people.</p>
       </nav>
 
       {/* 1. Celestial Divider */}

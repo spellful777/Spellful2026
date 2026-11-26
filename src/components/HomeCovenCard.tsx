@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Link } from 'react-router';
 import { COMMUNITY_FEED } from '@/lib/community-navigation';
 
-export default function HomeCovenCard({ description = 'Catch up with your circle.' }: { description?: string }) {
+export default function HomeCovenCard() {
   return (
     <motion.section
       aria-labelledby="home-coven-heading"
@@ -29,7 +29,7 @@ export default function HomeCovenCard({ description = 'Catch up with your circle
           <h2 id="home-coven-heading" className="font-heading text-xl font-bold leading-tight text-white group-hover:underline group-hover:underline-offset-4">
             Coven
           </h2>
-          <p className="mt-0.5 text-sm leading-snug text-white/75">{description}</p>
+          <p className="mt-0.5 text-sm leading-snug text-white/75">Connect with friends and follow people.</p>
         </div>
         <ArrowRight className="size-4 shrink-0 text-primary" aria-hidden="true" />
       </Link>

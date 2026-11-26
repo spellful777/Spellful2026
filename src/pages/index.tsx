@@ -625,7 +625,7 @@ function PublicHomePage() {
         )}
 
         <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
-          <HomeCovenCard description="Follow members and join the conversation." />
+          <HomeCovenCard />
         </div>
 
         {/* ══════════════════════════════════════════════════════════════
