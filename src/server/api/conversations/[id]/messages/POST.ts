@@ -105,8 +105,14 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   `);
   const insertId = (result as unknown as [{ insertId: number }])[0].insertId;
 
-  // Bump conversation updatedAt
-  await db.execute(sql`UPDATE conversations SET updated_at = NOW() WHERE id = ${convId}`);
+  if (msgStatus === 'sent') {
+    await db.execute(sql`
+      UPDATE conversations c
+      LEFT JOIN conversation_user_state s ON s.conversation_id = c.id AND s.user_id = ${myId}
+      SET c.updated_at = NOW(), s.is_hidden = 0, s.is_archived = 0
+      WHERE c.id = ${convId}
+    `);
+  }
 
   // Send push notification to the recipient (fire-and-forget, non-blocking)
   if (msgStatus === 'sent' && recipientId) {

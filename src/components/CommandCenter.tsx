@@ -1,3 +1,4 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
 /**
  * CommandCenter — signed-in dashboard, mobile-first compact layout.
  *
@@ -865,7 +866,7 @@ export default function CommandCenter() {
         >
           {userImage ? (
             <img
-              src={userImage}
+              src={uploadedMediaUrl(userImage)}
               alt={user.name ?? 'Profile'}
               className="w-7 h-7 rounded-full object-cover"
               style={{ outline: '1.5px solid hsl(var(--primary) / 0.5)', outlineOffset: '1px' }}

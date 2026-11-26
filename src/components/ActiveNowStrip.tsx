@@ -1,7 +1,4 @@
-/**
- * ActiveNowStrip — horizontal scroll row of online users.
- * Shows members whose presence data indicates they are currently active.
- */
+import { uploadedMediaUrl } from '@/lib/native-api';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router';
 
@@ -14,10 +11,11 @@ interface ActiveUser {
 
 interface Props {
   users: ActiveUser[];
+  presence: Record<string, { online: boolean }>;
   onStartConversation: (user: ActiveUser) => void;
 }
 
-function AvatarBubble({ user, onClick }: { user: ActiveUser; onClick: () => void }) {
+function AvatarBubble({ user, online, onClick }: { user: ActiveUser; online: boolean; onClick: () => void }) {
   const initials = (user.name ?? user.username ?? '?')
     .split(' ')
     .map(w => w[0])
@@ -43,7 +41,7 @@ function AvatarBubble({ user, onClick }: { user: ActiveUser; onClick: () => void
           }}>
           {user.image ? (
             <img
-              src={user.image}
+              src={uploadedMediaUrl(user.image)}
               alt={user.name ?? user.username ?? ''}
               className="w-full h-full object-cover"
             />
@@ -51,8 +49,7 @@ function AvatarBubble({ user, onClick }: { user: ActiveUser; onClick: () => void
             initials
           )}
         </span>
-        {/* Green online dot */}
-        <span
+        {online && <span
           className="absolute bottom-0 right-0 rounded-full"
           style={{
             width: 11,
@@ -60,7 +57,7 @@ function AvatarBubble({ user, onClick }: { user: ActiveUser; onClick: () => void
             background: 'hsl(var(--success))',
             border: '2px solid hsl(var(--background))',
           }}
-        />
+        />}
       </span>
       <span
         className="text-xs truncate w-full text-center leading-tight"
@@ -71,7 +68,7 @@ function AvatarBubble({ user, onClick }: { user: ActiveUser; onClick: () => void
   );
 }
 
-export default function ActiveNowStrip({ users, onStartConversation }: Props) {
+export default function ActiveNowStrip({ users, presence, onStartConversation }: Props) {
   const navigate = useNavigate();
 
   if (users.length === 0) return null;
@@ -81,13 +78,14 @@ export default function ActiveNowStrip({ users, onStartConversation }: Props) {
       className="px-4 py-2"
       style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
       <p className="text-xs font-medium mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
-        Active now
+        Friends
       </p>
       <div className="flex gap-3 overflow-x-auto scrollbar-none pb-1">
         {users.slice(0, 12).map(u => (
           <AvatarBubble
             key={u.id}
             user={u}
+            online={presence[u.id]?.online ?? false}
             onClick={() => onStartConversation(u)}
           />
         ))}

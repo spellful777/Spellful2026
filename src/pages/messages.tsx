@@ -1000,6 +1000,8 @@ export default function MessagesPage() {
 
   // ── Groups ────────────────────────────────────────────────────────────────
   const [groups, setGroups] = useState<GroupSummary[]>([]);
+  const [friends, setFriends] = useState<OtherUser[]>([]);
+  const [groupsLoadError, setGroupsLoadError] = useState(false);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
   const [groupMessages, setGroupMessages] = useState<GroupMessage[]>([]);
@@ -1035,16 +1037,58 @@ export default function MessagesPage() {
 
   // horoscope fetch removed — strip removed from inbox per redesign spec
 
-  // ── Fetch groups when Groups tab is active ────────────────────────────────
-  useEffect(() => {
-    if (!session || inboxFilter !== 'groups') return;
+  const loadGroups = useCallback(async () => {
     setLoadingGroups(true);
-    fetch('/api/groups', { credentials: 'include' })
-      .then(r => r.ok ? r.json() as Promise<{ groups: GroupSummary[] }> : null)
-      .then(data => { if (data) setGroups(data.groups); })
-      .catch(() => undefined)
-      .finally(() => setLoadingGroups(false));
-  }, [session, inboxFilter]);
+    setGroupsLoadError(false);
+    try {
+      const response = await fetch('/api/groups', { credentials: 'include' });
+      if (!response.ok) throw new Error('Could not load groups');
+      const data = await response.json() as { groups: GroupSummary[] };
+      if (!Array.isArray(data.groups)) throw new Error('Invalid group list');
+      setGroups(data.groups);
+    } catch {
+      setGroupsLoadError(true);
+    } finally {
+      setLoadingGroups(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (myId && inboxFilter === 'groups') void loadGroups();
+  }, [myId, inboxFilter, loadGroups]);
+
+  useEffect(() => {
+    setFriends([]);
+    if (!myId) return;
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const response = await fetch('/api/coven', {
+          credentials: 'include',
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const { connections } = await response.json() as {
+          connections: Array<{
+            status: string;
+            requesterId: string;
+            receiverId: string;
+            otherName: string | null;
+            otherUsername: string | null;
+            otherImage: string | null;
+          }>;
+        };
+        const accepted = new Map<string, OtherUser>();
+        for (const connection of connections) {
+          if (connection.status !== 'accepted') continue;
+          const id = connection.requesterId === myId ? connection.receiverId : connection.requesterId;
+          accepted.set(id, { id, name: connection.otherName, username: connection.otherUsername, image: connection.otherImage });
+        }
+        if (!controller.signal.aborted) setFriends([...accepted.values()]);
+      } catch { /* Inbox remains available if friends cannot be loaded. */ }
+    })();
+    return () => controller.abort();
+  }, [myId]);
 
   // ── Group thread: load messages + members ────────────────────────────────
   async function loadGroupThread(groupId: number) {
@@ -1136,12 +1180,8 @@ export default function MessagesPage() {
         setNewGroupMemberIds([]);
         setNewGroupMemberSearch('');
         setNewGroupMemberResults([]);
-        // Refresh groups list and open the new group
-        const groupsRes = await fetch('/api/groups', { credentials: 'include' });
-        if (groupsRes.ok) {
-          const groupsData = await groupsRes.json() as { groups: GroupSummary[] };
-          setGroups(groupsData.groups);
-        }
+        setInboxFilter('groups');
+        await loadGroups();
         await openGroupThread(data.groupId);
       }
     } catch { /* non-fatal */ }
@@ -1168,14 +1208,7 @@ export default function MessagesPage() {
     });
     if (res.ok) {
       setGroupInvitations(prev => prev.filter(inv => inv.id !== invitationId));
-      if (accept) {
-        // Refresh groups list
-        const groupsRes = await fetch('/api/groups', { credentials: 'include' });
-        if (groupsRes.ok) {
-          const data = await groupsRes.json() as { groups: GroupSummary[] };
-          setGroups(data.groups);
-        }
-      }
+      if (accept) await loadGroups();
     }
   }
 
@@ -1301,7 +1334,8 @@ export default function MessagesPage() {
       });
       if (!res.ok) return;
       const { id } = await res.json() as { id: number };
-      await loadConversations();
+      setInboxFilter('all');
+      void loadConversations();
       void openConversation(id, recipient);
       setShowCompose(false);
       setComposeQuery('');
@@ -1363,38 +1397,39 @@ export default function MessagesPage() {
 
   const loadConversations = useCallback(async (isInitialLoad = false) => {
     try {
-      const res = await fetch('/api/conversations?limit=50', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json() as { conversations?: ConversationSummary[]; hasMore?: boolean } | ConversationSummary[];
-        // Handle both plain-array and { conversations, hasMore } shapes
-        const convList = Array.isArray(data) ? data : (data.conversations ?? []);
-        setIsOffline(false);
-        setConversations(convList);
-        setConvLoadError(false);
+      const convList: ConversationSummary[] = [];
+      const limit = 100;
+      for (let offset = 0; ; offset += limit) {
+        const res = await fetch(`/api/conversations?tab=chats&limit=${limit}&offset=${offset}`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Could not load conversations');
+        const data = await res.json() as { conversations: ConversationSummary[]; hasMore?: boolean } | ConversationSummary[];
+        const page = Array.isArray(data) ? data : data.conversations;
+        if (!Array.isArray(page)) throw new Error('Invalid conversation list');
+        convList.push(...page);
+        if (Array.isArray(data) || !data.hasMore) break;
+      }
+      setIsOffline(false);
+      setConversations([...new Map(convList.map(conversation => [conversation.id, conversation])).values()]);
+      setConvLoadError(false);
 
-        // Batch-fetch presence for all other participants
-        const otherIds = convList
-          .map(c => c.otherUser?.id)
-          .filter((id): id is string => !!id);
-        const uniqueIds = [...new Set(otherIds)];
-        if (uniqueIds.length > 0) {
-          try {
-            const presRes = await fetch('/api/presence/batch', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({ userIds: uniqueIds }),
-            });
-            if (presRes.ok) {
-              const presData = await presRes.json() as { presence: Record<string, { online: boolean; lastSeen: string | null }> };
-              setBatchPresence(presData.presence ?? {});
-            }
-          } catch { /* non-fatal — OnlineDot falls back to individual polling */ }
-        }
-      } else if (isInitialLoad) {
-        // Only surface an error on the initial page load — background polls silently
-        // retry on the next interval rather than wiping the existing conversation list.
-        setConvLoadError(true);
+      // Batch-fetch presence for all other participants
+      const otherIds = convList
+        .map(c => c.otherUser?.id)
+        .filter((id): id is string => !!id);
+      const uniqueIds = [...new Set(otherIds)];
+      if (uniqueIds.length > 0) {
+        try {
+          const presRes = await fetch('/api/presence/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ userIds: uniqueIds }),
+          });
+          if (presRes.ok) {
+            const presData = await presRes.json() as { presence: Record<string, { online: boolean; lastSeen: string | null }> };
+            setBatchPresence(presData.presence ?? {});
+          }
+        } catch { /* non-fatal — OnlineDot falls back to individual polling */ }
       }
     } catch {
       if (isInitialLoad) setConvLoadError(true);
@@ -1965,6 +2000,10 @@ export default function MessagesPage() {
       });
       if (res.ok) {
         const { id } = await res.json() as { id: number };
+        if (!Number.isSafeInteger(id) || id <= 0) {
+          setSendError('Message was not delivered.');
+          return;
+        }
         const text = draft.trim();
         setDraft('');
         setReplyTo(null);
@@ -1987,6 +2026,8 @@ export default function MessagesPage() {
         const errData = await res.json().catch(() => ({})) as { error?: string };
         setSendError(errData.error ?? 'Message could not be sent. Please try again.');
       }
+    } catch {
+      setSendError('Message could not be sent. Please try again.');
     } finally {
       setSending(false);
     }
@@ -2252,10 +2293,8 @@ export default function MessagesPage() {
           {/* ── Active Now strip ── */}
           {inboxFilter === 'all' && (
             <ActiveNowStrip
-              users={conversations
-                .filter(c => c.otherUser && batchPresence[c.otherUser.id]?.online)
-                .map(c => c.otherUser!)
-                .filter((u, i, arr) => arr.findIndex(x => x.id === u.id) === i)}
+              users={friends}
+              presence={batchPresence}
               onStartConversation={u => void startConversationWith(u)}
             />
           )}
@@ -2403,7 +2442,7 @@ export default function MessagesPage() {
 
           {/* Conversation rows */}
           <div className="flex-1 overflow-y-auto">
-            {loadingConvs ? (
+            {inboxFilter === 'groups' || inboxFilter === 'requests' ? null : loadingConvs ? (
               <div className="flex flex-col gap-0 px-0 pt-2">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="flex items-center gap-3.5 px-5 py-3.5 animate-pulse"
@@ -2729,6 +2768,11 @@ export default function MessagesPage() {
                     </div>
                   ))}
                 </div>
+              ) : groupsLoadError && groups.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 p-6" role="status">
+                  <p>Group chats could not be loaded.</p>
+                  <button onClick={() => void loadGroups()} className="text-primary">Retry</button>
+                </div>
               ) : groups.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-4 px-8 pt-12 pb-8 text-center">
                   <div className="w-16 h-16 rounded-full flex items-center justify-center"
@@ -2760,7 +2804,7 @@ export default function MessagesPage() {
                       <div className="rounded-full flex items-center justify-center"
                         style={{ width: 52, height: 52, background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)', border: '2px solid hsl(var(--border))' }}>
                         {group.avatarUrl ? (
-                          <img src={group.avatarUrl} alt={group.name} className="w-full h-full rounded-full object-cover" />
+                          <img src={uploadedMediaUrl(group.avatarUrl)} alt={group.name} className="w-full h-full rounded-full object-cover" />
                         ) : (
                           <Users className="w-5 h-5" style={{ color: 'hsl(var(--primary-foreground))' }} />
                         )}
