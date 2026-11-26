@@ -1,6 +1,6 @@
 # Spellful iOS release readiness
 
-Updated November 25, 2026. The release is awaiting Apple signing, end-to-end subscription verification, and submission review. The app uses bundle ID `com.spellful.app`, version 1.0 and the monthly product `com.spellful.plus.monthly`.
+Updated November 26, 2026. Build 5 has been signed and uploaded. Internal testing is awaiting export compliance, live backend verification, and device tests. The app uses bundle ID `com.spellful.app`, version 1.0 and the monthly product `com.spellful.plus.monthly`.
 
 ## Build and test evidence
 
@@ -29,6 +29,14 @@ The [TestFlight workflow](.github/workflows/testflight.yml) uses an Apple Distri
 
 Deploy the signed-transaction verifier with the correct numeric APPLE_APP_ID. For TestFlight testing, point VITE_IOS_API_ORIGIN to an authorized HTTPS backend with APPLE_STORE_ENVIRONMENT=Sandbox and isolated subscription data. Verify purchase, restore, renewal, cancellation, expiration, refunds and server notifications against that deployment. Code in GitHub does not establish what is running on the published backend.
 
-App Store Connect recognizes Spellful and `com.spellful.app`. Version 1.0 is in Prepare for Submission. The API returned no builds, subscription groups or visible signing certificates. Use the existing app record. Confirm the signing team and secure workflow configuration in the [GitHub environment settings](https://github.com/spellful777/Spellful2026/settings/environments).
+App Store Connect recognizes Spellful and `com.spellful.app`. Version 1.0 is in Prepare for Submission. Use the existing app record. Confirm the signing team and secure workflow configuration in the [GitHub environment settings](https://github.com/spellful777/Spellful2026/settings/environments).
 
 Build 1 cleared export compliance, was added to the Spellful Internal QA group, and was installed by the account holder. The tester reported email sign-in and sign-up failures, sharing issues and status-bar overlap. [Build 2](https://github.com/spellful777/Spellful2026/actions/runs/45795789130) routes iOS email auth through the native HTTP bridge, corrects affected public share URLs and uses a viewport contained within the iOS safe area. The production client and server builds, Capacitor sync, TypeScript and two targeted regression tests passed. Verify all four reported behaviors using the signed TestFlight build before expanding testing. Public App Store release requires the owner's separate approval.
+
+## Build 5 status
+
+The [signed upload](https://github.com/spellful777/Spellful2026/actions/runs/45878432558) succeeded. App Store Connect confirmed version 1.0 build 5 is valid and reported Missing Export Compliance for internal and external testing. After the account holder completes that step, confirm availability for Spellful Internal QA.
+
+The production client and server builds and Capacitor iOS sync passed on the build 5 commit. The subsequent branch cleanup passed TypeScript. Vitest recorded 347 passes, eight skips and three failing suites caused by the missing repository files listed above. The [build 5 simulator run](https://github.com/spellful777/Spellful2026/actions/runs/45878440889) was cancelled without a native pass.
+
+Verify the deployed API revision before testing the server-side inbox change. On two signed-in iPhones, send and receive a new direct message, return to All, relaunch and reopen its history. Verify accepted friend bubbles, the uploaded avatar on Sanctuary and Account, and creating, joining and messaging in a group. Verify StoreKit purchase and restoration independently. Older encrypted messages require their original keys. Public release remains subject to owner approval.
