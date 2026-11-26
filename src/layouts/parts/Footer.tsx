@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { Bell, Heart, MessageSquare } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
 import { COMMUNITY_FEED, COMMUNITY_GROUPS, COMMUNITY_UPDATES } from '@/lib/community-navigation';
 import { getMoonPhase } from '@/lib/moon-phase-engine';
+import myCovenWordmark from '@/assets/my-coven-wordmark.png';
 
 // ─── Seeded star field (SSR-safe) ────────────────────────────────────────────
 function seededRand(seed: number) {
@@ -50,6 +51,7 @@ export default function Footer() {
   const [moonPhase, setMoonPhase] = useState('Full Moon');
   const [moonIllum, setMoonIllum] = useState(100);
   const [mounted, setMounted] = useState(false);
+  const [wordmarkVisible, setWordmarkVisible] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -188,20 +190,31 @@ export default function Footer() {
 
         <nav
           aria-labelledby="footer-coven-heading"
-          className="relative flex shrink-0 flex-col items-center gap-0.5 sm:items-start"
+          className="relative flex shrink-0 flex-col items-center"
         >
           <span
             aria-hidden="true"
             className="pointer-events-none absolute -inset-x-7 -inset-y-3"
             style={{ background: 'radial-gradient(ellipse at 50% 32%, hsl(var(--footer-gold) / 0.13), transparent 72%)' }}
           />
-          <h2
+          <motion.h2
             id="footer-coven-heading"
-            className="relative font-heading text-base"
-            style={{ color: 'hsl(var(--footer-gold))', textShadow: '0 0 12px hsl(var(--footer-gold) / 0.42)' }}
+            className="coven-footer-wordmark relative"
+            data-shimmer={wordmarkVisible ? 'true' : undefined}
+            style={{ '--coven-wordmark-image': `url("${myCovenWordmark}")` } as CSSProperties}
+            viewport={{ once: true, amount: 0.6 }}
+            onViewportEnter={() => setWordmarkVisible(true)}
           >
-            My Coven
-          </h2>
+            <span className="sr-only">My Coven</span>
+            <img
+              src={myCovenWordmark}
+              alt=""
+              width={640}
+              height={211}
+              loading="lazy"
+              className="block h-auto w-52"
+            />
+          </motion.h2>
           <ul className="relative flex flex-wrap items-center justify-center gap-x-3 sm:justify-start">
             {[
               { label: 'Feed', to: COMMUNITY_FEED, icon: Heart },
@@ -211,7 +224,7 @@ export default function Footer() {
               <li key={to}>
                 <Link
                   to={to}
-                  className="coven-press inline-flex min-h-11 items-center gap-1.5 rounded-sm text-xs text-[hsl(var(--footer-lavender))] transition-colors hover:text-[hsl(var(--footer-gold))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="coven-press inline-flex min-h-11 items-center gap-1.5 rounded-sm text-sm text-[hsl(var(--footer-lavender))] transition-colors hover:text-[hsl(var(--footer-gold))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   <Icon className="size-3.5 shrink-0 text-[hsl(var(--footer-gold))]" aria-hidden="true" />
                   {label}

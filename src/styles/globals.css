@@ -610,3 +610,30 @@ html.high-contrast {
 ):not(:disabled, [aria-disabled='true']):active {
   filter: drop-shadow(0 0 7px hsl(var(--hero-gold) / 0.56)) drop-shadow(0 0 14px hsl(var(--hero-gold) / 0.32));
 }
+
+.coven-footer-wordmark img {
+  filter: drop-shadow(0 0 7px hsl(var(--footer-gold) / 0.55));
+}
+
+.coven-footer-wordmark::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(115deg, transparent 42%, hsl(46 100% 94% / 0.78) 50%, transparent 58%) 100% 0 / 250% 100%;
+  -webkit-mask: var(--coven-wordmark-image) center / 100% 100% no-repeat;
+  mask: var(--coven-wordmark-image) center / 100% 100% no-repeat;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .coven-footer-wordmark[data-shimmer='true']::after {
+    animation: coven-wordmark-shimmer 1.8s ease-in-out 0.2s both;
+  }
+}
+
+@keyframes coven-wordmark-shimmer {
+  0% { background-position: 100% 0; opacity: 0; }
+  18%, 76% { opacity: 1; }
+  100% { background-position: 0 0; opacity: 0; }
+}
