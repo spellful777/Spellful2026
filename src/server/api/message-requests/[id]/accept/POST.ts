@@ -21,6 +21,9 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   if (!row) return res.status(404).json({ error: 'Request not found' });
   if (row.status !== 'pending') return res.status(409).json({ error: 'Request already resolved' });
 
-  await db.update(messageRequests).set({ status: 'accepted' }).where(eq(messageRequests.id, reqId));
+  const [result] = await db.update(messageRequests).set({ status: 'accepted' }).where(and(
+    eq(messageRequests.id, reqId), eq(messageRequests.recipientId, myId), eq(messageRequests.status, 'pending'),
+  ));
+  if (result.affectedRows === 0) return res.status(409).json({ error: 'Request already resolved' });
   res.json({ ok: true, conversationId: row.conversationId });
 }

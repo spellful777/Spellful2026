@@ -1,3 +1,4 @@
+import { messageRequests } from '@/server/db/schema.js';
 /**
  * GET /api/conversations/:id/messages
  * Returns all messages in a conversation (caller must be a participant).
@@ -30,8 +31,12 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     .limit(1);
   const cutoff = state?.cutoff ?? 0;
 
+  const [pending] = await db.select({ id: messageRequests.id }).from(messageRequests)
+    .where(and(eq(messageRequests.conversationId, convId), eq(messageRequests.recipientId, myId), eq(messageRequests.status, 'pending')))
+    .limit(1);
+
   // Mark incoming messages as delivered (first fetch) and read (thread is open).
-  await db.execute(sql`
+  if (!pending) await db.execute(sql`
     UPDATE messages
     SET
       delivered_at = COALESCE(delivered_at, NOW()),

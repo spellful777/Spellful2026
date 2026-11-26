@@ -581,7 +581,7 @@ function DesktopThread({
                       )}
                       {/* Hover action bar — reaction + reply + menu */}
                       {!isSystem && !msg.deletedAt && (
-                        <div className={'absolute top-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ' + (isMine ? '-left-24' : '-right-24')}>
+                        <div className={'absolute top-0 flex items-center gap-1 opacity-80 focus:opacity-100 transition-opacity ' + (isMine ? '-left-24' : '-right-24')}>
                           {/* Reaction picker trigger */}
                           <div className="relative">
                             <button
@@ -935,7 +935,7 @@ export default function MessagesPage() {
   const [keyReady, setKeyReady] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'thread'>('list');
   const [folder, setFolder] = useState<Folder>('inbox');
-  type MsgRequest = { id: number; conversationId: number; requesterId: string; status: string; createdAt: string | null; requesterName: string | null; requesterUsername: string | null; requesterImage: string | null };
+  type MsgRequest = { id: number; conversationId: number; requesterId: string; status: string; createdAt: string | null; requesterName: string | null; requesterUsername: string | null; requesterImage: string | null; latest?: { ciphertext: string; iv: string; createdAt: string } | null };
   const [msgRequests, setMsgRequests] = useState<MsgRequest[]>([]);
   const [msgRequestsLoaded, setMsgRequestsLoaded] = useState(false);
   const [requestActionId, setRequestActionId] = useState<number | null>(null);
@@ -1054,7 +1054,7 @@ export default function MessagesPage() {
   }, []);
 
   useEffect(() => {
-    if (myId && inboxFilter === 'groups') void loadGroups();
+    if (myId && inboxFilter !== 'requests') void loadGroups();
   }, [myId, inboxFilter, loadGroups]);
 
   useEffect(() => {
@@ -1147,7 +1147,7 @@ export default function MessagesPage() {
           editedAt: null,
           deletedAt: null,
         };
-        setGroupMessages(prev => [...prev, optimistic]);
+        setGroupMessages(prev => prev.some(message => message.id === optimistic.id) ? prev : [...prev, optimistic]);
         setGroups(prev => prev.map(g => g.id === activeGroupId
           ? { ...g, lastMessage: { content, senderId: myId, createdAt: new Date().toISOString() }, updatedAt: new Date().toISOString() }
           : g));
@@ -1212,6 +1212,89 @@ export default function MessagesPage() {
     }
   }
 
+  const [requestPreviews, setRequestPreviews] = useState<Record<number, string>>({});
+  const [openedRequest, setOpenedRequest] = useState<number | null>(null);
+  const [requestMessages, setRequestMessages] = useState<Message[] | null>(null);
+  const [requestError, setRequestError] = useState(false);
+  const requestRefresh = useRef(0);
+
+  const loadMessageRequests = useCallback(async () => {
+    const generation = ++requestRefresh.current;
+    try {
+      const response = await fetch('/api/message-requests', { credentials: 'include' });
+      if (!response.ok) throw new Error('Could not load requests');
+      const data = await response.json() as { requests: MsgRequest[] };
+      if (generation !== requestRefresh.current) return;
+      setMsgRequests(data.requests);
+      setMsgRequestsLoaded(true);
+      setRequestError(false);
+    } catch {
+      if (generation === requestRefresh.current) setRequestError(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!myId) return;
+    void loadMessageRequests();
+    const interval = setInterval(() => void loadMessageRequests(), 15000);
+    return () => {
+      clearInterval(interval);
+      ++requestRefresh.current;
+    };
+  }, [myId, loadMessageRequests]);
+
+  const [inboxPreviews, setInboxPreviews] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    if (!keyReady) return;
+    let current = true;
+    const keys = new Map<string, Promise<string | undefined>>();
+    async function readPreview(userId: string, encrypted: { ciphertext: string; iv: string }) {
+      let key = keys.get(userId);
+      if (!key) {
+        key = fetch(`/api/keys?userId=${encodeURIComponent(userId)}`, { credentials: 'include' })
+          .then(async response => response.ok ? (await response.json()).publicKey as string | undefined : undefined);
+        keys.set(userId, key);
+      }
+      try {
+        const publicKey = await key;
+        return publicKey ? await decryptMessage(encrypted.ciphertext, encrypted.iv, publicKey) : null;
+      } catch {
+        return null;
+      }
+    }
+    void Promise.all(msgRequests.map(async request => [
+      request.id, (request.latest && await readPreview(request.requesterId, request.latest)) || 'Encrypted message',
+    ] as const)).then(entries => { if (current) setRequestPreviews(Object.fromEntries(entries)); });
+    void Promise.all(conversations.map(async conversation => [
+      conversation.id, (conversation.lastMessage && !conversation.lastMessage.systemMessage && conversation.otherUser
+        && await readPreview(conversation.otherUser.id, conversation.lastMessage)) || 'Encrypted message',
+    ] as const)).then(entries => { if (current) setInboxPreviews(Object.fromEntries(entries)); });
+    return () => { current = false; };
+  }, [conversations, msgRequests, keyReady]);
+
+  useEffect(() => {
+    setRequestMessages(null);
+    if (openedRequest === null) return;
+    const request = msgRequests.find(item => item.id === openedRequest);
+    if (!request) return;
+    const controller = new AbortController();
+    void (async () => {
+      const [thread, keys] = await Promise.all([
+        fetch(`/api/conversations/${request.conversationId}/messages`, { credentials: 'include', signal: controller.signal }),
+        fetch(`/api/keys?userId=${encodeURIComponent(request.requesterId)}`, { credentials: 'include', signal: controller.signal }),
+      ]);
+      if (!thread.ok) throw new Error('Could not read request');
+      const data = await thread.json() as Message[] | { messages: Message[] };
+      const key = keys.ok ? (await keys.json()).publicKey as string | undefined : undefined;
+      const rows = await decryptAll(Array.isArray(data) ? data : data.messages, key ?? null);
+      if (!controller.signal.aborted) setRequestMessages(rows);
+    })().catch(() => { if (!controller.signal.aborted) setRequestError(true); });
+    return () => controller.abort();
+    // A background refresh should not reopen the same request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openedRequest, keyReady]);
+
   // ── Accept / decline a message request (mobile + desktop shared handler) ──
   async function handleMsgRequest(reqId: number, action: 'accept' | 'decline') {
     try {
@@ -1220,13 +1303,19 @@ export default function MessagesPage() {
         credentials: 'include',
       });
       if (r.ok) {
+        ++requestRefresh.current;
         setMsgRequests(prev => prev.filter(x => x.id !== reqId));
+        setOpenedRequest(null);
         if (action === 'accept') {
+          setInboxFilter('all');
+          setFolder('inbox');
           // Refresh inbox so the newly-accepted conversation appears immediately
           await loadConversations(false);
         }
+      } else {
+        await loadMessageRequests();
       }
-    } catch { /* non-fatal */ }
+    } catch { setRequestError(true); }
   }
 
   async function blockUserFromConversation(userId: string) {
@@ -1690,7 +1779,8 @@ export default function MessagesPage() {
       const raw = Array.isArray(responseData) ? responseData : (responseData.messages ?? []);
       const hasMore = !Array.isArray(responseData) ? (responseData.hasMore ?? false) : false;
       const decrypted = await decryptAll(raw, otherUserPublicKey);
-      setMessages(prev => [...decrypted, ...prev]);
+      if (activeConvIdRef.current !== activeConvId) return;
+      setMessages(prev => [...decrypted.filter(message => !prev.some(existing => existing.id === message.id)), ...prev]);
       setHasMoreMessages(hasMore);
       if (decrypted.length) setOldestMsgId(decrypted[0].id);
     } catch { /* non-fatal */ }
@@ -2174,11 +2264,11 @@ export default function MessagesPage() {
     let matchesFilter: boolean;
     if (inboxFilter === 'all') {
       // 'all' hides archived conversations unless they're the active one
-      matchesFilter = !conv.isArchived || conv.id === activeConvId;
+      matchesFilter = !conv.isArchived;
     } else if (inboxFilter === 'unread') {
       matchesFilter = (conv.unreadCount > 0 && !conv.isArchived) || conv.id === activeConvId;
     } else if (inboxFilter === 'archived') {
-      matchesFilter = Boolean(conv.isArchived) || conv.id === activeConvId;
+      matchesFilter = Boolean(conv.isArchived);
     } else if (inboxFilter === 'groups') {
       // Groups tab: show nothing from DM list (groups come from separate state)
       matchesFilter = false;
@@ -2191,6 +2281,61 @@ export default function MessagesPage() {
     }
     return matchesSearch && matchesFilter;
   });
+
+  const matchingGroups = groups.filter(group => {
+    if (!group.name.toLowerCase().includes(inboxSearch.trim().toLowerCase())) return false;
+    if (inboxFilter === 'archived') return group.isArchived;
+    if (group.isArchived) return false;
+    return inboxFilter === 'groups' || inboxFilter === 'all' || (inboxFilter === 'unread' && group.unreadCount > 0);
+  });
+  const inboxRows = [
+    ...filteredConversations.map(conv => ({ conv, group: null, time: conv.lastMessage?.createdAt ?? conv.updatedAt })),
+    ...matchingGroups.map(group => ({ conv: null, group, time: group.lastMessage?.createdAt ?? group.updatedAt })),
+  ].sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
+
+  const renderGroupRow = (group: GroupSummary, idx: number) => (
+<motion.button
+                    key={`group-${group.id}`}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                    onClick={() => void openGroupThread(group.id)}
+                    className="w-full flex items-center gap-3.5 px-4 py-2.5 text-left active:opacity-60 transition-opacity"
+                    style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)', background: activeGroupId === group.id ? 'hsl(var(--muted) / 0.5)' : 'transparent' }}>
+                    <span className="relative flex-shrink-0">
+                      <div className="rounded-full flex items-center justify-center"
+                        style={{ width: 42, height: 42, background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)', border: '2px solid hsl(var(--border))' }}>
+                        {group.avatarUrl ? (
+                          <img src={uploadedMediaUrl(group.avatarUrl)} alt={group.name} className="w-full h-full rounded-full object-cover" />
+                        ) : (
+                          <Users className="w-5 h-5" style={{ color: 'hsl(var(--primary-foreground))' }} />
+                        )}
+                      </div>
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={'text-sm font-semibold truncate ' + (group.unreadCount > 0 ? 'font-bold' : '')}
+                          style={{ color: 'hsl(var(--foreground))' }}>
+                          {group.name}
+                        </span>
+                        <span className="text-xs flex-shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                          {formatTime(group.lastMessage?.createdAt ?? group.updatedAt)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mt-0.5 gap-2">
+                        <span className="text-xs truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                          {group.lastMessage?.content ?? 'No messages yet'}
+                        </span>
+                        {group.unreadCount > 0 && (
+                          <span className="text-xs min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-semibold flex-shrink-0"
+                            style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                            {group.unreadCount > 9 ? '9+' : group.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </motion.button>
+  );
 
   return (
     <>
@@ -2214,28 +2359,14 @@ export default function MessagesPage() {
         <div className={`flex flex-col md:hidden ${mobileView === 'thread' ? 'hidden' : ''}`}
           style={{ minHeight: 'calc(100dvh - 4rem)' }}>
 
-          <img
-            src="/airo-assets/images/logo/horizontal"
-            alt="Spellful"
-            className="ml-5 mt-4 h-10 w-auto object-contain"
-            style={{ filter: 'drop-shadow(0 0 12px hsl(var(--primary) / 0.25))' }}
-          />
-          {/* List header */}
-          <div className="flex items-center justify-between px-5 pt-4 pb-3">
-            <div>
-              <h1 className="font-serif text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                Messages
-                {totalUnread > 0 && (
-                  <span className="ml-2 text-xs font-sans px-2 py-0.5 rounded-full align-middle"
-                    style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
-                    {totalUnread}
-                  </span>
-                )}
-              </h1>
-              <div className="flex items-center gap-1 mt-0.5">
-                <ShieldCheck className="w-3 h-3" style={{ color: 'hsl(var(--success))' }} />
-                <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Private conversation</span>
-              </div>
+          <div className="flex items-center justify-between px-4 pt-2 pb-1">
+            <div className="w-[65px] h-9 overflow-hidden">
+              <img
+                src="/airo-assets/images/logo/horizontal"
+                alt="Spellful"
+                className="max-w-none w-[72px] h-auto -ml-1"
+                style={{ filter: 'drop-shadow(0 0 7px hsl(var(--primary) / 0.25))' }}
+              />
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -2257,6 +2388,20 @@ export default function MessagesPage() {
                 {showCompose ? <XIcon className="w-4 h-4" /> : <PenSquare className="w-4 h-4" />}
               </button>
             </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 px-4 pb-2">
+            <h1 className="font-serif text-2xl font-bold text-foreground">Messages</h1>
+            <button
+              onClick={() => {
+                setInboxFilter(inboxFilter === 'requests' ? 'all' : 'requests');
+                setOpenedRequest(null);
+                void loadMessageRequests();
+              }}
+              aria-pressed={inboxFilter === 'requests'}
+              className="rounded-full border border-border px-3 py-2 text-xs font-semibold text-primary">
+              Requests{msgRequests.length > 0 ? ` (${msgRequests.length})` : ''}
+            </button>
           </div>
 
           {/* Search bar */}
@@ -2291,7 +2436,6 @@ export default function MessagesPage() {
             {([
               { id: 'all' as const, label: 'All' },
               { id: 'unread' as const, label: totalUnread > 0 ? `Unread (${totalUnread})` : 'Unread' },
-              { id: 'requests' as const, label: msgRequests.length > 0 ? `Requests (${msgRequests.length})` : 'Requests' },
               { id: 'groups' as const, label: 'Groups' },
               { id: 'archived' as const, label: 'Archived' },
             ] as { id: 'all' | 'unread' | 'read' | 'requests' | 'groups' | 'archived'; label: string }[]).map(f => (
@@ -2309,34 +2453,16 @@ export default function MessagesPage() {
             ))}
           </div>
 
-          {/* ── Active Now strip ── */}
-          {inboxFilter === 'all' && (
-            <ActiveNowStrip
-              users={friends}
-              presence={batchPresence}
-              onStartConversation={u => void startConversationWith(u)}
-            />
-          )}
-
           {/* ── Mobile requests panel ── */}
           {inboxFilter === 'requests' && (
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
               <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
                 These members want to message you. Accept to move them to your inbox, or decline to remove the request.
               </p>
-              {!msgRequestsLoaded ? (
-                <button
-                  className="text-xs underline"
-                  style={{ color: 'hsl(var(--primary))' }}
-                  onClick={() => {
-                    setMsgRequestsLoaded(true);
-                    fetch('/api/message-requests', { credentials: 'include' })
-                      .then(r => r.ok ? r.json() : null)
-                      .then((d: { requests?: MsgRequest[] } | null) => { if (d?.requests) setMsgRequests(d.requests); })
-                      .catch(() => undefined);
-                  }}>
-                  Load requests
-                </button>
+              {requestError ? (
+                <button className="text-xs underline text-primary" onClick={() => void loadMessageRequests()}>Could not load requests. Retry</button>
+              ) : !msgRequestsLoaded ? (
+                <p role="status" className="text-xs text-muted-foreground">Loading requests…</p>
               ) : msgRequests.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-12 text-center">
                   <MessageCircle className="w-10 h-10 opacity-20" style={{ color: 'hsl(var(--muted-foreground))' }} />
@@ -2345,17 +2471,22 @@ export default function MessagesPage() {
                 </div>
               ) : (
                 msgRequests.map(req => (
-                  <div key={req.id} className="flex items-center gap-3 p-3 rounded-2xl"
-                    style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
-                    <Avatar user={{ id: req.requesterId, name: req.requesterName, username: req.requesterUsername, image: req.requesterImage }} size={44} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>
-                        {req.requesterName ?? req.requesterUsername ?? 'Unknown'}
-                      </p>
-                      {req.requesterUsername && (
-                        <p className="text-xs truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>@{req.requesterUsername}</p>
-                      )}
-                    </div>
+                  <div key={req.id} className="space-y-2 rounded-xl border border-border bg-muted p-3">
+                    <button className="flex w-full items-center gap-3 text-left" onClick={() => setOpenedRequest(openedRequest === req.id ? null : req.id)} aria-expanded={openedRequest === req.id}>
+                      <Avatar user={{ id: req.requesterId, name: req.requesterName, username: req.requesterUsername, image: req.requesterImage }} size={36} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">{req.requesterName ?? req.requesterUsername ?? 'Member'}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{requestPreviews[req.id] ?? 'Encrypted message'}</span>
+                      </span>
+                      {(req.latest?.createdAt ?? req.createdAt) && <span className="text-xs text-muted-foreground">{formatTime((req.latest?.createdAt ?? req.createdAt)!)}</span>}
+                    </button>
+                    {openedRequest === req.id && (
+                      <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg bg-background p-3 text-sm">
+                        {!requestMessages ? 'Loading message…' : requestMessages.map(message => (
+                          <p key={message.id} className="break-words">{message.plaintext ?? 'Encrypted message'}</p>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex gap-1.5">
                       <Button size="sm" variant="default"
                         onClick={() => void handleMsgRequest(req.id, 'accept')}
@@ -2461,7 +2592,7 @@ export default function MessagesPage() {
 
           {/* Conversation rows */}
           <div className="flex-1 overflow-y-auto">
-            {inboxFilter === 'groups' || inboxFilter === 'requests' ? null : loadingConvs ? (
+            {inboxFilter === 'groups' || inboxFilter === 'requests' ? null : loadingConvs || (loadingGroups && inboxRows.length === 0) ? (
               <div className="flex flex-col gap-0 px-0 pt-2">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="flex items-center gap-3.5 px-5 py-3.5 animate-pulse"
@@ -2491,7 +2622,7 @@ export default function MessagesPage() {
                   Try again
                 </button>
               </div>
-            ) : conversations.length === 0 ? (
+            ) : inboxFilter === 'all' && !inboxSearch && !loadingGroups && !groupsLoadError && inboxRows.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-5 px-8 pt-12 pb-8 text-center">
                 {/* Celestial illustration */}
                 <div className="relative w-28 h-28 flex items-center justify-center">
@@ -2560,7 +2691,7 @@ export default function MessagesPage() {
                   Check connection
                 </button>
               </div>
-            ) : filteredConversations.length === 0 ? (
+            ) : inboxRows.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-14 px-8 text-center gap-3">
                 {inboxSearch ? (
                   <>
@@ -2609,20 +2740,8 @@ export default function MessagesPage() {
                 )}
               </div>
             ) : (
-              filteredConversations.map((conv, idx) => (
+              inboxRows.map(({ conv, group }, idx) => group ? renderGroupRow(group, idx) : conv && (
                 <React.Fragment key={conv.id}>
-                  {/* Pinned section header */}
-                  {idx === 0 && conv.isPinned && (
-                    <div className="px-5 pt-3 pb-1">
-                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Pinned</p>
-                    </div>
-                  )}
-                  {/* Section break between pinned and unpinned */}
-                  {idx > 0 && filteredConversations[idx - 1].isPinned && !conv.isPinned && (
-                    <div className="px-5 pt-3 pb-1">
-                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Messages</p>
-                    </div>
-                  )}
                   <div className="relative group" style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
                     <motion.button
                     initial={{ opacity: 0, y: 6 }}
@@ -2630,9 +2749,9 @@ export default function MessagesPage() {
                     transition={{ delay: idx * 0.04 }}
                     onClick={() => conv.otherUser && void openConversation(conv.id, conv.otherUser)}
                     onContextMenu={(e) => { e.preventDefault(); setConvMenuId(convMenuId === conv.id ? null : conv.id); }}
-                    className="w-full flex items-center gap-3.5 px-5 py-4 text-left active:opacity-60 transition-opacity">
+                    className="w-full flex items-center gap-3.5 px-4 py-2.5 text-left active:opacity-60 transition-opacity">
                     <span className="relative flex-shrink-0">
-                      <Avatar user={conv.otherUser} size={52} />
+                      <Avatar user={conv.otherUser} size={42} />
                       {conv.otherUser && (
                         <div className="absolute bottom-0 right-0">
                           <OnlineDot userId={conv.otherUser.id} size={12} presenceData={batchPresence[conv.otherUser.id] ?? null} />
@@ -2661,8 +2780,8 @@ export default function MessagesPage() {
                             ? conv.lastMessage.systemMessage
                               ? richCardPreview(conv.lastMessage.systemMessage)
                               : conv.lastMessage.senderId === session?.user?.id
-                                ? 'You: Encrypted message'
-                                : 'Encrypted message'
+                                ? `You: ${inboxPreviews[conv.id] ?? 'Encrypted message'}`
+                                : inboxPreviews[conv.id] ?? 'Encrypted message'
                             : 'No messages yet'}
                         </span>
                         <span className="flex items-center gap-1 flex-shrink-0">
@@ -2673,7 +2792,7 @@ export default function MessagesPage() {
                               {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
                             </span>
                           ) : conv.lastMessage?.senderId === session?.user?.id ? (
-                            <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>✓✓</span>
+                            <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Sent</span>
                           ) : null}
                         </span>
                       </div>
@@ -2740,6 +2859,15 @@ export default function MessagesPage() {
                 </React.Fragment>
               ))
             )}
+          {/* ── Active Now strip ── */}
+          {inboxFilter === 'all' && (
+            <ActiveNowStrip
+              users={friends}
+              presence={batchPresence}
+              onStartConversation={u => void startConversationWith(u)}
+            />
+          )}
+
             {/* ── Groups action bar ── */}
             {inboxFilter === 'groups' && (
               <div className="flex items-center justify-between px-5 py-2.5" style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
@@ -2785,7 +2913,7 @@ export default function MessagesPage() {
                   <p>Group chats could not be loaded.</p>
                   <button onClick={() => void loadGroups()} className="text-primary">Retry</button>
                 </div>
-              ) : groups.length === 0 ? (
+              ) : matchingGroups.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-4 px-8 pt-12 pb-8 text-center">
                   <div className="w-16 h-16 rounded-full flex items-center justify-center"
                     style={{ background: 'hsl(var(--muted))' }}>
@@ -2803,49 +2931,7 @@ export default function MessagesPage() {
                   </button>
                 </div>
               ) : (
-                groups.map((group, idx) => (
-                  <motion.button
-                    key={group.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.04 }}
-                    onClick={() => void openGroupThread(group.id)}
-                    className="w-full flex items-center gap-3.5 px-5 py-4 text-left active:opacity-60 transition-opacity"
-                    style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)', background: activeGroupId === group.id ? 'hsl(var(--muted) / 0.5)' : 'transparent' }}>
-                    <span className="relative flex-shrink-0">
-                      <div className="rounded-full flex items-center justify-center"
-                        style={{ width: 52, height: 52, background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)', border: '2px solid hsl(var(--border))' }}>
-                        {group.avatarUrl ? (
-                          <img src={uploadedMediaUrl(group.avatarUrl)} alt={group.name} className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                          <Users className="w-5 h-5" style={{ color: 'hsl(var(--primary-foreground))' }} />
-                        )}
-                      </div>
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={'text-sm font-semibold truncate ' + (group.unreadCount > 0 ? 'font-bold' : '')}
-                          style={{ color: 'hsl(var(--foreground))' }}>
-                          {group.name}
-                        </span>
-                        <span className="text-xs flex-shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          {group.memberCount} members
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between mt-0.5 gap-2">
-                        <span className="text-xs truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          {group.lastMessage?.content ?? 'No messages yet'}
-                        </span>
-                        {group.unreadCount > 0 && (
-                          <span className="text-xs min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-semibold flex-shrink-0"
-                            style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
-                            {group.unreadCount > 9 ? '9+' : group.unreadCount}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </motion.button>
-                ))
+                matchingGroups.map(renderGroupRow)
               )
             )}
           </div>

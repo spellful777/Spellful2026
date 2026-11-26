@@ -55,7 +55,7 @@ if (typeof window !== 'undefined' && Capacitor.getPlatform() === 'ios') {
     const authPath = url.pathname.startsWith('/api/auth/');
     const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase();
     const sessionRead = method === 'GET' &&
-      /^\/api\/(conversations|messages|groups|presence|profile|keys)(?:\/|$)/.test(url.pathname);
+      /^\/api\/(conversations|messages|groups|presence|profile|keys|message-requests)(?:\/|$)/.test(url.pathname);
     if ((authPath || sessionRead) && (local || url.origin === apiOrigin)) {
       const target = apiOrigin + url.pathname + url.search;
       const request = input instanceof Request ? new Request(input, init) : new Request(target, init);
