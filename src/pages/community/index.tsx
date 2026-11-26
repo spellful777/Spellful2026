@@ -7,9 +7,10 @@ import { motion } from 'motion/react';
 import {
   Wand2, Layers, Moon, Leaf, Heart, BookOpen, Sparkles, Globe,
   PenLine, Bell, Bookmark, TrendingUp, MessageSquare, HelpCircle,
-  Pin, Lock, ThumbsUp, Eye, ChevronRight, Search, Users, Star, Building2,
+  Pin, Lock, ThumbsUp, Eye, ChevronRight, Search, Users, Star, Building2, Flag,
 } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
+import { ReportModal } from '@/components/ReportModal';
 import MyCoven from '@/components/MyCoven';
 import { UsernameSetupModal } from '@/components/UsernameSetupModal';
 import { useCommunityCategories, useCommunityPosts, useCommunityNotifications, type PostFilter } from '@/hooks/useCommunity';
@@ -122,6 +123,9 @@ const FILTERS: { value: PostFilter; label: string }[] = [
 
 // ── Post card ─────────────────────────────────────────────────────────────────
 export function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'][number] }) {
+  const { session } = useSession();
+  const [reportOpen, setReportOpen] = useState(false);
+  const canReport = Boolean(session?.user.id && session.user.id !== post.userId);
   const tags = post.tags ? post.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
   const ago = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
 
@@ -228,7 +232,21 @@ export function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>[
         <span className="flex items-center gap-1">
           <Eye className="w-3 h-3" /> {post.viewCount}
         </span>
+        {canReport && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="relative z-10 ml-auto"
+            aria-label={`Report Spark: ${post.title}`}
+            onClick={() => setReportOpen(true)}
+          >
+            <Flag className="h-4 w-4" aria-hidden="true" />
+            Report
+          </Button>
+        )}
       </div>
+      {reportOpen && <ReportModal open onClose={() => setReportOpen(false)} targetType="post" targetId={post.id} />}
     </article>
   );
 }
