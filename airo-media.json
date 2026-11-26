@@ -115,7 +115,7 @@
   },
   "logo/favicon": {
     "mediaType": "logo",
-    "currentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/94fc0a9c-3a62-4272-96e8-3f266e2dcb3a/session/d11f79b0-3a54-44da-9c98-1c437186b53c/favicon-transparent-29e49154-f83e-41ea-979d-bd7ff0ddfd95/logo-logo.png",
+    "currentUrl": "/airo-assets/uploads/spellful-icon-32.png",
     "searchQuery": "favicon",
     "alternatives": [
       "/airo-assets/uploads/logo-favicon-f7b9939e.png",
@@ -2504,17 +2504,18 @@
   },
   "pwa/app-icon": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/pwa-app-icon-b5693df9.png",
+    "currentUrl": "/airo-assets/uploads/spellful-icon-512.png",
     "searchQuery": "spellful app logo purple background",
     "alternatives": [],
     "userModified": true,
     "createdAt": "2026-11-19T02:58:57.504Z",
     "lastUpdated": "2026-11-19T02:58:57.504Z",
     "uploadSources": {
-      "/airo-assets/uploads/pwa-app-icon-b5693df9.png": "9udxg5wm87_1795057093100_file_uaX5Z8_YeL.png"
+      "/airo-assets/uploads/pwa-app-icon-b5693df9.png": "9udxg5wm87_1795057093100_file_uaX5Z8_YeL.png",
+      "/airo-assets/uploads/spellful-icon-512.png": "spellful-icon-512.png"
     },
-    "uploadContentHash": "964daa63c9183c190abf7409c031c223bc57e0aa2e2d60502bfaeb9b76f428a6",
-    "caption": "spellful app logo purple background"
+    "uploadContentHash": "0284a51ee7e5815daa34db33fd4038d354c4ddcb127d350534eda29383b7a979",
+    "caption": "Centered purple and gold Spellful app icon"
   },
   "pages/horoscope/story-template-3": {
     "mediaType": "image",
@@ -2588,17 +2589,20 @@
   },
   "pages/og-image": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/pages-og-image-7ff4c824.png",
-    "searchQuery": "spellful text cosmic galaxy stars moon",
-    "alternatives": [],
+    "currentUrl": "/airo-assets/uploads/pages-og-image-dc40a7d2.png",
+    "searchQuery": "spellful mystical moon phases celestial design",
+    "alternatives": [
+      "/airo-assets/uploads/pages-og-image-7ff4c824.png"
+    ],
     "userModified": true,
     "createdAt": "2026-11-19T23:29:08.926Z",
-    "lastUpdated": "2026-11-19T23:29:08.926Z",
+    "lastUpdated": "2026-11-25T20:04:53.761Z",
     "uploadSources": {
-      "/airo-assets/uploads/pages-og-image-7ff4c824.png": "9udxg5wm87_1795130840920_file_xQJZf7hEfP.png"
+      "/airo-assets/uploads/pages-og-image-7ff4c824.png": "9udxg5wm87_1795130840920_file_xQJZf7hEfP.png",
+      "/airo-assets/uploads/pages-og-image-dc40a7d2.png": "9udxg5wm87_1795637073157_file_YBVmHaPG6C.png"
     },
-    "uploadContentHash": "2857e3b9279f0d5399957be8224a7314f01abda4791df2960023deccc681fc0a",
-    "caption": "spellful text cosmic galaxy stars moon"
+    "uploadContentHash": "e8c4a0b1016ba8f50ee86758a3b2e17e0b5c340a93eae891d4e33414dfa024bd",
+    "caption": "spellful mystical moon phases celestial design"
   },
   "pages/messages/welcome-banner": {
     "mediaType": "image",
@@ -2699,19 +2703,20 @@
   },
   "logo/official-white": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/logo-official-white-8b86d830.png",
+    "currentUrl": "/airo-assets/uploads/spellful-wordmark.png",
     "searchQuery": "spellful text with moon and stars",
     "alternatives": [],
     "userModified": true,
     "createdAt": "2026-11-21T15:30:58.699Z",
     "lastUpdated": "2026-11-21T15:30:58.699Z",
     "uploadSources": {
-      "/airo-assets/uploads/logo-official-white-8b86d830.png": "9udxg5wm87_1795275043020_file_klj4T2INWv.png"
+      "/airo-assets/uploads/logo-official-white-8b86d830.png": "9udxg5wm87_1795275043020_file_klj4T2INWv.png",
+      "/airo-assets/uploads/spellful-wordmark.png": "spellful-wordmark.png"
     },
-    "uploadContentHash": "f354144cf6bff9486ec7ce7823a5c2a589d10096ff1ddda602f77ef60095889f",
+    "uploadContentHash": "09293ef9c721b5945ef3a573948d286dbb7f8d1de3023f3ea227710e244d4787",
     "naturalOrientation": "horizontal",
     "surfaceMode": "dark",
-    "darkSurfaceUrl": "/airo-assets/uploads/logo-official-white-8b86d830.png",
+    "darkSurfaceUrl": "/airo-assets/uploads/spellful-wordmark.png",
     "caption": "spellful text with moon and stars"
   },
   "logo/official-black": {
@@ -3121,5 +3126,683 @@
     },
     "uploadContentHash": "f4d039b86f5d8b25a3a5a9ef49848c48fefaa921e8a34aa3f78cfc9f656abcee",
     "caption": "magical crescent moon purple clouds frame"
+  },
+  "email/header-banner": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/email-header-banner-45daac55.jpg",
+    "searchQuery": "spellful mystical logo night sky",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:28:45.421Z",
+    "lastUpdated": "2026-11-25T15:28:45.421Z",
+    "uploadSources": {
+      "/airo-assets/uploads/email-header-banner-45daac55.jpg": "9udxg5wm87_1795620492964_file_JR6rhHXGJr.jpg"
+    },
+    "uploadContentHash": "98581820c763354f9115b3c7eef5fd53f92fec74ca33877a8bc1c6b6f8a57c71",
+    "caption": "spellful mystical logo night sky"
+  },
+  "email/footer-banner": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/email-footer-banner-7fcc502a.jpg",
+    "searchQuery": "moon phases celestial night sky design",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:28:47.898Z",
+    "lastUpdated": "2026-11-25T15:28:47.898Z",
+    "uploadSources": {
+      "/airo-assets/uploads/email-footer-banner-7fcc502a.jpg": "9udxg5wm87_1795620492977_file_aP9xwLK62z.jpg"
+    },
+    "uploadContentHash": "5b96bc0b6dc1498cbd3cee202a8fdeaaf7d529674a497d0cc40d6be98c4334f7",
+    "caption": "moon phases celestial night sky design"
+  },
+  "pages/home/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-home-og-image-a991bb09.jpg",
+    "searchQuery": "spellful mystical cosmic self discovery banner",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:49:49.891Z",
+    "lastUpdated": "2026-11-25T15:49:49.891Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-home-og-image-a991bb09.jpg": "9udxg5wm87_1795621510030_file_RI3zJS8So6.jpg"
+    },
+    "uploadContentHash": "558b2c858f073481dfb04b86c91dc4abe007b710733f9f10d2f7161fdc406b1e",
+    "caption": "spellful mystical cosmic self discovery banner"
+  },
+  "pages/tarot/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-tarot-og-image-9f680aee.jpg",
+    "searchQuery": "spellful tarot cards mystical night sky",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:49:55.917Z",
+    "lastUpdated": "2026-11-25T15:49:55.917Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-tarot-og-image-9f680aee.jpg": "9udxg5wm87_1795621510011_file_kyCnj8ox56.jpg"
+    },
+    "uploadContentHash": "9d467587f39309bf079092fa8840769a42277bcc9db984d7bc4cd8945d6884dd",
+    "caption": "spellful tarot cards mystical night sky"
+  },
+  "pages/dream-journal/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-dream-journal-og-image-494308e7.jpg",
+    "searchQuery": "spellful journal magical book night sky",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:50:01.985Z",
+    "lastUpdated": "2026-11-25T15:50:01.985Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-dream-journal-og-image-494308e7.jpg": "9udxg5wm87_1795621510018_file_y7mkReSs2N.jpg"
+    },
+    "uploadContentHash": "5d98393b29e4a2b1c96353a2ef10bcd12b23e0e03cb6e0887e0578dc5c2a323f",
+    "caption": "spellful journal magical book night sky"
+  },
+  "pages/spells/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-spells-og-image-a7208b0d.jpg",
+    "searchQuery": "spellful spell library magical wand banner",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:50:09.319Z",
+    "lastUpdated": "2026-11-25T15:50:09.319Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-spells-og-image-a7208b0d.jpg": "9udxg5wm87_1795621510026_file_V0vlLrUbyA.jpg"
+    },
+    "uploadContentHash": "b252878460a11f5cdd62bbbd6b8346f66a428f02e3fd419c78cd58aee46211ac",
+    "caption": "spellful spell library magical wand banner"
+  },
+  "pages/moon-calendar/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-moon-calendar-og-image-8f0510f4.jpg",
+    "searchQuery": "spellful moon calendar mystical night sky",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:50:14.895Z",
+    "lastUpdated": "2026-11-25T15:50:14.895Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-moon-calendar-og-image-8f0510f4.jpg": "9udxg5wm87_1795621510033_file_v8MgbllM6P.jpg"
+    },
+    "uploadContentHash": "0b514c49c4b5bccea0320e571f2a776b712aec1819806d6671c7acccd4f59d73",
+    "caption": "spellful moon calendar mystical night sky"
+  },
+  "pages/moon-ritual/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-moon-ritual-og-image-333795e9.jpg",
+    "searchQuery": "spellful moon rituals mystical candle lotus",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:50:20.550Z",
+    "lastUpdated": "2026-11-25T15:50:20.550Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-moon-ritual-og-image-333795e9.jpg": "9udxg5wm87_1795621510375_file_H3zSDEtHJF.jpg"
+    },
+    "uploadContentHash": "ac8e5b693ebe5653f2824cc9ce8a15f9b211f331220cf1a4dc9ae285e42a0d7a",
+    "caption": "spellful moon rituals mystical candle lotus"
+  },
+  "pages/grimoire/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-grimoire-og-image-3baba336.jpg",
+    "searchQuery": "spellful grimoire magical book banner",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:50:26.301Z",
+    "lastUpdated": "2026-11-25T15:50:26.301Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-grimoire-og-image-3baba336.jpg": "9udxg5wm87_1795621344861_file_TAaaulvIrd.jpg"
+    },
+    "uploadContentHash": "8fe4c677dd3fd0fa44f9a66acbe84bdc964bc70b0efdaf447622e83279098f05",
+    "caption": "spellful grimoire magical book banner"
+  },
+  "pages/birth-chart/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-birth-chart-og-image-de58ece5.jpg",
+    "searchQuery": "spellful birth chart zodiac wheel",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:50:31.846Z",
+    "lastUpdated": "2026-11-25T15:50:31.846Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-birth-chart-og-image-de58ece5.jpg": "9udxg5wm87_1795621344863_file_-AWga1wjQ8.jpg"
+    },
+    "uploadContentHash": "3a5898e762e449487aa9307af8cd4c4d906cfb40ed3fcd10b1456e6a193381c8",
+    "caption": "spellful birth chart zodiac wheel"
+  },
+  "pages/herbs/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-herbs-og-image-d4f926b0.jpg",
+    "searchQuery": "spellful herbs magical botanical bundle illustration",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:50:36.450Z",
+    "lastUpdated": "2026-11-25T15:50:36.450Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-herbs-og-image-d4f926b0.jpg": "9udxg5wm87_1795621344865_file_fUhmz4WZO5.jpg"
+    },
+    "uploadContentHash": "afb59a54154b362410211e7e8a436f19ef0cabf215d5e8f136f30cb9478f8735",
+    "caption": "spellful herbs magical botanical bundle illustration"
+  },
+  "pages/horoscope/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-horoscope-og-image-3ff1a9c3.jpg",
+    "searchQuery": "spellful daily horoscope mystical night sky",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:50:41.452Z",
+    "lastUpdated": "2026-11-25T15:50:41.452Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-horoscope-og-image-3ff1a9c3.jpg": "9udxg5wm87_1795621345359_file_SUUnTqVF2J.jpg"
+    },
+    "uploadContentHash": "3869df1f2042199568a1114ba3b33b7da1361897da9e6dda675c564229ad835a",
+    "caption": "spellful daily horoscope mystical night sky"
+  },
+  "pages/community/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-community-og-image-f8b0b452.jpg",
+    "searchQuery": "spellful community mystical moon stars banner",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:50:46.144Z",
+    "lastUpdated": "2026-11-25T15:50:46.144Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-community-og-image-f8b0b452.jpg": "9udxg5wm87_1795621344867_file_qHb4ZtXXxj.jpg"
+    },
+    "uploadContentHash": "c0bf88c0e350afaf846c37817a336da66c5c912c65eeca898f5271fd9e666167",
+    "caption": "spellful community mystical moon stars banner"
+  },
+  "pages/astrology/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-astrology-og-image-f4151fca.jpg",
+    "searchQuery": "spellful astrology zodiac wheel night sky",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:50:51.451Z",
+    "lastUpdated": "2026-11-25T15:50:51.451Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-astrology-og-image-f4151fca.jpg": "9udxg5wm87_1795621345361_file_tJQn8zg4uw.jpg"
+    },
+    "uploadContentHash": "a6b6bbfa8bacaf037b85ee88a7ec29368de69148ad5efb82792173e164f0ff57",
+    "caption": "spellful astrology zodiac wheel night sky"
+  },
+  "pages/profile/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-profile-og-image-5ce55bc6.jpg",
+    "searchQuery": "spellful profile mystical woman moon",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:50:57.774Z",
+    "lastUpdated": "2026-11-25T15:50:57.774Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-profile-og-image-5ce55bc6.jpg": "9udxg5wm87_1795621510381_file_gdXHY8bNVJ.jpg"
+    },
+    "uploadContentHash": "c392469c801473399e03f7b20b907da8b7b15b6a5aa19cbbba6070b46c48579b",
+    "caption": "spellful profile mystical woman moon"
+  },
+  "pages/crystals/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-crystals-og-image-30515c8f.jpg",
+    "searchQuery": "glowing purple crystals magical fantasy game",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:51:02.458Z",
+    "lastUpdated": "2026-11-25T15:51:02.458Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-crystals-og-image-30515c8f.jpg": "9udxg5wm87_1795621344858_file_d7orJa0O5Z.jpg"
+    },
+    "uploadContentHash": "d4bfc3da9c968308ba4c985bb0aef2df0e1e4dada2c21240e1dc62c3aa9fa3ec",
+    "caption": "glowing purple crystals magical fantasy game"
+  },
+  "pages/coven/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-coven-og-image-75afeb4d.jpg",
+    "searchQuery": "spellful coven mystical moon pentagram",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:51:08.822Z",
+    "lastUpdated": "2026-11-25T15:51:08.822Z",
+    "uploadSources": {
+      "/airo-assets/uploads/pages-coven-og-image-75afeb4d.jpg": "9udxg5wm87_1795621345362_file_8X0ZDEzE69.jpg"
+    },
+    "uploadContentHash": "9ece34e1b53cd20e685c21637abcf8c529d8828989808331afca28f47badb38a",
+    "caption": "spellful coven mystical moon pentagram"
+  },
+  "profile-covers/aurora": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-aurora-51cdbb88.jpg",
+    "searchQuery": "purple aurora borealis night sky moon",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:58:34.396Z",
+    "lastUpdated": "2026-11-25T15:58:34.396Z",
+    "uploadSources": {
+      "/airo-assets/uploads/profile-covers-aurora-51cdbb88.jpg": "9udxg5wm87_1795622289100_file_sAkwXCAOyr.jpg"
+    },
+    "uploadContentHash": "7d5399867b185483f18314d0921f70ac0eddb5d1a7b9b1db733b66866a6ea2e7",
+    "caption": "purple aurora borealis night sky moon"
+  },
+  "profile-covers/ember": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-ember-bb11a8df.jpg",
+    "searchQuery": "abstract golden light waves dark background",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:58:37.187Z",
+    "lastUpdated": "2026-11-25T15:58:37.187Z",
+    "uploadSources": {
+      "/airo-assets/uploads/profile-covers-ember-bb11a8df.jpg": "9udxg5wm87_1795622288850_file_s8IPXNP3Fb.jpg"
+    },
+    "uploadContentHash": "d4bc107075e51c4152e8b2d5797f642c1a6de9f596e9351e1107c3857141e2d8",
+    "caption": "abstract golden light waves dark background"
+  },
+  "profile-covers/cosmos": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-cosmos-43213bf2.jpg",
+    "searchQuery": "purple nebula moon stars galaxy",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:58:40.082Z",
+    "lastUpdated": "2026-11-25T15:58:40.082Z",
+    "uploadSources": {
+      "/airo-assets/uploads/profile-covers-cosmos-43213bf2.jpg": "9udxg5wm87_1795622288860_file_7E9qRkcVAm.jpg"
+    },
+    "uploadContentHash": "8627aa8f4391e2fcbccf70efd2d120bfb20f3c77ab22f89e39949eb95b709771",
+    "caption": "purple nebula moon stars galaxy"
+  },
+  "profile-covers/midnight": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-midnight-3ecf12ba.jpg",
+    "searchQuery": "crescent moon stars purple night sky",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:58:42.380Z",
+    "lastUpdated": "2026-11-25T15:58:42.380Z",
+    "uploadSources": {
+      "/airo-assets/uploads/profile-covers-midnight-3ecf12ba.jpg": "9udxg5wm87_1795622288862_file_7yevaqFd76.jpg"
+    },
+    "uploadContentHash": "c67ca6446382c457ae4631b6a9e4cb4d31e513b141be7745a86c5c42cdef9628",
+    "caption": "crescent moon stars purple night sky"
+  },
+  "profile-covers/rose-mist": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-rose-mist-860502ca.jpg",
+    "searchQuery": "full moon glowing purple night sky",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:58:44.840Z",
+    "lastUpdated": "2026-11-25T15:58:44.840Z",
+    "uploadSources": {
+      "/airo-assets/uploads/profile-covers-rose-mist-860502ca.jpg": "9udxg5wm87_1795622288856_file_4LZSUSkriH.jpg"
+    },
+    "uploadContentHash": "6914e1884bbddd05e80ee8bc02116d3346d2152fea84b8aa2a91c7cfcccd98af",
+    "caption": "full moon glowing purple night sky"
+  },
+  "profile-covers/forest": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-forest-08829475.jpg",
+    "searchQuery": "moonlit forest with glowing fireflies",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T15:58:47.432Z",
+    "lastUpdated": "2026-11-25T15:58:47.432Z",
+    "uploadSources": {
+      "/airo-assets/uploads/profile-covers-forest-08829475.jpg": "9udxg5wm87_1795622288854_file_K2bxzqmJfd.jpg"
+    },
+    "uploadContentHash": "dec99d815db267b267d2410805733040d77537309c0239f6bf4d232fcbf145b7",
+    "caption": "moonlit forest with glowing fireflies"
+  },
+  "profile-covers/spellful-default": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-spellful-default-90178350.png",
+    "searchQuery": "mystical spellful logo cosmic night sky",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-25T18:10:18.248Z",
+    "lastUpdated": "2026-11-25T18:10:18.248Z",
+    "uploadSources": {
+      "/airo-assets/uploads/profile-covers-spellful-default-90178350.png": "9udxg5wm87_1795630192679_file_ru2EYvKl7U.png"
+    },
+    "uploadContentHash": "3508fcabfd3d13079b4935283110dca7f6d896ccdb4d9eeb145f5ce50fc3b118",
+    "caption": "mystical spellful logo cosmic night sky"
+  },
+  "social-icons/x": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-x-a7056171.png",
+    "searchQuery": "x logo gold purple circle badge",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:01:06.885Z",
+    "lastUpdated": "2026-11-26T00:01:06.885Z",
+    "uploadSources": {
+      "/airo-assets/uploads/social-icons-x-a7056171.png": "9udxg5wm87_1795651181035_file_1aVxFplG9r.png"
+    },
+    "uploadContentHash": "01239b6662b3ad13b48ac37a749b2b0d7baf598cb0b4d4628d1ad3ed6f3ec7d7",
+    "caption": "x logo gold purple circle badge"
+  },
+  "social-icons/instagram": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-instagram-c0eb0c73.png",
+    "searchQuery": "instagram logo gold gradient circle",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:01:10.921Z",
+    "lastUpdated": "2026-11-26T00:01:10.921Z",
+    "uploadSources": {
+      "/airo-assets/uploads/social-icons-instagram-c0eb0c73.png": "9udxg5wm87_1795651181022_file_komRcZtWk6.png"
+    },
+    "uploadContentHash": "efab68035f6be52dcaade85d2e27a18e6a60aa2e15f19765b2ea0dc7379b42c3",
+    "caption": "instagram logo gold gradient circle"
+  },
+  "social-icons/facebook": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-facebook-58adaf71.png",
+    "searchQuery": "facebook logo gold gradient circle",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:01:13.929Z",
+    "lastUpdated": "2026-11-26T00:01:13.929Z",
+    "uploadSources": {
+      "/airo-assets/uploads/social-icons-facebook-58adaf71.png": "9udxg5wm87_1795651181041_file_Vodlx0mh2t.png"
+    },
+    "uploadContentHash": "3d7719ff93c1f04d95bd86cea7446f34de9df35be946ba7703a78884040c4914",
+    "caption": "facebook logo gold gradient circle"
+  },
+  "social-icons/youtube": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-youtube-c0008564.png",
+    "searchQuery": "gold play button icon purple background",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:01:17.825Z",
+    "lastUpdated": "2026-11-26T00:01:17.825Z",
+    "uploadSources": {
+      "/airo-assets/uploads/social-icons-youtube-c0008564.png": "9udxg5wm87_1795651181047_file_wtTwO-QC45.png"
+    },
+    "uploadContentHash": "e3b8912d272b5c80311526b497ed4e8da893094b42dca6cf3065a1c032517003",
+    "caption": "gold play button icon purple background"
+  },
+  "social-icons/spotify": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-spotify-1034b885.png",
+    "searchQuery": "golden globe icon purple background",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:01:20.486Z",
+    "lastUpdated": "2026-11-26T00:04:34.462Z",
+    "uploadSources": {
+      "/airo-assets/uploads/social-icons-spotify-1034b885.png": "9udxg5wm87_1795651183321_file_lRFCW0rGbp.png"
+    },
+    "uploadContentHash": "08e0f7518ad574646003c4b7ec7b83ae4d4d1fe5749dda92e6341cfa77e01455",
+    "caption": "golden globe icon purple background"
+  },
+  "social-icons/website": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-website-1034b885.png",
+    "searchQuery": "golden globe icon purple background",
+    "alternatives": [
+      "/airo-assets/uploads/social-icons-website-867fc930.png"
+    ],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:01:24.009Z",
+    "lastUpdated": "2026-11-26T01:19:18.502Z",
+    "uploadSources": {
+      "/airo-assets/uploads/social-icons-website-867fc930.png": "9udxg5wm87_1795651183329_file_T7CjCvSR12.png",
+      "/airo-assets/uploads/social-icons-website-1034b885.png": "9udxg5wm87_1795651183321_file_lRFCW0rGbp.png"
+    },
+    "uploadContentHash": "08e0f7518ad574646003c4b7ec7b83ae4d4d1fe5749dda92e6341cfa77e01455",
+    "caption": "golden globe icon purple background"
+  },
+  "social-icons/threads": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-threads-13679388.png",
+    "searchQuery": "concentric circles gold purple gradient icon",
+    "alternatives": [
+      "/airo-assets/uploads/social-icons-threads-6f4bd55d.png"
+    ],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:01:26.873Z",
+    "lastUpdated": "2026-11-26T01:21:52.351Z",
+    "uploadSources": {
+      "/airo-assets/uploads/social-icons-threads-6f4bd55d.png": "9udxg5wm87_1795651183313_file_KcSWsOZdXi.png",
+      "/airo-assets/uploads/social-icons-threads-13679388.png": "9udxg5wm87_1795651181028_file_c6dzf44olJ.png"
+    },
+    "uploadContentHash": "cc2d178fc6df9aa4dcf4bf37cc1f102dab9c987e5b865f141ea6dc9fc185fd38",
+    "caption": "concentric circles gold purple gradient icon"
+  },
+  "decorative/floral-crescent-left": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-floral-crescent-left-b62999a3.png",
+    "searchQuery": "purple flower crescent moon gold stars",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:18:12.413Z",
+    "lastUpdated": "2026-11-26T00:18:12.413Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-floral-crescent-left-b62999a3.png": "9udxg5wm87_1795652276072_file_mIPaiXCGKp.png"
+    },
+    "uploadContentHash": "1e76c23ae33bb01e6431a5aade8da5d05c83d2a2ebe460985da6ab555b0b6f4e",
+    "caption": "purple flower crescent moon gold stars"
+  },
+  "decorative/gold-star-right": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-gold-star-right-78f469c8.png",
+    "searchQuery": "golden eight pointed star ornament",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:18:16.258Z",
+    "lastUpdated": "2026-11-26T00:18:16.258Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-gold-star-right-78f469c8.png": "9udxg5wm87_1795652276068_file_ozvDmwfEdF.png"
+    },
+    "uploadContentHash": "917ce23b1bfba26d58c01902ad16a3f0f7058789260d47f7c7346bf945b86e0a",
+    "caption": "golden eight pointed star ornament"
+  },
+  "decorative/gold-sparkle-small": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-gold-sparkle-small-23f3425b.png",
+    "searchQuery": "gold four pointed star symbol",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:18:19.772Z",
+    "lastUpdated": "2026-11-26T01:06:34.648Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-gold-sparkle-small-23f3425b.png": "9udxg5wm87_1795652276075_file_zirRLW-SPV.png"
+    },
+    "uploadContentHash": "b34893445a38018cd9bb1f16146637e04e068b64539d698534c73169ef3d336a",
+    "caption": "gold four pointed star symbol"
+  },
+  "decorative/floral-crescent-right": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-floral-crescent-right-f6944581.png",
+    "searchQuery": "purple lily moon stars gold",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:18:22.746Z",
+    "lastUpdated": "2026-11-26T00:18:22.746Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-floral-crescent-right-f6944581.png": "9udxg5wm87_1795652276073_file_ZBQogRol6_.png"
+    },
+    "uploadContentHash": "8ce25ff20f87d260ce201ba7cbd9c90c8b97e0e1f215a3d8b3ffd77d33520c4f",
+    "caption": "purple lily moon stars gold"
+  },
+  "decorative/botanical-branch-left": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-botanical-branch-left-ae791aaf.png",
+    "searchQuery": "purple leaves golden berries botanical illustration",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:18:26.128Z",
+    "lastUpdated": "2026-11-26T00:18:26.128Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-botanical-branch-left-ae791aaf.png": "9udxg5wm87_1795652276280_file_UwZYyQ_5Ai.png"
+    },
+    "uploadContentHash": "c0e9f1bb590c5e854de43f80bfe1ecf7248871629fd814577e6255ee8c86228d",
+    "caption": "purple leaves golden berries botanical illustration"
+  },
+  "decorative/botanical-branch-right": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-botanical-branch-right-688859ee.png",
+    "searchQuery": "purple leaves golden berries botanical illustration",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:18:29.092Z",
+    "lastUpdated": "2026-11-26T00:18:29.092Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-botanical-branch-right-688859ee.png": "9udxg5wm87_1795652276076_file_YUq3v3VDx3.png"
+    },
+    "uploadContentHash": "31d486c580f3c9b843b339ed50a094faaef0227da681845ad2a28359cca1ba31",
+    "caption": "purple leaves golden berries botanical illustration"
+  },
+  "decorative/gold-sparkle": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-gold-sparkle-ff677da5.png",
+    "searchQuery": "golden four pointed star shape",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:18:32.236Z",
+    "lastUpdated": "2026-11-26T01:06:34.904Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-gold-sparkle-ff677da5.png": "9udxg5wm87_1795652276283_file_ut0FZcxFRc.png"
+    },
+    "uploadContentHash": "b1221e34b22074e10377c42edc9b8938eaeaecb46fcacc0de668b7b462785fdb",
+    "caption": "golden four pointed star shape"
+  },
+  "decorative/gold-sparkle-right": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-gold-sparkle-right-e70e9bd3.png",
+    "searchQuery": "gold four pointed star shape",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:18:34.885Z",
+    "lastUpdated": "2026-11-26T00:18:34.885Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-gold-sparkle-right-e70e9bd3.png": "9udxg5wm87_1795652276286_file_ZJvT6kQKMW.png"
+    },
+    "uploadContentHash": "7ce496cd2e47f46a3358b0fa18774b1fd3299e32a821f6ff655dd6b1d9a586c9",
+    "caption": "gold four pointed star shape"
+  },
+  "decorative/crescent-divider": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-crescent-divider-57947407.png",
+    "searchQuery": "gold decorative divider with crescent moon",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:18:37.888Z",
+    "lastUpdated": "2026-11-26T01:06:35.142Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-crescent-divider-57947407.png": "9udxg5wm87_1795652276284_file_77COfIM2n9.png"
+    },
+    "uploadContentHash": "d77f454d203ce6b94103a2f6e7f1b2968af44f7c67f1d14882048a57c7cb7f13",
+    "caption": "gold decorative divider with crescent moon"
+  },
+  "decorative/triple-moon": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-triple-moon-c1f8325e.png",
+    "searchQuery": "mystical celestial moon star ornament",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:21:22.864Z",
+    "lastUpdated": "2026-11-26T00:21:22.864Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-triple-moon-c1f8325e.png": "9udxg5wm87_1795652471059_file_81e6_0ssAJ.png"
+    },
+    "uploadContentHash": "0ed48328425515d9b0edcff60c94d7df8ace03582864886a288c01592ac1c66d",
+    "caption": "mystical celestial moon star ornament"
+  },
+  "decorative/star-divider": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-star-divider-c4cacac4.png",
+    "searchQuery": "gold decorative divider with star moons",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:21:28.793Z",
+    "lastUpdated": "2026-11-26T00:21:28.793Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-star-divider-c4cacac4.png": "9udxg5wm87_1795652471061_file_7kB8sCsARA.png"
+    },
+    "uploadContentHash": "5b0587d8910d17effde94415a6c84611a7d8593215204fc454be2e8cfaf767a8",
+    "caption": "gold decorative divider with star moons"
+  },
+  "decorative/botanical-corner-left": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-botanical-corner-left-abc4ba99.png",
+    "searchQuery": "ornate gold branch purple leaves pendant",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:21:33.602Z",
+    "lastUpdated": "2026-11-26T00:21:33.602Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-botanical-corner-left-abc4ba99.png": "9udxg5wm87_1795652471061_file_BCjBoFeve5.png"
+    },
+    "uploadContentHash": "a9a77fb41a77c27d8dfe51aee49169c599a30e168ec9a3159b3f85141b822115",
+    "caption": "ornate gold branch purple leaves pendant"
+  },
+  "decorative/gold-star-sparkles-left": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-gold-star-sparkles-left-9d643292.png",
+    "searchQuery": "golden four-pointed star ornament",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:21:39.046Z",
+    "lastUpdated": "2026-11-26T00:21:39.046Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-gold-star-sparkles-left-9d643292.png": "9udxg5wm87_1795652470812_file_AliWdkU3UD.png"
+    },
+    "uploadContentHash": "cf6d920b511cbc63aed8c8176eee696bb957fdcf1059233f1557317fd08f6c17",
+    "caption": "golden four-pointed star ornament"
+  },
+  "decorative/botanical-corner-right": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-botanical-corner-right-6235b1e7.png",
+    "searchQuery": "ornate gold vine purple leaves decorative",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:21:44.213Z",
+    "lastUpdated": "2026-11-26T00:21:44.213Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-botanical-corner-right-6235b1e7.png": "9udxg5wm87_1795652470814_file_Jtu4cGgNwu.png"
+    },
+    "uploadContentHash": "bb9d425e6b4c4c1dea6a5c757c208ba2cffcb3fc09f08801399fab6ffe8d23ef",
+    "caption": "ornate gold vine purple leaves decorative"
+  },
+  "decorative/moon-phases": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-moon-phases-9055b87c.png",
+    "searchQuery": "moon phases cycle gold stars",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:21:48.870Z",
+    "lastUpdated": "2026-11-26T00:21:48.870Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-moon-phases-9055b87c.png": "9udxg5wm87_1795652470816_file_EuzS_Xa1J5.png"
+    },
+    "uploadContentHash": "287163486490b6c4774a96fcd0542dc04df7cd20253039826876e1178a3d3121",
+    "caption": "moon phases cycle gold stars"
+  },
+  "decorative/lotus-ornament": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-lotus-ornament-f1d69a4f.png",
+    "searchQuery": "purple lotus flower gold crescent moons",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:21:54.138Z",
+    "lastUpdated": "2026-11-26T00:21:54.138Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-lotus-ornament-f1d69a4f.png": "9udxg5wm87_1795652470817_file_FCfDcl5-au.png"
+    },
+    "uploadContentHash": "345d84a78881739f930d45bccd5a4c88436ade19d4efd45acff826a24dc181a0",
+    "caption": "purple lotus flower gold crescent moons"
+  },
+  "decorative/amethyst-crystal": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-amethyst-crystal-d827a64c.png",
+    "searchQuery": "purple crystal lotus with gold accents",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-11-26T00:21:59.446Z",
+    "lastUpdated": "2026-11-26T00:21:59.446Z",
+    "uploadSources": {
+      "/airo-assets/uploads/decorative-amethyst-crystal-d827a64c.png": "9udxg5wm87_1795652470818_file_l39Oj93M5H.png"
+    },
+    "uploadContentHash": "044d876a909ad762297245a8c8016844f4fdc4493fda2f99112c976bd3ecaa34",
+    "caption": "purple crystal lotus with gold accents"
   }
 }

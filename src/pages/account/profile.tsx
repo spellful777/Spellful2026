@@ -1,3 +1,7 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
+import { SPARK_TOPICS as INTEREST_SUGGESTIONS } from '@/lib/spark-topics';
+import { parseProfileFeature, type ProfileFeature } from '@/lib/profile-feature';
+import { ACCENTS, COVER_PRESETS } from '@/lib/profile-look';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -17,19 +21,10 @@ import {
 } from 'lucide-react';
 import { profile_studio as ps } from 'virtual:content';
 import { InstallSection } from '@/components/InstallSpellful';
-import AvatarWithFrame, { FRAME_DEFS, FrameKey } from '@/components/AvatarWithFrame';
+import AvatarWithFrame, { FRAME_DEFS, type FrameKey } from '@/components/AvatarWithFrame';
 
 // ─── Accent swatches ──────────────────────────────────────────────────────────
-const ACCENTS = [
-  { key: 'gold',     label: 'Gold',     color: 'hsl(var(--primary))' },
-  { key: 'lavender', label: 'Lavender', color: 'hsl(var(--accent))' },
-  { key: 'rose',     label: 'Rose',     color: 'hsl(var(--accent-rose))' },
-  { key: 'sage',     label: 'Sage',     color: 'hsl(var(--secondary))' },
-  { key: 'sky',      label: 'Sky',      color: 'hsl(var(--info))' },
-  { key: 'ember',    label: 'Ember',    color: 'hsl(var(--warning))' },
-  { key: 'violet',   label: 'Violet',   color: 'hsl(var(--accent-violet))' },
-  { key: 'moon',     label: 'Moon',     color: 'hsl(var(--muted-foreground))' },
-];
+
 
 // ─── Theme overrides (mirrors /u/[username].tsx) ─────────────────────────────
 const THEME_OVERRIDES: Record<string, React.CSSProperties> = {
@@ -43,7 +38,7 @@ const THEME_OVERRIDES: Record<string, React.CSSProperties> = {
 
 // ─── Default avatar presets ──────────────────────────────────────────────────
 const DEFAULT_AVATARS = [
-  { key: 'default-hat-black',   label: 'Midnight',  src: '/airo-assets/images/avatars/default-hat-black' },
+  { key: 'default-hat-black',   label: 'White Hat',  src: '/airo-assets/images/avatars/default-hat-black' },
   { key: 'default-hat-blue',    label: 'Sapphire',  src: '/airo-assets/images/avatars/default-hat-blue' },
   { key: 'default-hat-green',   label: 'Emerald',   src: '/airo-assets/images/avatars/default-hat-green' },
   { key: 'default-hat-orange',  label: 'Amber',     src: '/airo-assets/images/avatars/default-hat-orange' },
@@ -55,18 +50,10 @@ const DEFAULT_AVATARS = [
 ];
 
 // ─── Cover presets ────────────────────────────────────────────────────────────
-const COVER_PRESETS = [
-  { key: 'midnight', label: 'Midnight',  style: 'linear-gradient(135deg, hsl(var(--footer-bg-darkest)) 0%, hsl(var(--footer-bg-deep)) 50%, hsl(var(--muted)) 100%)' },
-  { key: 'aurora',   label: 'Aurora',    style: 'linear-gradient(135deg, hsl(var(--footer-bg-deep)) 0%, hsl(var(--accent) / 0.4) 50%, hsl(var(--footer-lavender) / 0.3) 100%)' },
-  { key: 'ember',    label: 'Ember',     style: 'linear-gradient(135deg, hsl(var(--card-deep)) 0%, hsl(var(--warning) / 0.25) 60%, hsl(var(--primary) / 0.2) 100%)' },
-  { key: 'forest',   label: 'Forest',    style: 'linear-gradient(135deg, hsl(var(--footer-bg-darkest)) 0%, hsl(var(--secondary) / 0.2) 60%, hsl(var(--muted)) 100%)' },
-  { key: 'cosmos',   label: 'Cosmos',    style: 'linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--footer-bg-deep)) 40%, hsl(var(--accent) / 0.3) 100%)' },
-  { key: 'rose',     label: 'Rose Mist', style: 'linear-gradient(135deg, hsl(var(--card-deep)) 0%, hsl(var(--footer-lavender) / 0.35) 60%, hsl(var(--accent) / 0.2) 100%)' },
-];
+
 
 const WITCH_PATHS = ['Eclectic','Green','Hedge','Kitchen','Sea','Solitary','Ceremonial','Dianic','Faery','Chaos','Cosmic','Shadow'];
 const ZODIAC_SIGNS = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
-const INTEREST_SUGGESTIONS = ['Tarot','Moon Magic','Herbalism','Crystals','Astrology','Divination','Spellwork','Meditation','Dream Work','Shadow Work','Runes','Numerology','Candle Magic','Ritual','Wicca','Paganism'];
 
 const PROFILE_THEMES = [
   { key: '', label: 'Spellful Default', desc: 'Classic dark mystical' },
@@ -79,9 +66,9 @@ const PROFILE_THEMES = [
 ];
 
 // Frame list — single source of truth from AvatarWithFrame.tsx
-const AVATAR_FRAMES = [
-  { key: '' as FrameKey, label: 'None', plusOnly: false },
-  ...FRAME_DEFS.map(f => ({ key: f.key, label: f.label, plusOnly: f.plusOnly })),
+const AVATAR_FRAMES: { key: FrameKey; label: string; plusOnly: boolean }[] = [
+  { key: '', label: 'None', plusOnly: false },
+  ...FRAME_DEFS.map(f => ({ key: f.key, label: f.label, plusOnly: false })),
 ];
 
 const PRACTICE_LABEL_OPTIONS = [
@@ -117,6 +104,7 @@ type FormState = {
   practiceLabels: string[];
   profileStatus: string;
   profileSections: SectionConfig[];
+  featuredAbout: ProfileFeature | null;
   profileLayout: string;
   bioVisibility: string;
   locationVisibility: string;
@@ -180,10 +168,11 @@ const PROFILE_LAYOUTS = [
 const DEFAULT_FORM_REAL: FormState = {
   name: '', bio: '', location: '', pronouns: '', witchPath: '',
   sunSign: '', moonSign: '', risingSign: '', profileVisibility: 'public',
-  accentColor: 'gold', coverPreset: 'midnight', coverImage: null,
+  accentColor: 'gold', coverPreset: 'spellful-default', coverImage: null,
   interestTags: [],
   socialLinks: { instagram: '', tiktok: '', youtube: '', spotify: '', threads: '', tumblr: '', website: '' },
   avatarPreset: '', profileTheme: '', avatarFrame: '', practiceLabels: [], profileStatus: '',
+  featuredAbout: null,
   profileSections: DEFAULT_SECTIONS.map((s, i) => ({ id: s.id, enabled: true, order: i })),
   profileLayout: 'classic',
   bioVisibility: 'public',
@@ -202,6 +191,7 @@ function Collapsible({ title, children, defaultOpen = false }: { title: string; 
   return (
     <div className="rounded-xl overflow-hidden" style={{ border: '1px solid hsl(var(--border))' }}>
       <button
+        aria-expanded={open}
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left transition-colors"
         style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))' }}
@@ -261,12 +251,17 @@ export default function ProfileStudioPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [featureSparkInput, setFeatureSparkInput] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  useEffect(() => () => { if (coverPreview) URL.revokeObjectURL(coverPreview); }, [coverPreview]);
+  const [previewFrame, setPreviewFrame] = useState<FrameKey | null>(null);
+  const [offerUpgrade, setOfferUpgrade] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<StudioTab>('look');
   const [previewMode, setPreviewMode] = useState<'me' | 'public' | 'coven'>('me');
   const [tagInput, setTagInput] = useState('');
-  const [coverUploading, setCoverUploading] = useState(false);
+
 
   // Identity fields
   const [identityForm, setIdentityForm] = useState<IdentityFormState>({
@@ -324,7 +319,9 @@ export default function ProfileStudioPage() {
 
   const [previewStats, setPreviewStats] = useState({ covenCount: 0, followerCount: 0 });
 
+
   const coverRef = useRef<HTMLInputElement>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
   const avatarRef = useRef<HTMLInputElement>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -435,7 +432,7 @@ export default function ProfileStudioPage() {
             risingSign: String(p.risingSign ?? ''),
             profileVisibility: String(p.profileVisibility ?? 'public'),
             accentColor: String(p.accentColor ?? 'gold'),
-            coverPreset: String(p.coverPreset ?? 'midnight'),
+            coverPreset: String(p.coverPreset ?? 'spellful-default'),
             coverImage: p.coverImage ? String(p.coverImage) : null,
             interestTags: Array.isArray(p.interestTags) ? (p.interestTags as string[]) : [],
             socialLinks: {
@@ -453,6 +450,7 @@ export default function ProfileStudioPage() {
             practiceLabels: Array.isArray(p.practiceLabels) ? (p.practiceLabels as string[]) : [],
             profileStatus: String(p.profileStatus ?? ''),
             profileSections: mergedSections,
+            featuredAbout: parseProfileFeature(p.featuredAbout),
             profileLayout: String(p.profileLayout ?? 'classic'),
             bioVisibility: String(p.bioVisibility ?? 'public'),
             locationVisibility: String(p.locationVisibility ?? 'public'),
@@ -667,6 +665,7 @@ export default function ProfileStudioPage() {
   }
 
   // ── Upload helpers ─────────────────────────────────────────────────────────
+
   async function uploadCover(file: File) {
     setCoverUploading(true);
     try {
@@ -705,6 +704,7 @@ export default function ProfileStudioPage() {
 
   // ── Save ───────────────────────────────────────────────────────────────────
   async function handleSave() {
+    if ((previewFrame || coverPreview) && !isPlus) { setOfferUpgrade(true); return; }
     setSaving(true); setError('');
     try {
       const r = await fetch('/api/profile', {
@@ -720,6 +720,7 @@ export default function ProfileStudioPage() {
           profileTheme: form.profileTheme, avatarFrame: form.avatarFrame,
           practiceLabels: form.practiceLabels, profileStatus: form.profileStatus,
           profileSections: form.profileSections,
+          featuredAbout: form.featuredAbout,
           messagePermission,
           invitePermission,
           bioVisibility: form.bioVisibility,
@@ -737,9 +738,13 @@ export default function ProfileStudioPage() {
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const accent = accentCss(form.accentColor);
-  const coverBg = form.coverImage
-    ? { backgroundImage: `url(${form.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : { background: COVER_PRESETS.find(p => p.key === form.coverPreset)?.style ?? COVER_PRESETS[0].style };
+  const visibleCover = coverPreview || form.coverImage;
+  const coverBg = visibleCover
+    ? { backgroundImage: `url(${uploadedMediaUrl(visibleCover)})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { backgroundImage: `url(${COVER_PRESETS.find(p => p.key === form.coverPreset)?.image ?? COVER_PRESETS[0].image})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+  const previewAllowed = previewMode === 'me' || form.profileVisibility === 'public' ||
+    (previewMode === 'coven' && form.profileVisibility === 'coven');
+  const previewUsername = (session?.user as SessionUser | undefined)?.username ?? '';
   const displayName = form.name || session?.user?.name || 'Your Name';
   const initials = displayName.slice(0, 2).toUpperCase();
   const presetSrc = form.avatarPreset ? DEFAULT_AVATARS.find(a => a.key === form.avatarPreset)?.src ?? null : null;
@@ -778,7 +783,7 @@ export default function ProfileStudioPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <main className="min-h-screen py-6 px-4">
+      <main className="studio-profile min-h-screen py-3 px-3">
         <div className="max-w-2xl mx-auto space-y-4">
 
           {/* ── Top bar ── */}
@@ -814,7 +819,7 @@ export default function ProfileStudioPage() {
               ))}
             </div>
             <Link
-              to={`/u/${(session?.user as SessionUser | undefined)?.username ?? ''}`}
+              to={`/u/${encodeURIComponent(previewUsername)}${previewMode === "me" ? "" : "?preview=" + previewMode}`}
               className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}
               title="View live profile"
@@ -824,28 +829,19 @@ export default function ProfileStudioPage() {
             </Link>
           </div>
 
-          {/* ── Live preview card ── */}
-          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid hsl(var(--border))' }}>
-            {/* Cover */}
-            <div
-              className="relative"
-              style={{
-                ...coverBg,
-                height: form.profileLayout === 'immersive' ? '72px' : form.profileLayout === 'compact' ? '40px' : '56px',
-              }}
-            >
-              {/* Avatar overlapping cover — uses shared AvatarWithFrame */}
-              <div className="absolute -bottom-8 left-3">
-                <AvatarWithFrame
-                  src={avatarSrc ?? undefined}
-                  frameKey={form.avatarFrame as FrameKey}
-                  size={56}
-                  isPlus={isPlus}
-                  alt={displayName}
-                />
+          <div className="studio-preview">
+            {previewAllowed ? <>
+              <div className="studio-preview-cover" style={{ ...coverBg, height: form.profileLayout === 'compact' ? 40 : form.profileLayout === 'immersive' ? 64 : 52 }} />
+              <div className="studio-preview-identity">
+                <AvatarWithFrame src={avatarSrc ?? undefined} frameKey={previewFrame ?? form.avatarFrame as FrameKey}
+                  size={52} isPlus={isPlus || !!previewFrame || !!form.avatarFrame} alt={displayName} />
+                <div><strong>{displayName}</strong> <span>{previewUsername && '@' + previewUsername}</span>
+                  {canSee(form.bioVisibility) && form.bio && <p>{form.bio}</p>}
+                </div>
+                <Eye className="size-4 shrink-0" aria-label="Live preview" />
               </div>
-            </div>
-            {/* Profile info */}
+              <details className="studio-preview-fields"><summary>Preview profile details</summary>
+                            {/* Profile info */}
             <div className="pt-9 pb-3 px-4" style={{ background: (THEME_OVERRIDES[form.profileTheme] as Record<string, string> | undefined)?.['--profile-bg'] ?? 'hsl(var(--card))' }}>
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -957,20 +953,16 @@ export default function ProfileStudioPage() {
                 </div>
               )}
             </div>
-          </div>
 
-          {/* ── Preview mode indicator ── */}
-          <div
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs"
-            style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}
-          >
-            <Eye className="w-3.5 h-3.5 shrink-0" style={{ color: 'hsl(var(--primary))' }} />
-            <span style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
-              {previewMode === 'me' && 'Showing your full profile — all fields visible to you as the owner.'}
-              {previewMode === 'coven' && 'Showing what Coven members see — fields set to Coven or Public visibility are shown.'}
-              {previewMode === 'public' && 'Showing what the public sees — only fields set to Public visibility are shown. Private and Coven-only fields are hidden.'}
-            </span>
+              </details>
+            </> : <p className="p-3 text-sm text-muted-foreground">This profile is unavailable to {previewMode === 'public' ? 'the public' : 'Coven members'}.</p>}
           </div>
+          {(previewFrame || coverPreview) && !isPlus && <div className="flex items-center justify-between gap-2 rounded-lg border border-border p-2 text-xs">
+            <span>Plus look preview</span><button type="button" className="text-primary" onClick={() => { setPreviewFrame(null); setCoverPreview(null); setOfferUpgrade(false); }}>Clear preview</button>
+          </div>}
+          {offerUpgrade && <div role="status" className="rounded-lg border border-border p-3 text-sm">
+            Applying this look requires Spellful Plus. <Link className="text-primary underline" to="/plus">Explore Plus</Link>
+          </div>}
 
           {/* ── Completion bar (only if < 5/5) ── */}
           {completionScore < 5 && (
@@ -1030,7 +1022,7 @@ export default function ProfileStudioPage() {
                         <div className="relative flex-shrink-0">
                           <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center" style={{ background: 'hsl(var(--muted))', boxShadow: `0 0 0 2px ${accent}` }}>
                             {avatarSrc
-                              ? <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
+                              ? <img src={uploadedMediaUrl(avatarSrc)} alt={displayName} className="w-full h-full object-cover" />
                               : <span className="text-xl font-serif" style={{ color: accent }}>{initials}</span>
                             }
                           </div>
@@ -1106,9 +1098,9 @@ export default function ProfileStudioPage() {
                       {COVER_PRESETS.map(p => (
                         <button
                           key={p.key}
-                          onClick={() => { set('coverPreset', p.key); set('coverImage', null); }}
+                          onClick={() => { setCoverPreview(null); setOfferUpgrade(false); set('coverPreset', p.key); set('coverImage', null); }}
                           className="relative rounded-lg overflow-hidden transition-all"
-                          style={{ height: '44px', background: p.style, outline: form.coverPreset === p.key && !form.coverImage ? `2px solid ${accent}` : '2px solid transparent', outlineOffset: '2px' }}
+                          style={{ height: '44px', backgroundImage: `url(${p.image})`, backgroundSize: 'cover', backgroundPosition: 'center', outline: form.coverPreset === p.key && !form.coverImage ? `2px solid ${accent}` : '2px solid transparent', outlineOffset: '2px' }}
                           aria-label={p.label}
                           title={p.label}
                         >
@@ -1137,10 +1129,15 @@ export default function ProfileStudioPage() {
                             onChange={e => { const f = e.target.files?.[0]; if (f) void uploadCover(f); }} />
                         </>
                       ) : (
-                        <Link to="/plus" className="inline-flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'hsl(var(--primary))' }}>
-                          <Sparkles className="w-3.5 h-3.5" />
-                          Upload a custom cover with Spellful Plus
-                        </Link>
+                        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm text-primary">
+                          <span className="studio-plus-badge">Plus</span> Preview a custom cover
+                          <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
+                            onChange={event => {
+                              const file = event.currentTarget.files?.[0];
+                              if (file) { setCoverPreview(URL.createObjectURL(file)); setOfferUpgrade(false); }
+                              event.currentTarget.value = '';
+                            }} />
+                        </label>
                       )}
                     </div>
                   </Collapsible>
@@ -1216,40 +1213,36 @@ export default function ProfileStudioPage() {
 
                   {/* Avatar frame */}
                   <Collapsible title="Avatar Frame">
-                    {!isPlus && (
-                      <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-                        Upgrade to Spellful Plus to unlock all 12 exclusive frames.
-                      </p>
-                    )}
                     <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
                       {AVATAR_FRAMES.map(f => {
-                        const isSelected = form.avatarFrame === f.key;
+                        const isSelected = (previewFrame ?? form.avatarFrame) === f.key;
                         const locked = f.plusOnly && !isPlus;
                         return (
                           <button
                             key={f.key}
-                            onClick={() => { if (!locked) set('avatarFrame', f.key); }}
-                            disabled={locked}
+                            onClick={() => {
+                              setOfferUpgrade(false);
+                              if (locked) setPreviewFrame(f.key);
+                              else { setPreviewFrame(null); set('avatarFrame', f.key); }
+                            }}
                             aria-label={`${f.label}${locked ? ' (Plus only)' : ''}`}
                             className="relative flex flex-col items-center gap-1 rounded-xl p-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed"
                             style={{
                               background: isSelected ? `${accent}18` : 'hsl(var(--muted)/0.5)',
                               outline: isSelected ? `2px solid ${accent}` : '2px solid transparent',
                               outlineOffset: '2px',
-                              opacity: locked ? 0.7 : 1,
                             }}
                           >
                             <AvatarWithFrame
-                              frameKey={f.key as FrameKey}
+                              frameKey={f.key}
                               size={44}
-                              isPlus={isPlus}
-                              showLock={locked}
+                              isPlus
                             />
                             <span className="text-[9px] leading-tight text-center line-clamp-2"
                               style={{ color: isSelected ? accent : 'hsl(var(--muted-foreground))' }}>
                               {f.label}
                             </span>
+                            {f.plusOnly && <span className="studio-plus-badge">Plus</span>}
                           </button>
                         );
                       })}
@@ -1286,6 +1279,40 @@ export default function ProfileStudioPage() {
               ════════════════════════════════════════════════════════════ */}
               {activeTab === 'about' && (
                 <>
+                  <Collapsible title="Featured item">
+                    <label className="grid gap-2 text-sm">
+                      Featured item type
+                      <select className="rounded border border-border bg-background p-2" value={form.featuredAbout?.kind ?? ''}
+                        onChange={event => {
+                          const kind = event.target.value;
+                          setFeatureSparkInput(null);
+                          set('featuredAbout', kind === 'playlist' ? { kind, id: playlists[0]?.id ?? 0 }
+                            : kind === 'spark' ? { kind, id: 0 } : kind === 'link' ? { kind, title: '', url: '' } : null);
+                        }}>
+                        <option value="">None</option><option value="playlist">Playlist</option><option value="spark">Spark</option><option value="link">External link</option>
+                      </select>
+                    </label>
+                    {form.featuredAbout?.kind === 'playlist' && <label className="grid gap-1 text-sm">Playlist
+                      <select className="rounded border border-border bg-background p-2" value={form.featuredAbout.id}
+                        onChange={event => set('featuredAbout', { kind: 'playlist', id: Number(event.target.value) })}>
+                        <option value={0}>Choose a playlist</option>
+                        {playlists.map(item => <option key={item.id} value={item.id}>{item.customTitle || item.provider + ' playlist'}</option>)}
+                      </select>
+                    </label>}
+                    {form.featuredAbout?.kind === 'spark' && <label className="grid gap-1 text-sm">Spark link
+                      <Input placeholder="https://spellful.com/community/post/…" value={featureSparkInput ?? (form.featuredAbout.id ? 'https://spellful.com/community/post/' + form.featuredAbout.id : '')}
+                        onChange={event => { setFeatureSparkInput(event.target.value); const id = Number(event.target.value.match(/(?:^|\/community\/post\/)(\d+)\/?$/)?.[1]); set('featuredAbout', { kind: 'spark', id: Number.isSafeInteger(id) ? id : 0 }); }} />
+                    </label>}
+                    {form.featuredAbout?.kind === 'link' && <>
+                      <Field label="Link title"><Input maxLength={100} value={form.featuredAbout.title} onChange={event => {
+                        const current = form.featuredAbout; if (current?.kind === 'link') set('featuredAbout', { ...current, title: event.target.value });
+                      }} /></Field>
+                      <Field label="HTTPS URL"><Input type="url" value={form.featuredAbout.url} onChange={event => {
+                        const current = form.featuredAbout; if (current?.kind === 'link') set('featuredAbout', { ...current, url: event.target.value });
+                      }} /></Field>
+                    </>}
+                  </Collapsible>
+
                   <Collapsible title="Display Name & Bio" defaultOpen>
                     <Field label="Display name">
                       <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Your name or craft name" className="text-sm" />
@@ -2010,7 +2037,7 @@ export default function ProfileStudioPage() {
               <Button
                 size="sm"
                 onClick={() => void handleSave()}
-                disabled={saving || !isDirty}
+                disabled={saving || (!isDirty && !previewFrame && !coverPreview)}
                 className="gap-1.5 text-xs"
                 style={isDirty ? { background: accent, color: 'hsl(var(--primary-foreground))', border: 'none' } : {}}
               >

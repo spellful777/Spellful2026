@@ -1,3 +1,5 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
+import { COMMUNITY_GROUPS } from '@/lib/community-navigation';
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -41,7 +43,7 @@ function PostRow({ post }: { post: ReturnType<typeof useCommunityPosts>['posts']
           className="shrink-0 mt-0.5"
         >
           {post.authorImage ? (
-            <img src={post.authorImage} alt={post.authorName ?? ''} className="w-8 h-8 rounded-full object-cover hover:ring-2 hover:ring-primary/50 transition-all" />
+            <img src={uploadedMediaUrl(post.authorImage)} alt={post.authorName ?? ''} className="w-8 h-8 rounded-full object-cover hover:ring-2 hover:ring-primary/50 transition-all" />
           ) : (
             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground hover:ring-2 hover:ring-primary/50 transition-all">
               {(post.authorName ?? '?')[0].toUpperCase()}
@@ -112,7 +114,7 @@ export default function CategoryPage() {
 
   const { categories, loading: catsLoading } = useCommunityCategories();
   const category = categories.find((c) => c.slug === slug);
-  const { posts, total, pages, loading: postsLoading } = useCommunityPosts(filter, slug, page);
+  const { posts, total, pages, loading: postsLoading } = useCommunityPosts(filter, slug, page, undefined, true, 'discussion');
 
   if (!isPending && !session) {
     navigate('/login?redirect=/community');
@@ -135,8 +137,8 @@ export default function CategoryPage() {
         {/* Header */}
         <section className="border-b border-border bg-[hsl(var(--card-deep))]">
           <div className="max-w-4xl mx-auto px-4 py-8">
-            <Link to="/community" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4">
-              <ArrowLeft className="w-3.5 h-3.5" /> {community_category.backLabel}
+            <Link to={COMMUNITY_GROUPS} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4">
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to groups
             </Link>
 
             {catsLoading ? (

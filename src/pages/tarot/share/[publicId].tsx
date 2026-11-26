@@ -12,7 +12,7 @@
 import { useLoaderData, useParams } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from 'react-router';
-import type { RouteObject } from 'react-router';
+import type { LoaderFunctionArgs } from 'react-router';
 import { tarot_share } from 'virtual:content';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ interface LoaderData {
 
 // ── Loader ────────────────────────────────────────────────────────────────────
 
-export const loader: RouteObject['loader'] = async ({ params }) => {
+export const loader = async ({ params }: LoaderFunctionArgs) => {
   const { publicId } = params as { publicId: string };
   const base = typeof window === 'undefined'
     ? 'http://localhost:3000'

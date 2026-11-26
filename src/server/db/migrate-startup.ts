@@ -33,6 +33,9 @@ export async function runStartupMigration(): Promise<void> {
     const existing = new Set(cols.map((c) => c.Field));
 
     const userAlters: Array<{ col: string; sql: string }> = [
+      { col: 'comment_gifs_enabled', sql: 'ALTER TABLE user ADD COLUMN comment_gifs_enabled BOOLEAN NULL' },
+      { col: 'share_likes_with_coven', sql: 'ALTER TABLE user ADD COLUMN share_likes_with_coven BOOLEAN NOT NULL DEFAULT FALSE' },
+      { col: 'featured_about', sql: 'ALTER TABLE user ADD COLUMN featured_about JSON NULL' },
       { col: 'is_admin',            sql: 'ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT FALSE' },
       { col: 'phone_number',        sql: 'ALTER TABLE user ADD COLUMN phone_number VARCHAR(30)' },
       { col: 'two_factor_enabled',  sql: 'ALTER TABLE user ADD COLUMN two_factor_enabled BOOLEAN DEFAULT FALSE' },
@@ -57,6 +60,7 @@ export async function runStartupMigration(): Promise<void> {
       { col: 'pronouns',            sql: "ALTER TABLE user ADD COLUMN pronouns VARCHAR(60) NOT NULL DEFAULT ''" },
       { col: 'interest_tags',       sql: 'ALTER TABLE user ADD COLUMN interest_tags JSON NULL DEFAULT NULL' },
       { col: 'social_links',        sql: 'ALTER TABLE user ADD COLUMN social_links JSON NULL DEFAULT NULL' },
+      { col: 'share_following',           sql: 'ALTER TABLE user ADD COLUMN share_following BOOLEAN NOT NULL DEFAULT FALSE' },
       { col: 'hide_online_status',        sql: 'ALTER TABLE user ADD COLUMN hide_online_status BOOLEAN DEFAULT FALSE' },
       { col: 'message_permission',         sql: "ALTER TABLE user ADD COLUMN message_permission VARCHAR(20) NOT NULL DEFAULT 'everyone'" },
       { col: 'invite_permission',          sql: "ALTER TABLE user ADD COLUMN invite_permission VARCHAR(20) NOT NULL DEFAULT 'everyone'" },
@@ -626,6 +630,32 @@ export async function runStartupMigration(): Promise<void> {
       console.error(JSON.stringify({ event: 'startup.migration.profile_milestones.error', msg: msg.slice(0, 120) }));
     }
 
+    // ── message_reports table ──────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS message_reports (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          message_id INT NOT NULL,
+          conversation_id INT NOT NULL,
+          reporter_id VARCHAR(36) NOT NULL,
+          reported_user_id VARCHAR(36) NOT NULL,
+          reason VARCHAR(50) NOT NULL,
+          details VARCHAR(500) NULL,
+          status VARCHAR(20) NOT NULL DEFAULT 'pending',
+          reviewed_by VARCHAR(36) NULL,
+          reviewed_at TIMESTAMP NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_msg_report (reporter_id, message_id),
+          INDEX idx_msg_report_reported (reported_user_id),
+          INDEX idx_msg_report_status (status),
+          FOREIGN KEY (reporter_id) REFERENCES user(id) ON DELETE CASCADE,
+          FOREIGN KEY (reported_user_id) REFERENCES user(id) ON DELETE CASCADE
+        )`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.message_reports.error', msg: msg.slice(0, 120) }));
+    }
+
     // ── community_blocks table ──────────────────────────────────────────────
     try {
       await conn.execute(`
@@ -873,6 +903,31 @@ export async function runStartupMigration(): Promise<void> {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(JSON.stringify({ event: 'startup.migration.user_follows.error', msg: msg.slice(0, 120) }));
+    }
+
+    // Merge legacy follows once so restarting cannot restore an unfollowed account.
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS spellful_data_migrations (
+          name VARCHAR(100) PRIMARY KEY
+        ) ENGINE=InnoDB`);
+      const [legacyTable] = await conn.query<mysql.RowDataPacket[]>("SHOW TABLES LIKE 'community_follows'");
+      if (legacyTable.length) {
+        await conn.beginTransaction();
+        const [migration] = await conn.execute<mysql.ResultSetHeader>(
+          "INSERT IGNORE INTO spellful_data_migrations (name) VALUES ('merge_legacy_community_follows')"
+        );
+        if (migration.affectedRows) {
+          await conn.execute(`
+            INSERT IGNORE INTO user_follows (follower_id, following_id, created_at)
+            SELECT follower_id, following_id, created_at FROM community_follows
+          `);
+        }
+        await conn.commit();
+      }
+    } catch (e) {
+      await conn.rollback();
+      console.error(JSON.stringify({ event: 'startup.migration.merge_follows.error', msg: String(e).slice(0, 120) }));
     }
 
     // ── spellful_circles table ────────────────────────────────────────────────
@@ -1276,6 +1331,85 @@ export async function runStartupMigration(): Promise<void> {
       }
     }
 
+    // ── marketing_consent table ──────────────────────────────────────────────
+    // One row per (userId, category). Upserted on every preference change.
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS marketing_consent (
+          id         INT AUTO_INCREMENT PRIMARY KEY,
+          user_id    VARCHAR(36) NOT NULL,
+          category   VARCHAR(40) NOT NULL,
+          consented  TINYINT(1) NOT NULL DEFAULT 0,
+          source     VARCHAR(30) NOT NULL DEFAULT 'signup',
+          version    VARCHAR(20) NOT NULL DEFAULT '1.0',
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_mc_user_cat (user_id, category),
+          INDEX idx_mc_user (user_id),
+          INDEX idx_mc_category (category),
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.marketing_consent.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── moments_email_sends table ─────────────────────────────────────────────
+    // Append-only record of every Moments marketing email dispatched.
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS moments_email_sends (
+          id               INT AUTO_INCREMENT PRIMARY KEY,
+          user_id          VARCHAR(36) NOT NULL,
+          occasion         VARCHAR(40) NOT NULL,
+          dedup_key        VARCHAR(80) NOT NULL,
+          template_variant VARCHAR(40) NOT NULL DEFAULT 'a',
+          status           VARCHAR(20) NOT NULL DEFAULT 'queued',
+          message_id       VARCHAR(255) NULL,
+          error_message    VARCHAR(500) NULL,
+          included_plus_cta TINYINT(1) NOT NULL DEFAULT 0,
+          scheduled_for    VARCHAR(20) NOT NULL,
+          sent_at          TIMESTAMP NULL,
+          created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_mes_dedup (user_id, dedup_key),
+          INDEX idx_mes_user (user_id),
+          INDEX idx_mes_occasion (occasion),
+          INDEX idx_mes_status (status),
+          INDEX idx_mes_scheduled (scheduled_for),
+          INDEX idx_mes_created (created_at),
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.moments_email_sends.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── moments_scheduler_state table ────────────────────────────────────────
+    // Singleton row (id=1) tracking the scheduler's operational state.
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS moments_scheduler_state (
+          id                    INT AUTO_INCREMENT PRIMARY KEY,
+          paused                TINYINT(1) NOT NULL DEFAULT 0,
+          last_run_at           TIMESTAMP NULL,
+          last_run_date         VARCHAR(10) NULL,
+          last_run_sent_count   INT NOT NULL DEFAULT 0,
+          last_run_skip_count   INT NOT NULL DEFAULT 0,
+          last_run_error_count  INT NOT NULL DEFAULT 0,
+          last_run_error_detail VARCHAR(500) NULL,
+          consecutive_fail_days INT NOT NULL DEFAULT 0,
+          updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      // Seed the singleton row if it doesn't exist yet
+      await conn.execute(`INSERT IGNORE INTO moments_scheduler_state (id, paused) VALUES (1, 0)`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.moments_scheduler_state.error', msg: msg.slice(0, 120) }));
+    }
+
     // ── conversation_user_state table ─────────────────────────────────────────
     // Per-user archive, pin, mute, star, and delete-for-me (hidden) state.
     try {
@@ -1290,6 +1424,7 @@ export async function runStartupMigration(): Promise<void> {
           is_starred    TINYINT(1) NOT NULL DEFAULT 0,
           is_hidden     TINYINT(1) NOT NULL DEFAULT 0,
           updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          cleared_through_message_id INT NOT NULL DEFAULT 0,
           UNIQUE KEY uq_cus_user_conv (user_id, conversation_id),
           CONSTRAINT fk_cus_user FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
           CONSTRAINT fk_cus_conv FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
@@ -1299,6 +1434,432 @@ export async function runStartupMigration(): Promise<void> {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(JSON.stringify({ event: 'startup.migration.conversation_user_state.error', msg: msg.slice(0, 120) }));
     }
+
+    try {
+      await conn.execute('ALTER TABLE conversation_user_state ADD COLUMN cleared_through_message_id INT NOT NULL DEFAULT 0');
+    } catch (error) {
+      if ((error as { code?: string }).code !== 'ER_DUP_FIELDNAME') throw error;
+    }
+
+    // ── community_notifications table ─────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS community_notifications (
+          id          INT AUTO_INCREMENT PRIMARY KEY,
+          user_id     VARCHAR(36) NOT NULL,
+          type        VARCHAR(40) NOT NULL,
+          actor_id    VARCHAR(36) NULL,
+          post_id     INT NULL,
+          reply_id    INT NULL,
+          is_read     TINYINT(1) NOT NULL DEFAULT 0,
+          created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_cn_user (user_id),
+          INDEX idx_cn_read (user_id, is_read),
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.community_notifications.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── community_announcements table ─────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS community_announcements (
+          id           INT AUTO_INCREMENT PRIMARY KEY,
+          type         VARCHAR(30) NOT NULL DEFAULT 'announcement',
+          title        VARCHAR(255) NOT NULL,
+          body         TEXT NOT NULL,
+          is_pinned    TINYINT(1) DEFAULT 0,
+          is_published TINYINT(1) DEFAULT 0,
+          published_at TIMESTAMP NULL,
+          scheduled_for TIMESTAMP NULL,
+          author_id    VARCHAR(36) NULL,
+          created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_ann_type (type),
+          INDEX idx_ann_published (is_published, published_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.community_announcements.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── community_suggestions table ───────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS community_suggestions (
+          id                INT AUTO_INCREMENT PRIMARY KEY,
+          user_id           VARCHAR(36) NOT NULL,
+          title             VARCHAR(255) NOT NULL,
+          description       TEXT NOT NULL,
+          status            VARCHAR(30) NOT NULL DEFAULT 'open',
+          vote_count        INT NOT NULL DEFAULT 0,
+          staff_response    TEXT NULL,
+          staff_response_by VARCHAR(36) NULL,
+          staff_response_at TIMESTAMP NULL,
+          created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_sug_status (status),
+          INDEX idx_sug_votes (vote_count),
+          INDEX idx_sug_user (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.community_suggestions.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── community_suggestion_votes table ──────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS community_suggestion_votes (
+          id            INT AUTO_INCREMENT PRIMARY KEY,
+          suggestion_id INT NOT NULL,
+          user_id       VARCHAR(36) NOT NULL,
+          created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_sug_vote (suggestion_id, user_id),
+          INDEX idx_sv_user (user_id),
+          FOREIGN KEY (suggestion_id) REFERENCES community_suggestions(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.community_suggestion_votes.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── community_appeals table ───────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS community_appeals (
+          id          INT AUTO_INCREMENT PRIMARY KEY,
+          user_id     VARCHAR(36) NOT NULL,
+          target_type VARCHAR(30) NOT NULL,
+          target_id   INT NOT NULL,
+          reason      TEXT NOT NULL,
+          status      VARCHAR(20) NOT NULL DEFAULT 'pending',
+          admin_note  TEXT NULL,
+          created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_appeal_user (user_id),
+          INDEX idx_appeal_status (status),
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.community_appeals.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── community_rules table ─────────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS community_rules (
+          id          INT AUTO_INCREMENT PRIMARY KEY,
+          rule_number INT NOT NULL,
+          title       VARCHAR(255) NOT NULL,
+          description TEXT NOT NULL,
+          is_active   TINYINT(1) NOT NULL DEFAULT 1,
+          created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_rule_number (rule_number)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.community_rules.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── community_faq table ───────────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS community_faq (
+          id         INT AUTO_INCREMENT PRIMARY KEY,
+          question   VARCHAR(500) NOT NULL,
+          answer     TEXT NOT NULL,
+          category   VARCHAR(80) NOT NULL DEFAULT 'general',
+          sort_order INT NOT NULL DEFAULT 0,
+          is_active  TINYINT(1) NOT NULL DEFAULT 1,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_faq_category (category),
+          INDEX idx_faq_sort (sort_order)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.community_faq.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── community_glossary table ──────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS community_glossary (
+          id          INT AUTO_INCREMENT PRIMARY KEY,
+          term        VARCHAR(255) NOT NULL,
+          definition  TEXT NOT NULL,
+          category    VARCHAR(80) NOT NULL DEFAULT 'general',
+          sort_order  INT NOT NULL DEFAULT 0,
+          is_active   TINYINT(1) NOT NULL DEFAULT 1,
+          created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_gloss_term (term),
+          INDEX idx_gloss_category (category)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.community_glossary.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── group_conversations table ──────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS group_conversations (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(120) NOT NULL,
+          description VARCHAR(300) NOT NULL DEFAULT '',
+          avatar_url TEXT NULL,
+          created_by VARCHAR(36) NOT NULL,
+          coven_connection_id INT NULL,
+          history_policy VARCHAR(20) NOT NULL DEFAULT 'from_join',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_gc_created_by (created_by),
+          FOREIGN KEY (created_by) REFERENCES user(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.group_conversations.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── group_members table ───────────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS group_members (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          group_id INT NOT NULL,
+          user_id VARCHAR(36) NOT NULL,
+          role VARCHAR(20) NOT NULL DEFAULT 'member',
+          joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          history_visible_from TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          left_at TIMESTAMP NULL,
+          UNIQUE KEY uq_gm_group_user (group_id, user_id),
+          INDEX idx_gm_user (user_id),
+          INDEX idx_gm_group (group_id),
+          FOREIGN KEY (group_id) REFERENCES group_conversations(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.group_members.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── group_messages table ──────────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS group_messages (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          group_id INT NOT NULL,
+          sender_id VARCHAR(36) NOT NULL,
+          content TEXT NOT NULL,
+          system_message TEXT NULL,
+          reply_to_id INT NULL,
+          edited_at TIMESTAMP NULL,
+          deleted_at TIMESTAMP NULL,
+          idempotency_key VARCHAR(128) NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_grpmsg_group (group_id, created_at),
+          INDEX idx_grpmsg_sender (sender_id),
+          UNIQUE KEY uq_grpmsg_idem (group_id, idempotency_key),
+          FOREIGN KEY (group_id) REFERENCES group_conversations(id) ON DELETE CASCADE,
+          FOREIGN KEY (sender_id) REFERENCES user(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.group_messages.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── group_invitations table ───────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS group_invitations (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          group_id INT NOT NULL,
+          inviter_id VARCHAR(36) NOT NULL,
+          invitee_id VARCHAR(36) NOT NULL,
+          status VARCHAR(20) NOT NULL DEFAULT 'pending',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_gi_group_invitee (group_id, invitee_id),
+          INDEX idx_gi_invitee (invitee_id),
+          INDEX idx_gi_inviter (inviter_id),
+          FOREIGN KEY (group_id) REFERENCES group_conversations(id) ON DELETE CASCADE,
+          FOREIGN KEY (inviter_id) REFERENCES user(id) ON DELETE CASCADE,
+          FOREIGN KEY (invitee_id) REFERENCES user(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.group_invitations.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── group_user_state table ────────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS group_user_state (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id VARCHAR(36) NOT NULL,
+          group_id INT NOT NULL,
+          is_archived TINYINT(1) NOT NULL DEFAULT 0,
+          is_pinned TINYINT(1) NOT NULL DEFAULT 0,
+          is_muted TINYINT(1) NOT NULL DEFAULT 0,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_gus_user_group (user_id, group_id),
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+          FOREIGN KEY (group_id) REFERENCES group_conversations(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.group_user_state.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── conversation_drafts table ─────────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS conversation_drafts (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id VARCHAR(36) NOT NULL,
+          conversation_id INT NULL,
+          group_id INT NULL,
+          content TEXT NOT NULL,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_draft_user_conv (user_id, conversation_id),
+          UNIQUE KEY uq_draft_user_group (user_id, group_id),
+          INDEX idx_draft_user (user_id),
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+          FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+          FOREIGN KEY (group_id) REFERENCES group_conversations(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.conversation_drafts.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── messaging_privacy_settings table ─────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS messaging_privacy_settings (
+          user_id VARCHAR(36) PRIMARY KEY,
+          who_can_message VARCHAR(20) NOT NULL DEFAULT 'everyone',
+          presence_visibility VARCHAR(20) NOT NULL DEFAULT 'everyone',
+          show_typing_indicators TINYINT(1) NOT NULL DEFAULT 1,
+          show_read_receipts TINYINT(1) NOT NULL DEFAULT 1,
+          group_invite_permission VARCHAR(20) NOT NULL DEFAULT 'everyone',
+          allow_voice_messages TINYINT(1) NOT NULL DEFAULT 1,
+          notification_preview TINYINT(1) NOT NULL DEFAULT 1,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.messaging_privacy_settings.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── group_message_reactions table ────────────────────────────────────────
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS group_message_reactions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          message_id INT NOT NULL,
+          user_id VARCHAR(36) NOT NULL,
+          emoji VARCHAR(16) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_gmr (message_id, user_id, emoji),
+          FOREIGN KEY (message_id) REFERENCES group_messages(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.group_message_reactions.error', msg: msg.slice(0, 120) }));
+    }
+
+    // ── Performance indexes for group messages ────────────────────────────────
+    for (const { name, sql: indexSql } of [
+      { name: 'idx_grpmsg_group_created', sql: 'ALTER TABLE group_messages ADD INDEX idx_grpmsg_group_created (group_id, created_at)' },
+      { name: 'idx_gm_active', sql: 'ALTER TABLE group_members ADD INDEX idx_gm_active (group_id, left_at)' },
+    ]) {
+      try {
+        await conn.execute(indexSql);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (!msg.includes('Duplicate key name') && !msg.includes('already exists')) {
+          console.error(JSON.stringify({ event: 'startup.migration.group_index.error', name, msg: msg.slice(0, 120) }));
+        }
+      }
+    }
+
+    // ── platform_settings table ──────────────────────────────────────────────
+    // Key-value store for platform-level configuration (messaging config, etc.)
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS platform_settings (
+          key_name   VARCHAR(80) PRIMARY KEY,
+          value      TEXT NOT NULL,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(JSON.stringify({ event: 'startup.migration.platform_settings.error', msg: msg.slice(0, 120) }));
+    }
+    for (const statement of [
+      'ALTER TABLE community_replies ADD COLUMN gif_url TEXT NULL',
+      'ALTER TABLE community_posts ADD COLUMN spark_media JSON NULL',
+      'ALTER TABLE community_posts ADD COLUMN spark_topic VARCHAR(40) NULL',
+      'ALTER TABLE community_posts ADD COLUMN spark_reading JSON NULL',
+      'ALTER TABLE community_posts ADD COLUMN original_spark_id INT NULL',
+      'ALTER TABLE community_posts ADD COLUMN reshare_of INT NULL',
+      'ALTER TABLE community_replies ADD COLUMN suppress_link_preview BOOLEAN NOT NULL DEFAULT FALSE',
+    ]) {
+      try {
+        await conn.execute(statement);
+      } catch (error) {
+        if ((error as { code?: string }).code !== 'ER_DUP_FIELDNAME') throw error;
+      }
+    }
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS spark_media_uploads (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        post_id INT NULL,
+        kind VARCHAR(10) NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+        FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS community_reply_favorites (
+        user_id VARCHAR(36) NOT NULL,
+        reply_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_reply_favorite (user_id, reply_id),
+        FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+        FOREIGN KEY (reply_id) REFERENCES community_replies(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
 
   } catch (e) {
     // Non-fatal — log and continue; the server still starts

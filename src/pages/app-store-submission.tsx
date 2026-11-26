@@ -174,7 +174,7 @@ export default function AppStoreSubmissionPage() {
 
           {/* Keywords */}
           <Section icon={<BookOpen className="w-4 h-4" />} title="Keywords & Discoverability" subtitle="Optimized for search ranking on both stores">
-            <InlineMetaField label="iOS Keywords (100 chars max — comma separated, no spaces)" limit={100} note="Apple App Store Connect keyword field">
+            <InlineMetaField label="iOS Keywords (100 bytes max — comma separated, no spaces)" limit={100} note="Apple App Store Connect keyword field">
               {app_store_submission.keywords.ios}
             </InlineMetaField>
             <div className="rounded-xl p-4 md:p-5" style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
@@ -285,7 +285,7 @@ export default function AppStoreSubmissionPage() {
               <div className="mt-4 p-3 rounded-lg flex items-center gap-2" style={{ background: 'hsl(var(--success) / 0.1)', border: '1px solid hsl(var(--success) / 0.2)' }}>
                 <Check className="w-4 h-4 shrink-0" style={{ color: 'hsl(var(--success))' }} />
                 <p className="text-xs font-medium" style={{ color: 'hsl(var(--success))' }}>
-                  Recommended rating: <strong>4+ (iOS)</strong> / <strong>Everyone (Google Play)</strong>
+                  {app_store_submission.categories.contentRating}
                 </p>
               </div>
             </div>

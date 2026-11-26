@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, ChevronDown, ChevronUp, Sparkles, RotateCcw, Lock, ImageIcon, Upload } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Sparkles, RotateCcw, Lock, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSession } from '@/lib/auth/auth-client';
 import { plus } from 'virtual:content';
@@ -107,8 +107,8 @@ const FEATURE_TABS = [
     icon: '🖼️',
     label: 'Profile Art',
     headline: 'Make your profile unmistakably yours.',
-    body: 'Upload your own avatar photo, custom banner artwork, and choose from 10 exclusive Plus profile frames.',
-    detail: 'Your profile becomes a true reflection of your practice — upload any image as your avatar or banner, and wrap it in a hand-crafted magical frame.',
+    body: 'Upload your own avatar photo as a Plus member. Choose from curated banner presets and 15 color frame styles to personalize your profile.',
+    detail: 'Your profile becomes a true reflection of your practice — upload your own avatar photo, choose a beautiful banner preset, and wrap it in a stunning color frame.',
   },
   {
     id: 'badge',
@@ -122,14 +122,15 @@ const FEATURE_TABS = [
 
 // ── Profile Studio Preview ─────────────────────────────────────────────────────
 
-const PREVIEW_BANNERS: ReadonlyArray<{ id: string; label: string; free: boolean; gradient: string; image?: string; upload?: true }> = [
-  { id: 'upload',   label: 'Upload your own', free: false, gradient: '', upload: true },
-  { id: 'custom',   label: 'Custom Photo',    free: false, gradient: '', image: '/airo-assets/images/pages/home/community-banner' },
-  { id: 'midnight', label: 'Midnight',        free: false, gradient: 'linear-gradient(135deg, hsl(248 60% 12%) 0%, hsl(270 55% 18%) 50%, hsl(248 60% 12%) 100%)' },
-  { id: 'aurora',   label: 'Aurora',          free: false, gradient: 'linear-gradient(135deg, hsl(180 60% 12%) 0%, hsl(259 55% 20%) 50%, hsl(320 50% 18%) 100%)' },
-  { id: 'ember',    label: 'Ember',           free: false, gradient: 'linear-gradient(135deg, hsl(20 60% 14%) 0%, hsl(350 55% 20%) 50%, hsl(270 50% 16%) 100%)' },
-  { id: 'forest',   label: 'Forest',          free: false, gradient: 'linear-gradient(135deg, hsl(140 40% 10%) 0%, hsl(180 45% 14%) 50%, hsl(259 40% 14%) 100%)' },
-  { id: 'free',     label: 'Default',         free: true,  gradient: 'linear-gradient(135deg, hsl(248 41% 10%) 0%, hsl(251 39% 14%) 100%)' },
+const PREVIEW_BANNERS: ReadonlyArray<{ id: string; label: string; free: boolean; gradient: string; image?: string }> = [
+  { id: 'spellful-default', label: 'Spellful Default', free: true,  gradient: '', image: '/airo-assets/images/profile-covers/spellful-default' },
+  { id: 'midnight',  label: 'Midnight',        free: false, gradient: '', image: '/airo-assets/images/profile-covers/midnight' },
+  { id: 'aurora',    label: 'Aurora',          free: false, gradient: '', image: '/airo-assets/images/profile-covers/aurora' },
+  { id: 'ember',     label: 'Ember',           free: false, gradient: '', image: '/airo-assets/images/profile-covers/ember' },
+  { id: 'forest',    label: 'Forest',          free: false, gradient: '', image: '/airo-assets/images/profile-covers/forest' },
+  { id: 'cosmos',    label: 'Cosmos',          free: false, gradient: '', image: '/airo-assets/images/profile-covers/cosmos' },
+  { id: 'rose-mist', label: 'Rose Mist',       free: false, gradient: '', image: '/airo-assets/images/profile-covers/rose-mist' },
+  { id: 'free',      label: 'Default',         free: true,  gradient: 'linear-gradient(135deg, hsl(248 41% 10%) 0%, hsl(251 39% 14%) 100%)' },
 ];
 
 const PREVIEW_ACCENTS = [
@@ -140,10 +141,10 @@ const PREVIEW_ACCENTS = [
   { id: 'free',     varName: '--preview-accent-free',     free: true  },
 ] as const;
 
-// Real frames from AvatarWithFrame — same source of truth as Profile Studio
+// Frames from AvatarWithFrame — all free, no Plus gating
 const PREVIEW_FRAMES = [
-  ...FRAME_DEFS.map((f) => ({ id: f.key, label: f.label, free: !f.plusOnly })),
-  { id: '', label: 'None', free: true },
+  { id: '', label: 'None' },
+  ...FRAME_DEFS.map((f) => ({ id: f.key, label: f.label })),
 ];
 
 function ProfileStudioPreview() {
@@ -154,12 +155,11 @@ function ProfileStudioPreview() {
 
   const currentBanner = PREVIEW_BANNERS.find((b) => b.id === banner) ?? PREVIEW_BANNERS[PREVIEW_BANNERS.length - 1];
   const currentAccent = PREVIEW_ACCENTS.find((a) => a.id === accentId) ?? PREVIEW_ACCENTS[4];
-  const currentFrame  = PREVIEW_FRAMES.find((f) => f.id === frame)   ?? PREVIEW_FRAMES[PREVIEW_FRAMES.length - 1];
 
   const accentCss = `hsl(var(${currentAccent.varName}))`;
   const accentAlpha = (opacity: number) => `hsl(var(${currentAccent.varName}) / ${opacity})`;
 
-  const isPlus = !currentBanner.free || !currentAccent.free || !currentFrame.free;
+  const isPlus = !currentBanner.free || !currentAccent.free;
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid hsl(var(--primary) / 0.25)', background: 'hsl(var(--card))' }}>
@@ -174,7 +174,7 @@ function ProfileStudioPreview() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
             className="h-28 w-full relative overflow-hidden flex items-center justify-center"
-            style={currentBanner.image ? undefined : { background: currentBanner.upload ? 'hsl(var(--muted))' : currentBanner.gradient }}
+            style={currentBanner.image ? undefined : { background: currentBanner.gradient }}
           >
             {currentBanner.image && (
               <img
@@ -184,13 +184,7 @@ function ProfileStudioPreview() {
                 loading="lazy"
               />
             )}
-            {currentBanner.upload && (
-              <div className="flex flex-col items-center gap-1.5 pointer-events-none"
-                style={{ border: '1.5px dashed hsl(var(--border))', borderRadius: '8px', padding: '10px 18px' }}>
-                <Upload className="w-4 h-4" style={{ color: 'hsl(var(--muted-foreground))' }} />
-                <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Your photo here</span>
-              </div>
-            )}
+
           </motion.div>
         </AnimatePresence>
 
@@ -305,16 +299,12 @@ function ProfileStudioPreview() {
                 title={b.label}
                 className="relative w-10 h-7 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary overflow-hidden flex items-center justify-center"
                 style={{
-                  background: b.image ? undefined : b.upload ? 'hsl(var(--muted))' : b.gradient,
-                  border: b.upload ? '1.5px dashed hsl(var(--border))' : undefined,
+                  background: b.image ? undefined : b.gradient,
                   outline: banner === b.id ? `2px solid ${accentCss}` : '2px solid transparent',
                   outlineOffset: '2px',
                 }}
               >
-                {/* Upload swatch */}
-                {b.upload && (
-                  <Upload className="w-3 h-3" style={{ color: 'hsl(var(--muted-foreground))' }} />
-                )}
+
                 {/* Photo banner swatch — show actual image thumbnail */}
                 {b.image && (
                   <>
@@ -378,10 +368,8 @@ function ProfileStudioPreview() {
               >
                 <AvatarWithFrame
                   src={undefined}
-                  frameKey={f.id as Parameters<typeof AvatarWithFrame>[0]['frameKey']}
+                  frameKey={f.id}
                   size={44}
-                  isPlus={true}
-                  showLock={!f.free}
                   alt={f.label}
                 />
                 <span className="text-[10px] leading-tight text-center line-clamp-1"
@@ -393,10 +381,7 @@ function ProfileStudioPreview() {
           </div>
         )}
 
-        <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
-          <Lock className="w-3 h-3 inline mr-1 opacity-60" />
-          Locked options unlock with Spellful Plus
-        </p>
+
       </div>
     </div>
   );

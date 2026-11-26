@@ -2221,6 +2221,87 @@ export const schemas = {
       "howToIntro": z.string(),
       "magicIntro": z.string(),
       "magicDisclaimer": z.string()
+    }),
+    community_help_report_bug: z.object({
+      "meta": z.object({
+        "title": z.string(),
+        "description": z.string()
+      }),
+      "heading": z.string(),
+      "subheading": z.string(),
+      "tabs": z.object({
+        "report": z.string(),
+        "myReports": z.string(),
+        "knownIssues": z.string()
+      }),
+      "form": z.object({
+        "categoryLabel": z.string(),
+        "titleLabel": z.string(),
+        "titlePlaceholder": z.string(),
+        "descriptionLabel": z.string(),
+        "descriptionPlaceholder": z.string(),
+        "stepsLabel": z.string(),
+        "stepsPlaceholder": z.string(),
+        "expectedLabel": z.string(),
+        "expectedPlaceholder": z.string(),
+        "deviceNote": z.string(),
+        "submitButton": z.string(),
+        "submittingButton": z.string()
+      }),
+      "success": z.object({
+        "heading": z.string(),
+        "body": z.string(),
+        "trackingNote": z.string(),
+        "submitAnother": z.string(),
+        "viewReports": z.string()
+      }),
+      "signInPrompt": z.string(),
+      "emptyReports": z.string(),
+      "emptyKnownIssues": z.string(),
+      "staffNoteLabel": z.string()
+    }),
+    community_announcements: z.object({
+      "meta": z.object({
+        "title": z.string(),
+        "description": z.string()
+      }),
+      "heading": z.string(),
+      "subheading": z.string(),
+      "filterAll": z.string(),
+      "filterAnnouncement": z.string(),
+      "filterWhatsNew": z.string(),
+      "filterChangelog": z.string(),
+      "filterEvent": z.string(),
+      "emptyHeading": z.string(),
+      "emptyBody": z.string(),
+      "staffBadge": z.string()
+    }),
+    community_suggestions: z.object({
+      "meta": z.object({
+        "title": z.string(),
+        "description": z.string()
+      }),
+      "heading": z.string(),
+      "subheading": z.string(),
+      "submitButton": z.string(),
+      "filterAll": z.string(),
+      "filterOpen": z.string(),
+      "filterPlanned": z.string(),
+      "filterInProgress": z.string(),
+      "filterShipped": z.string(),
+      "filterDeclined": z.string(),
+      "formHeading": z.string(),
+      "titleLabel": z.string(),
+      "titlePlaceholder": z.string(),
+      "descriptionLabel": z.string(),
+      "descriptionPlaceholder": z.string(),
+      "submitFormButton": z.string(),
+      "cancelButton": z.string(),
+      "emptyHeading": z.string(),
+      "emptyBody": z.string(),
+      "staffResponseLabel": z.string(),
+      "voteLabel": z.string(),
+      "votedLabel": z.string()
     })
   }
 };

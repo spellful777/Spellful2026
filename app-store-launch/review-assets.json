@@ -1,0 +1,117 @@
+{
+  "selected_artwork": {
+    "header": "assets/Spellful_Header_5244x2950.png",
+    "search": "assets/Spellful_Search_1920x1280.jpg"
+  },
+  "screenshot_order": [
+    "01-daily-magic",
+    "02-tarot",
+    "03-grimoire",
+    "04-rituals",
+    "05-calendar",
+    "06-community"
+  ],
+  "screenshot_directories": [
+    "1206x2622",
+    "1320x2868",
+    "2064x2752"
+  ],
+  "private_review_files": [
+    {
+      "path": "assets/Spellful_Header_5244x2950.png",
+      "sha256": "ae9ef6e5c643888266b2581861e46e3e013647236d525a6b937fdff5e471ef66"
+    },
+    {
+      "path": "assets/Spellful_Search_1920x1280.jpg",
+      "sha256": "1a33636739f20183766477bb95120b76f6bcaf13ecf651ca99cf304f8bf71d13"
+    },
+    {
+      "path": "assets/Spellful_Search_1920x1280.png",
+      "sha256": "3abacf7e8c3661392af177f49f7834d8bd31b7a42606ed08cd92d1a0d704fdc0"
+    },
+    {
+      "path": "assets/Spellful_Search_Results_5244x2950.png",
+      "sha256": "14046f029781e51a7898711a21b79b2f01e9c09a78619ac812bd55f65dc47502"
+    },
+    {
+      "path": "assets/brand-and-screenshots/1206x2622/01-daily-magic.png",
+      "sha256": "98ee75392d22225e3f38a7444a2e5bd5df54ad3dd026b1e8a1d4ac2b6752a2b1"
+    },
+    {
+      "path": "assets/brand-and-screenshots/1206x2622/02-tarot.png",
+      "sha256": "4fb609ed3a15d43bde86217e2ee8306b3b5e48c846cb633f903bbb8f8f7b0e85"
+    },
+    {
+      "path": "assets/brand-and-screenshots/1206x2622/03-grimoire.png",
+      "sha256": "ce284ef0fa4f33e8015738c9a0172b6226248b853b51ab0ae75a3a75e0da1b7b"
+    },
+    {
+      "path": "assets/brand-and-screenshots/1206x2622/04-rituals.png",
+      "sha256": "097d20ad93ea9ee04c7b1182288a38fcec53b29296fe953503ad4884aa4877b8"
+    },
+    {
+      "path": "assets/brand-and-screenshots/1206x2622/05-calendar.png",
+      "sha256": "1ac0a590ec93bccd82f9e82e7f16eb781fbb90a30efe4f7acd222f72ad7e29da"
+    },
+    {
+      "path": "assets/brand-and-screenshots/1206x2622/06-community.png",
+      "sha256": "b06944744dec4b0a74e97d2c70f0bfcf2fbdca4bf3c51f570906b1c6144e8f38"
+    },
+    {
+      "path": "assets/brand-and-screenshots/1320x2868/01-daily-magic.png",
+      "sha256": "04e684179f1093e81b777d6541af72171da90be4b6f1cb5c0968c488fb7d01a2"
+    },
+    {
+      "path": "assets/brand-and-screenshots/1320x2868/02-tarot.png",
+      "sha256": "72f0324aee790107c60479faf394d6e5f56b347fbe1e5d087d59d5577d4b87bf"
+    },
+    {
+      "path": "assets/brand-and-screenshots/1320x2868/03-grimoire.png",
+      "sha256": "0fe8b2e048b8fa326d437e4cc2f4806ea7e3d2fd18d9c687695c5f7e00d97762"
+    },
+    {
+      "path": "assets/brand-and-screenshots/1320x2868/04-rituals.png",
+      "sha256": "7c34a6859235a1af17a31c464ac67d0135e345256dec88f0956902ebd8679f70"
+    },
+    {
+      "path": "assets/brand-and-screenshots/1320x2868/05-calendar.png",
+      "sha256": "d9673ba9abe3ffad020488f604aa27b26164a08e14a4fa67bede469e9b4dea38"
+    },
+    {
+      "path": "assets/brand-and-screenshots/1320x2868/06-community.png",
+      "sha256": "d9c4309da67ce224def168ed4e8e169fed0b651afaa46b6d5551b02b3afd9a45"
+    },
+    {
+      "path": "assets/brand-and-screenshots/2064x2752/01-daily-magic.png",
+      "sha256": "4b6b63ac5730e55b289f71f3db8b37850af5eab5718cba9bb6837bebbb6e93fd"
+    },
+    {
+      "path": "assets/brand-and-screenshots/2064x2752/02-tarot.png",
+      "sha256": "fd352e2b24eddcec2abff308ab804f494d994823f97cc1d91ec639b84285a18c"
+    },
+    {
+      "path": "assets/brand-and-screenshots/2064x2752/03-grimoire.png",
+      "sha256": "902cebac57e39a5ca6cb90acc5abe0db04ccc11122e66c97dcf66c7cf5056883"
+    },
+    {
+      "path": "assets/brand-and-screenshots/2064x2752/04-rituals.png",
+      "sha256": "06f99207f5f9bca42c95b5c5bb840b91bfb8dd4e5afc595f99ea4464a0eaa035"
+    },
+    {
+      "path": "assets/brand-and-screenshots/2064x2752/05-calendar.png",
+      "sha256": "364a6346116caad719dbb04efe811168c32579ee84abb09e6b57d478a2acf674"
+    },
+    {
+      "path": "assets/brand-and-screenshots/2064x2752/06-community.png",
+      "sha256": "c0cde8f1961c353ce5925599170ad35e1507fba897080639045230f8db585e0f"
+    },
+    {
+      "path": "assets/brand-and-screenshots/brand-kit.png",
+      "sha256": "61f3d2d81aa2fa4ea73e7803584385da0aa0a10af0c60de55c56f8c54e6c6c0b"
+    },
+    {
+      "path": "assets/brand-and-screenshots/preview.jpg",
+      "sha256": "753bd3897f9dc17aeb872b2b9afbd603d51f95c9e55344266229dffd9fbbf8d8"
+    }
+  ]
+}

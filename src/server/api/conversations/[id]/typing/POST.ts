@@ -8,6 +8,7 @@ import { getAuthSession } from '@/server/lib/auth-session.js';
 import { db } from '@/server/db/client.js';
 import { conversations } from '@/server/db/schema.js';
 import { eq, sql } from 'drizzle-orm';
+import { fanoutToUser } from '@/server/lib/sse-registry.js';
 
 export default async function handler(req: Request<{ id: string }>, res: Response) {
   const session = await getAuthSession(req);
@@ -28,6 +29,15 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     VALUES (${myId}, ${convId}, NOW())
     ON DUPLICATE KEY UPDATE updated_at = NOW()
   `);
+
+  // SSE fanout — push typing event to the other participant's open tabs
+  const otherId = conv.participant1Id === myId ? conv.participant2Id : conv.participant1Id;
+  if (otherId) {
+    fanoutToUser(otherId, {
+      type: 'typing',
+      payload: { conversationId: convId, userId: myId },
+    });
+  }
 
   res.json({ ok: true });
 }

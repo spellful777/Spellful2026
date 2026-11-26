@@ -39,7 +39,7 @@ export default function BlogPage() {
         <meta property="og:description" content="Writings on the old ways — moon magic, shadow work, herbalism, tarot, and the sacred rhythms that bind us to the earth." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
         <script type="application/ld+json">{`{"@context":"https://schema.org","@type":"Blog","@id":"${pageUrl}#webpage","name":"The Grimoire — Spellful","url":"${pageUrl}","isPartOf":{"@id":"${siteUrl}/#website"},"about":{"@id":"${siteUrl}/#organization"}}`}</script>

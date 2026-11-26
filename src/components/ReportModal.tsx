@@ -1,181 +1,147 @@
 /**
- * ReportModal — reason picker + optional details for reporting posts, replies, and profiles.
+ * ReportModal — reusable report dialog for posts, replies, and profiles.
+ * Usage: <ReportModal targetType="post" targetId={post.id} onClose={() => setOpen(false)} />
  */
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Flag } from 'lucide-react';
+import { motion } from 'motion/react';
+import { X, Flag, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const REASONS = [
-  { key: 'harassment',     label: 'Harassment or bullying' },
-  { key: 'hate_speech',    label: 'Hate speech or discrimination' },
-  { key: 'spam',           label: 'Spam or self-promotion' },
-  { key: 'misinformation', label: 'Misinformation or harmful content' },
-  { key: 'inappropriate',  label: 'Inappropriate or explicit content' },
-  { key: 'other',          label: 'Other' },
-] as const;
-
-type ReasonKey = typeof REASONS[number]['key'];
-
-interface ReportModalProps {
-  open: boolean;
-  onClose: () => void;
+interface Props {
   targetType: 'post' | 'reply' | 'profile';
   targetId: number | string;
+  onClose: () => void;
+  /** When provided, the modal only renders when open is true */
+  open?: boolean;
 }
 
-export function ReportModal({ open, onClose, targetType, targetId }: ReportModalProps) {
-  const [reason, setReason] = useState<ReasonKey | null>(null);
+const REASONS = [
+  { value: 'harassment', label: 'Harassment or bullying' },
+  { value: 'hate_speech', label: 'Hate speech or discrimination' },
+  { value: 'spam', label: 'Spam or repetitive content' },
+  { value: 'scams', label: 'Scam or predatory behaviour' },
+  { value: 'misinformation', label: 'Harmful misinformation' },
+  { value: 'inappropriate', label: 'Inappropriate content' },
+  { value: 'other', label: 'Privacy violation or other' },
+];
+
+export function ReportModal({ targetType, targetId, onClose, open }: Props) {
+  const [reason, setReason] = useState('');
   const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [state, setState] = useState<'idle' | 'success' | 'duplicate' | 'error'>('idle');
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
-  function reset() {
-    setReason(null);
-    setDetails('');
-    setSubmitting(false);
-    setState('idle');
-  }
+  if (open === false) return null;
 
-  function handleClose() {
-    reset();
-    onClose();
-  }
-
-  async function submit() {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
     if (!reason) return;
     setSubmitting(true);
+    setError('');
     try {
       const res = await fetch('/api/community/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ targetType, targetId, reason, details: details.trim() || undefined }),
+        body: JSON.stringify({ targetType, targetId, reason, details }),
       });
-      if (res.status === 409) { setState('duplicate'); return; }
-      if (!res.ok) { setState('error'); return; }
-      setState('success');
-    } catch {
-      setState('error');
+      if (res.status === 409) {
+        setSubmitted(true); // already reported — treat as success
+        return;
+      }
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? 'Failed to submit report');
+      }
+      setSubmitted(true);
+    } catch (err) {
+      setError((err as Error).message);
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'hsl(var(--background) / 0.85)', backdropFilter: 'blur(6px)' }}
-          onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 8 }}
-            transition={{ duration: 0.18, ease: 'easeOut' as const }}
-            className="w-full max-w-sm rounded-2xl border p-6 space-y-5"
-            style={{ background: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Flag className="w-4 h-4" style={{ color: 'hsl(var(--destructive))' }} />
-                <h2 className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))' }}>
-                  Report {targetType}
-                </h2>
-              </div>
-              <button onClick={handleClose} className="p-1 rounded-lg transition-colors hover:bg-muted" aria-label="Close">
-                <X className="w-4 h-4" style={{ color: 'hsl(var(--muted-foreground))' }} />
-              </button>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'hsl(var(--background) / 0.8)', backdropFilter: 'blur(4px)' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+          <Flag className="w-5 h-5 text-destructive" />
+          <h2 className="text-base font-semibold text-foreground flex-1">Report {targetType}</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5">
+          {submitted ? (
+            <div className="text-center py-4">
+              <CheckCircle2 className="w-10 h-10 mx-auto mb-3" style={{ color: 'hsl(var(--success))' }} />
+              <p className="font-medium text-foreground mb-1">Report submitted</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Thank you. Reports are reviewed confidentially by our moderation team.
+              </p>
+              <Button onClick={onClose}>Done</Button>
             </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Reports are confidential. Please select the reason that best describes the issue.
+              </p>
 
-            {state === 'success' ? (
-              <div className="py-4 text-center space-y-2">
-                <p className="text-2xl">✅</p>
-                <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>Report submitted</p>
-                <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  Our moderators will review it. Thank you for helping keep Spellful safe.
-                </p>
-                <Button size="sm" variant="outline" onClick={handleClose} className="mt-2">Close</Button>
+              {error && <p className="text-xs text-destructive">{error}</p>}
+
+              <div className="space-y-2">
+                {REASONS.map(r => (
+                  <label key={r.value} className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="reason"
+                      value={r.value}
+                      checked={reason === r.value}
+                      onChange={() => setReason(r.value)}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm text-foreground">{r.label}</span>
+                  </label>
+                ))}
               </div>
-            ) : state === 'duplicate' ? (
-              <div className="py-4 text-center space-y-2">
-                <p className="text-2xl">🔔</p>
-                <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>Already reported</p>
-                <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  You've already submitted a report for this content. Moderators are reviewing it.
-                </p>
-                <Button size="sm" variant="outline" onClick={handleClose} className="mt-2">Close</Button>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  Additional details <span className="text-muted-foreground">(optional)</span>
+                </label>
+                <textarea
+                  value={details}
+                  onChange={e => setDetails(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  placeholder="Any additional context that may help our team"
+                  className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                />
               </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <p className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Why are you reporting this?
-                  </p>
-                  <div className="space-y-1.5">
-                    {REASONS.map((r) => (
-                      <button
-                        key={r.key}
-                        onClick={() => setReason(r.key)}
-                        className="w-full text-left px-3 py-2 rounded-xl text-sm border transition-all"
-                        style={{
-                          borderColor: reason === r.key ? 'hsl(var(--destructive))' : 'hsl(var(--border))',
-                          background: reason === r.key ? 'hsl(var(--destructive) / 0.08)' : 'hsl(var(--muted))',
-                          color: reason === r.key ? 'hsl(var(--destructive))' : 'hsl(var(--foreground))',
-                        }}
-                      >
-                        {r.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
-                <div className="space-y-1.5">
-                  <p className="text-xs font-medium" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Additional details <span className="font-normal">(optional)</span>
-                  </p>
-                  <textarea
-                    value={details}
-                    onChange={(e) => setDetails(e.target.value.slice(0, 500))}
-                    rows={3}
-                    placeholder="Describe what you saw…"
-                    className="w-full text-sm rounded-xl px-3 py-2 resize-none border"
-                    style={{ background: 'hsl(var(--muted))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))' }}
-                  />
-                  <p className="text-xs text-right" style={{ color: 'hsl(var(--muted-foreground))' }}>{details.length}/500</p>
-                </div>
-
-                {state === 'error' && (
-                  <p className="text-xs" style={{ color: 'hsl(var(--destructive))' }}>Something went wrong. Please try again.</p>
-                )}
-
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleClose} className="flex-1">Cancel</Button>
-                  <Button
-                    size="sm"
-                    disabled={!reason || submitting}
-                    onClick={submit}
-                    className="flex-1"
-                    style={{
-                      background: 'hsl(var(--destructive))',
-                      color: 'hsl(var(--destructive-foreground))',
-                      opacity: !reason || submitting ? 0.5 : 1,
-                    }}
-                  >
-                    {submitting ? 'Submitting…' : 'Submit report'}
-                  </Button>
-                </div>
-              </>
-            )}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+              <div className="flex gap-2 pt-1">
+                <Button type="submit" disabled={submitting || !reason} className="flex-1">
+                  {submitting ? 'Submitting…' : 'Submit Report'}
+                </Button>
+                <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+              </div>
+            </form>
+          )}
+        </div>
+      </motion.div>
+    </div>
   );
 }

@@ -1,3 +1,5 @@
+import { postAudienceAllows } from '@/server/lib/community-post-access.js';
+import { getAuthSession } from '@/server/lib/auth-session.js';
 /**
  * GET /api/community/hearth
  *
@@ -7,7 +9,7 @@
  *   featured    - most-liked visible post from the last 7 days
  *   recent      - 4 most-recent visible posts (excluding featured)
  *
- * Auth: optional - unauthenticated callers get the same data.
+ * Auth is optional. Featured and recent posts respect the viewer’s access.
  */
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
@@ -100,11 +102,14 @@ function getMoonPhase(date: Date): { phase: string; emoji: string; daysUntil: nu
 }
 
 // -- Handler ------------------------------------------------------------------
-export default async function handler(_req: Request, res: Response) {
+export default async function handler(req: Request, res: Response) {
   if (!db) return res.status(503).json({ error: 'Database unavailable' });
 
   try { await runStartupMigration(); } catch { /* may already be complete */ }
 
+  const session = await getAuthSession(req);
+  res.set("Cache-Control", "private, no-store");
+  const audience = postAudienceAllows(session?.user?.id);
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
 
@@ -156,7 +161,7 @@ export default async function handler(_req: Request, res: Response) {
       .from(communityPosts)
       .leftJoin(user, eq(communityPosts.userId, user.id))
       .leftJoin(communityCategories, eq(communityPosts.categoryId, communityCategories.id))
-      .where(and(eq(communityPosts.isHidden, false), gt(communityPosts.createdAt, sevenDaysAgo)))
+      .where(and(eq(communityPosts.isHidden, false), audience, gt(communityPosts.createdAt, sevenDaysAgo)))
       .orderBy(desc(communityPosts.likeCount))
       .limit(1);
     featured = fp ?? null;
@@ -166,8 +171,7 @@ export default async function handler(_req: Request, res: Response) {
   type RecentPost = { id: number; title: string; replyCount: number | null; username: string | null; createdAt: Date | null; categoryName: string | null };
   let recent: RecentPost[] = [];
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const conditions: any[] = [eq(communityPosts.isHidden, false)];
+    const conditions = [eq(communityPosts.isHidden, false), audience];
     if (featured) conditions.push(ne(communityPosts.id, featured.id));
     recent = await db
       .select({

@@ -1,5 +1,8 @@
+import { useNavigate } from 'react-router';
+import { startSparkReadingDraft } from '@/lib/spark-reading-draft';
 import { tarot } from 'virtual:content';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import MoonNightSky from '@/components/MoonNightSky';
@@ -1160,10 +1163,15 @@ function GuestInvitePanel() {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function TarotPage() {
+  const { hash, key } = useLocation();
+  useEffect(() => {
+    if (hash === '#reading') document.getElementById('reading')?.scrollIntoView();
+  }, [hash, key]);
   const { isAuthenticated } = useSession();
   const [selectedSpread, setSelectedSpread] = useState<SpreadDefinition>(SPREADS[0]);
   const [phase, setPhase] = useState<'select' | 'shuffle' | 'draw' | 'reading'>('select');
   const [intention, setIntention] = useState('');
+  const navigate = useNavigate();
   const [drawnCards, setDrawnCards] = useState<DrawnCard[]>([]);
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const [selectedCard, setSelectedCard] = useState<DrawnCard | null>(null);
@@ -1369,15 +1377,17 @@ export default function TarotPage() {
         <meta property="og:description" content={tarot.seo.description} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/tarot" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/tarot/og-image" />
+        <meta property="og:image:secure_url" content="https://spellful.com/airo-assets/images/pages/tarot/og-image" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content={tarot.seo.title} />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:alt" content="Spellful Tarot — Free Readings &amp; Card Meanings" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={tarot.seo.title} />
         <meta name="twitter:description" content={tarot.seo.description} />
-        <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
-        <meta name="twitter:image:alt" content={tarot.seo.title} />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
+        <meta name="twitter:image:alt" content="Spellful logo" />
         <link rel="canonical" href="https://spellful.com/tarot" />
       </Helmet>
 
@@ -1663,7 +1673,16 @@ export default function TarotPage() {
                 </AnimatePresence>
 
                 {allFlipped && (
+                  <>
+                  <Button type="button" className="min-h-11" onClick={() => navigate(startSparkReadingDraft({
+                    type: 'tarot', spreadType: selectedSpread.id, includePositions: true, includeInterpretations: false,
+                    cards: drawnCards.map((item, displayOrder) => ({
+                      cardId: item.card.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+                      reversed: item.reversed, displayOrder,
+                    })),
+                  }))}>Spark this reading</Button>
                   <StoryWeaver drawn={drawnCards} spreadName={selectedSpread.name} onShare={() => setShareTarotOpen(true)} />
+                  </>
                 )}
 
                 <div className="flex flex-wrap items-center justify-center gap-3 pt-2">

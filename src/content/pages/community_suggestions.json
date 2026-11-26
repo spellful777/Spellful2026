@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "title": "Feature Requests — Spellful Community",
+    "description": "Submit and vote on feature requests for Spellful. See what's planned, in progress, and shipped."
+  },
+  "heading": "Feature Requests",
+  "subheading": "Share your ideas and vote on what gets built next",
+  "submitButton": "Submit Idea",
+  "filterAll": "All",
+  "filterOpen": "Open",
+  "filterPlanned": "Planned",
+  "filterInProgress": "In Progress",
+  "filterShipped": "Shipped",
+  "filterDeclined": "Declined",
+  "formHeading": "Submit a Feature Request",
+  "titleLabel": "Title",
+  "titlePlaceholder": "Short summary of your idea",
+  "descriptionLabel": "Description",
+  "descriptionPlaceholder": "Describe the feature and why it would be useful",
+  "submitFormButton": "Submit",
+  "cancelButton": "Cancel",
+  "emptyHeading": "No suggestions yet",
+  "emptyBody": "Be the first to share an idea!",
+  "staffResponseLabel": "Spellful Team Response",
+  "voteLabel": "Vote",
+  "votedLabel": "Voted"
+}

@@ -1,16 +1,9 @@
-/**
- * DELETE /api/conversations/:id
- * Soft-deletes a conversation for the requesting participant.
- * Both participants can independently delete; when both have deleted it is
- * physically removed by a future cleanup job. For now we hard-delete immediately
- * since there is no per-participant soft-delete column — the conversation and all
- * its messages are removed (messages cascade via FK).
- */
+/** Delete the shared thread from the requesting participant's inbox only. */
 import type { Request, Response } from 'express';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 import { db } from '@/server/db/client.js';
 import { conversations } from '@/server/db/schema.js';
-import { eq, and, or } from 'drizzle-orm';
+import { eq, and, or, sql } from 'drizzle-orm';
 
 export default async function handler(req: Request<{ id: string }>, res: Response) {
   const session = await getAuthSession(req);
@@ -34,8 +27,16 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
 
   if (!conv) return res.status(404).json({ error: 'Conversation not found' });
 
-  // Hard-delete — messages cascade via FK
-  await db.delete(conversations).where(eq(conversations.id, convId));
+  await db.execute(sql`
+    INSERT INTO conversation_user_state (user_id, conversation_id, is_hidden, cleared_through_message_id)
+    SELECT ${myId}, ${convId}, 1, COALESCE(MAX(id), 0)
+    FROM messages WHERE conversation_id = ${convId}
+    ON DUPLICATE KEY UPDATE
+      is_hidden = 1,
+      is_archived = 0,
+      is_pinned = 0,
+      cleared_through_message_id = GREATEST(cleared_through_message_id, VALUES(cleared_through_message_id))
+  `);
 
   res.json({ ok: true });
 }

@@ -43,7 +43,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'celestial-time-machine': 'Celestial Time Machine',
   'post':              'Post',
   'new':               'New Post',
-  'bookmarks':         'Bookmarks',
+  'bookmarks':         'Favorites',
   'notifications':     'Notifications',
   'submit':            'Submit a Spell',
 };
@@ -101,7 +101,7 @@ function buildCrumbs(pathname: string): Crumb[] {
 }
 
 export default function Breadcrumbs() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
 
   // Don't render on skipped pages or top-level pages (depth < 2)
   if (shouldSkipPath(pathname)) return null;
@@ -109,6 +109,9 @@ export default function Breadcrumbs() {
   if (segments.length < 1) return null;
 
   const crumbs = buildCrumbs(pathname);
+  if (pathname === '/community/new') {
+    crumbs[crumbs.length - 1].label = new URLSearchParams(search).get('kind') === 'spark' ? 'Spark it' : 'New Discussion';
+  }
 
   return (
     <nav

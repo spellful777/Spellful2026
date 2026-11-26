@@ -1,3 +1,4 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
 /**
  * /account/edit-profile — Compact profile identity editor
  * Avatar picker (bottom sheet), display name, username, bio, location, witch path
@@ -322,7 +323,7 @@ export default function EditProfilePage() {
               <div className="relative flex-shrink-0">
                 {form.image ? (
                   <img
-                    src={form.image}
+                    src={uploadedMediaUrl(form.image)}
                     alt="Your avatar"
                     className="w-16 h-16 rounded-full object-cover border-2"
                     style={{ borderColor: 'hsl(var(--primary)/0.4)' }}

@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "title": "Report a Bug — Spellful Community",
+    "description": "Report a bug or technical issue on Spellful. Track your report status and see known issues."
+  },
+  "heading": "Report a Bug",
+  "subheading": "Help us improve Spellful by reporting technical issues",
+  "tabs": {
+    "report": "Report a Bug",
+    "myReports": "My Reports",
+    "knownIssues": "Known Issues"
+  },
+  "form": {
+    "categoryLabel": "Category",
+    "titleLabel": "Issue Title",
+    "titlePlaceholder": "Brief description of the issue",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "What happened? What did you expect to happen?",
+    "stepsLabel": "Steps to Reproduce",
+    "stepsPlaceholder": "1. Go to...\n2. Click on...\n3. See error",
+    "expectedLabel": "Expected Behavior",
+    "expectedPlaceholder": "What should have happened instead?",
+    "deviceNote": "Your browser and screen size will be captured automatically to help us reproduce the issue.",
+    "submitButton": "Submit Bug Report",
+    "submittingButton": "Submitting…"
+  },
+  "success": {
+    "heading": "Report Submitted",
+    "body": "Thank you for helping improve Spellful. Your ticket reference is:",
+    "trackingNote": "Keep this reference to track your report status. We review all reports and will update the status as we investigate.",
+    "submitAnother": "Submit Another",
+    "viewReports": "View My Reports"
+  },
+  "signInPrompt": "Sign in to track your report status with a ticket reference.",
+  "emptyReports": "No bug reports yet.",
+  "emptyKnownIssues": "No known issues at this time.",
+  "staffNoteLabel": "Staff note:"
+}

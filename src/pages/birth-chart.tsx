@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router';
+import { startSparkReadingDraft } from '@/lib/spark-reading-draft';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import MoonNightSky from '@/components/MoonNightSky';
 import TwinkleStars from '@/components/TwinkleStars';
@@ -203,6 +205,7 @@ function PlanetRow({ label, symbol, pos }: { label: string; symbol: string; pos:
 }
 
 export default function BirthChartPage() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '', year: '', month: '', day: '',
     hour: '12', minute: '0', city: '', lat: '', lon: '', utcOffset: -7,
@@ -596,14 +599,14 @@ export default function BirthChartPage() {
         <meta property="og:description" content={chart ? `Cast your natal chart at Spellful. Sun in ${chart.sun.sign}, Moon in ${chart.moon.sign}, ${chart.ascendant.sign} Rising.` : 'Reveal your natal chart — planetary positions, houses, aspects, and deep astrological interpretations.'} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/birth-chart" />
-        <meta property="og:image" content={chart ? ogImageUrl() : 'https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png'} />
+        <meta property="og:image" content={chart ? ogImageUrl() : 'https://spellful.com/airo-assets/images/pages/birth-chart/og-image'} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content={chart ? `${form.name ? form.name + "'s" : 'My'} Birth Chart — Spellful` : 'Birth Chart Calculator — Spellful'} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={chart ? `${form.name ? form.name + "'s" : 'My'} Big Three: ☉ ${chart.sun.sign} · ☽ ${chart.moon.sign} · ↑ ${chart.ascendant.sign} — Spellful` : 'Birth Chart Calculator — Spellful'} />
         <meta name="twitter:description" content={chart ? `Cast your natal chart at Spellful. Sun in ${chart.sun.sign}, Moon in ${chart.moon.sign}, ${chart.ascendant.sign} Rising.` : 'Reveal your natal chart — planetary positions, houses, aspects, and deep astrological interpretations.'} />
-        <meta name="twitter:image" content={chart ? ogImageUrl() : 'https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png'} />
+        <meta name="twitter:image" content={chart ? ogImageUrl() : 'https://spellful.com/airo-assets/images/pages/birth-chart/og-image'} />
         <meta name="twitter:image:alt" content={chart ? `${form.name ? form.name + "'s" : 'My'} Birth Chart — Spellful` : 'Birth Chart Calculator — Spellful'} />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
@@ -777,6 +780,12 @@ export default function BirthChartPage() {
                   How we calculate this →
                 </a>
                 <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button type="button" className="min-h-11 rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
+                    onClick={() => {
+                      const angle = (value: number) => ((value % 360) + 360) % 360;
+                      navigate(startSparkReadingDraft({ type: 'natal', ascendant: angle(chart.ascendant.longitude),
+                        houses: chart.houses.map(angle), planets: PLANET_KEYS.map(key => angle(chart[key].longitude)) }));
+                    }}>Spark this chart</button>
                   <button onClick={downloadChart} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-xs tracking-widest uppercase transition-all duration-300"
                     style={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--primary) / 0.4)', color: 'hsl(var(--primary))', fontFamily: 'var(--font-sans)', letterSpacing: '0.15em' }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 16px hsl(var(--primary) / 0.25)'; }}

@@ -1,3 +1,7 @@
+import { communityLikePreviews } from '@/server/lib/community-like-previews.js';
+import { sparkReshares } from '@/server/lib/spark-reshares.js';
+import { loadOriginalSparks } from '@/server/lib/original-sparks.js';
+import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityPosts, communityCategories, communityPolls, communityPollVotes, communityLikes, communityBookmarks, communityMutes, user } from '@/server/db/schema.js';
@@ -6,8 +10,7 @@ import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request<{ id: string }>, res: Response) {
   const session = await getAuthSession(req);
-  if (!session?.user?.id) return res.status(401).json({ error: 'Sign in to view the community' });
-  const myId = session.user.id;
+  const myId = session?.user?.id;
   const postId = parseInt(req.params.id);
   if (isNaN(postId)) return res.status(400).json({ error: 'Invalid id' });
 
@@ -17,10 +20,13 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     title: communityPosts.title,
     body: communityPosts.body,
     imageUrl: communityPosts.imageUrl,
+      sparkMedia: communityPosts.sparkMedia, sparkTopic: communityPosts.sparkTopic, sparkReading: communityPosts.sparkReading,
+      originalSparkId: communityPosts.originalSparkId, reshareOf: communityPosts.reshareOf,
     tags: communityPosts.tags,
     isPinned: communityPosts.isPinned,
     isLocked: communityPosts.isLocked,
     isHidden: communityPosts.isHidden,
+    audience: communityPosts.audience,
     acceptedReplyId: communityPosts.acceptedReplyId,
     likeCount: communityPosts.likeCount,
     replyCount: communityPosts.replyCount,
@@ -32,14 +38,14 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     authorName: user.name,
     authorImage: user.image,
     authorUsername: user.username,
-    authorLocation: user.location,
+    authorLocation: sql<string | null>`case when ${user.locationVisibility} = 'public' then ${user.location} else null end`,
     categoryName: communityCategories.name,
     categorySlug: communityCategories.slug,
   })
     .from(communityPosts)
     .leftJoin(user, eq(communityPosts.userId, user.id))
     .leftJoin(communityCategories, eq(communityPosts.categoryId, communityCategories.id))
-    .where(eq(communityPosts.id, postId))
+    .where(and(eq(communityPosts.id, postId), postAudienceAllows(myId), myId ? undefined : eq(communityPosts.type, 'spark')))
     .limit(1);
 
   if (!post) return res.status(404).json({ error: 'Post not found' });
@@ -75,5 +81,11 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     muted = !!muteRow[0];
   }
 
-  res.json({ ...post, poll, liked, bookmarked, muted, isOwner: myId === post.userId });
+  const originals = await loadOriginalSparks([post.originalSparkId], myId);
+  const [reshares, previews] = await Promise.all([
+    sparkReshares(post.type === 'spark' ? [post.reshareOf ?? post.id] : [], myId),
+    myId ? communityLikePreviews('post', post.type === 'spark' ? [] : [post.id], myId) : new Map<number, string[]>(),
+  ]);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.json({ ...post, ...reshares.get(post.reshareOf ?? post.id), likedBy: previews.get(post.id) ?? [], originalSpark: originals.get(post.originalSparkId ?? 0) ?? null, poll, liked, bookmarked, muted, isOwner: myId === post.userId });
 }

@@ -1,3 +1,4 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
 /**
  * MessagingBell — glass-style inbox notification widget for the header.
  * Shows unread count badge, pulsing online dot, and a dropdown of recent conversations.
@@ -30,7 +31,7 @@ function Avatar({ user }: { user: ConvSummary['otherUser'] }) {
   if (user?.image) {
     return (
       <img
-        src={user.image}
+        src={uploadedMediaUrl(user.image)}
         alt={user.name ?? 'User'}
         className="w-8 h-8 rounded-full object-cover shrink-0"
       />

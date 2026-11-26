@@ -613,11 +613,12 @@ export default function TarotPage() {
         <meta property="og:description" content={tarot.seo.description} />
         <meta property="og:url" content={shareUrl} />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content={`${siteUrl}/airo-assets/images/pages/og-image`} />
+        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/tarot/og-image" />
+        <meta property="og:image:secure_url" content="https://spellful.com/airo-assets/images/pages/tarot/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={tarot.seo.title} />
         <meta name="twitter:description" content={tarot.seo.description} />
-        <meta name="twitter:image" content={`${siteUrl}/airo-assets/images/pages/og-image`} />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
       </Helmet>
 
       <main style={{ background: 'hsl(var(--background))', minHeight: '100vh' }}>

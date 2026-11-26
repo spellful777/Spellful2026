@@ -1,3 +1,9 @@
+import { Capacitor } from '@capacitor/core';
+import { Directory, Filesystem } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { startSparkReadingDraft } from '@/lib/spark-reading-draft';
+import { horoscopeSnapshot } from '@/lib/spark-reading';
+import { Sparkles } from 'lucide-react';
 /**
  * HoroscopeShareMenu — compact share button for the daily horoscope widget.
  * Platforms: Threads, Bluesky, Facebook, X (pre-typed posts)
@@ -17,7 +23,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import type { DailyHoroscope } from '@/lib/horoscope-engine';
 
@@ -169,25 +175,20 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
 
 // ── Main story generator ──────────────────────────────────────────────────────
 
-function generateStoryCanvas(horoscope: DailyHoroscope): Promise<Blob> {
-  return new Promise((resolve) => {
-    const start = new Date(new Date().getFullYear(), 0, 0).getTime();
-    const dayOfYear = Math.floor((Date.now() - start) / 86400000);
-    const templateUrl = STORY_TEMPLATES[dayOfYear % STORY_TEMPLATES.length];
-
-    Promise.all([
-      loadImage(templateUrl),
-    ]).then(([bgImg]) => {
-      renderStory(resolve, horoscope, bgImg);
-    });
+async function generateStoryCanvas(horoscope: DailyHoroscope): Promise<Blob> {
+  const start = new Date(new Date().getFullYear(), 0, 0).getTime();
+  const dayOfYear = Math.floor((Date.now() - start) / 86400000);
+  const template = await loadImage(STORY_TEMPLATES[dayOfYear % STORY_TEMPLATES.length]);
+  const canvas = renderStory(horoscope, template);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob) resolve(blob);
+      else reject(new Error('Could not encode Story image'));
+    }, 'image/png');
   });
 }
 
-function renderStory(
-  resolve: (blob: Blob) => void,
-  horoscope: DailyHoroscope,
-  bgImg: HTMLImageElement | null,
-) {
+function renderStory(horoscope: DailyHoroscope, bgImg: HTMLImageElement | null) {
   const W = 1080;
   const H = 1920;
   const canvas = document.createElement('canvas');
@@ -443,18 +444,29 @@ function renderStory(
   // Pre-branded wallpapers (templates 6–14) carry the logo in their artwork;
   // unbranded templates (1–5) export clean so users may add their own caption.
 
-  canvas.toBlob((blob) => resolve(blob!), 'image/png');
+  return canvas;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
+
+function blobToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const parts: string[] = [];
+  for (let offset = 0; offset < bytes.length; offset += 8192) {
+    parts.push(String.fromCharCode(...bytes.subarray(offset, offset + 8192)));
+  }
+  return btoa(parts.join(''));
+}
 
 interface Props {
   horoscope: DailyHoroscope;
 }
 
 export default function HoroscopeShareMenu({ horoscope }: Props) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [generatingStory, setGeneratingStory] = useState(false);
+  const [storyError, setStoryError] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
@@ -494,22 +506,40 @@ export default function HoroscopeShareMenu({ horoscope }: Props) {
   const shareThreads  = () => { trackShare('threads');   window.open(`https://www.threads.net/intent/post?text=${encodeURIComponent(postText + '\n' + url)}`, '_blank'); setOpen(false); };
 
   const downloadStory = async () => {
+    if (generatingStory) return;
     setGeneratingStory(true);
-    trackShare('story_download');
+    setStoryError(false);
     try {
       const blob = await generateStoryCanvas(horoscope);
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `spellful-${horoscope.sign.toLowerCase()}-story.png`;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      const filename = `spellful-${horoscope.sign.toLowerCase()}-story.png`;
+      if (Capacitor.getPlatform() === 'ios') {
+        const path = `${Date.now()}-${filename}`;
+        const { uri } = await Filesystem.writeFile({ path, data: blobToBase64(await blob.arrayBuffer()), directory: Directory.Cache });
+        await Share.share({ files: [uri] });
+      } else {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      }
+      trackShare('story_download');
+      setOpen(false);
+    } catch {
+      setStoryError(true);
     } finally {
       setGeneratingStory(false);
-      setOpen(false);
     }
   };
 
   const items = [
+    {
+      label: 'Spark this horoscope',
+      action: () => { setOpen(false); navigate(startSparkReadingDraft(horoscopeSnapshot(horoscope))); },
+      icon: <Sparkles size={14} aria-hidden="true" />,
+    },
     {
       label: 'Threads', action: shareThreads,
       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.589 12c.027 3.086.718 5.496 2.057 7.164 1.43 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.964-.065-1.19.408-2.285 1.33-3.082.88-.76 2.119-1.207 3.583-1.291a13.853 13.853 0 0 1 3.02.142c-.126-.742-.375-1.332-.75-1.757-.513-.586-1.308-.883-2.359-.89h-.029c-.844 0-1.992.232-2.721 1.32L7.734 7.847c.98-1.454 2.568-2.256 4.478-2.256h.044c3.194.02 5.097 1.975 5.287 5.388.108.046.216.094.321.142 1.49.7 2.58 1.761 3.154 3.07.797 1.82.871 4.79-1.548 7.158-1.85 1.81-4.094 2.628-7.284 2.651Z"/></svg>,
@@ -568,7 +598,7 @@ export default function HoroscopeShareMenu({ horoscope }: Props) {
               <button
                 key={item.label}
                 onClick={item.action}
-                disabled={generatingStory && item.label.includes('Instagram')}
+                disabled={generatingStory && item.isInstagram}
                 role="menuitem"
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-sm transition-colors duration-150 disabled:opacity-50"
                 style={{
@@ -615,6 +645,7 @@ export default function HoroscopeShareMenu({ horoscope }: Props) {
           <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
         </svg>
       </button>
+      {storyError && <p role="alert" className="text-xs text-destructive">Could not share the Story image. Try again.</p>}
       {typeof document !== 'undefined' && createPortal(dropdown, document.body)}
     </>
   );

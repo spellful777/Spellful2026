@@ -70,7 +70,11 @@ export default async function handler(req: Request, res: Response) {
   const existing = await db
     .select({ id: conversations.id })
     .from(conversations)
-    .where(and(eq(conversations.participant1Id, p1), eq(conversations.participant2Id, p2)))
+    .where(or(
+      and(eq(conversations.participant1Id, p1), eq(conversations.participant2Id, p2)),
+      and(eq(conversations.participant1Id, p2), eq(conversations.participant2Id, p1)),
+    ))
+    .orderBy(conversations.id)
     .limit(1);
 
   if (existing.length) {

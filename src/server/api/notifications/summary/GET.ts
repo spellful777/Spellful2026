@@ -1,3 +1,4 @@
+import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 /**
  * GET /api/notifications/summary
  *
@@ -90,6 +91,7 @@ export default async function handler(req: Request, res: Response) {
       gt(communityPosts.createdAt, cursorRow.lastSeenAt),
       ne(communityPosts.userId, myId),
       eq(communityPosts.isHidden, false),
+      postAudienceAllows(myId),
     ];
     if (blockedIds.length > 0) {
       conditions.push(ne(communityPosts.userId, blockedIds[0])); // handled below via filter

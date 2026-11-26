@@ -5,6 +5,7 @@
  * Accepts a `url`, `text` (tweet copy), and optional `title` for the copy tooltip.
  */
 import { useState } from 'react';
+import { publicShareUrl } from '@/lib/share-studio';
 import { Copy, Check } from 'lucide-react';
 
 interface ShareBarProps {
@@ -47,9 +48,10 @@ function FacebookIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-function ShareBar({ url, text, label = 'Share your reading', className = '' }: ShareBarProps) {
+function ShareBar({ url: inputUrl, text, label = 'Share your reading', className = '' }: ShareBarProps) {
   const [copied, setCopied] = useState(false);
 
+  const url = publicShareUrl(inputUrl);
   const encodedUrl = encodeURIComponent(url);
   const encodedText = encodeURIComponent(text);
 

@@ -64,10 +64,7 @@ export default function AstronomicalAccuracyPage() {
         <meta property="og:description" content="How Spellful calculates moon phases, lunar events, and zodiac placements — using Meeus astronomical algorithms verified against NASA and the US Naval Observatory." />
         <meta property="og:type" content="article" />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Astronomical Accuracy &amp; Methodology | Spellful" />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Astronomical Accuracy &amp; Methodology | Spellful" />
         <meta name="twitter:description" content="How Spellful calculates moon phases, lunar events, and zodiac placements — using Meeus astronomical algorithms verified against NASA and the US Naval Observatory." />

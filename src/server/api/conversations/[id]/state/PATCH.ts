@@ -1,3 +1,4 @@
+import clearConversation from '../DELETE.js';
 /**
  * PATCH /api/conversations/:id/state
  * Upserts per-user conversation state: archive, pin, mute, star, hidden (delete-for-me).
@@ -11,6 +12,7 @@ import { conversations, conversationUserState } from '@/server/db/schema.js';
 import { eq, and } from 'drizzle-orm';
 
 export default async function handler(req: Request<{ id: string }>, res: Response) {
+  if (req.body?.clearHistory === true) return clearConversation(req, res);
   const session = await getAuthSession(req);
   if (!session?.user?.id) return res.status(401).json({ error: 'Unauthorized' });
   const myId = session.user.id;

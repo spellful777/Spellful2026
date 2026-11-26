@@ -10,7 +10,8 @@
  */
 
 const BASE_URL = 'https://spellful.com';
-const LOGO_URL = 'https://spellful.com/airo-assets/images/logo/email';
+const EMAIL_HEADER_URL = 'https://spellful.com/airo-assets/images/email/header-banner';
+const EMAIL_FOOTER_URL = 'https://spellful.com/airo-assets/images/email/footer-banner';
 
 // ─── Shared HTML Primitives ───────────────────────────────────────────────────
 
@@ -41,12 +42,12 @@ function emailShell(opts: {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
              style="max-width:520px;background:#1a1528;border-radius:12px;overflow:hidden;
                     border:1px solid #3d2f6e;">
-        <!-- Logo header -->
+        <!-- Header banner -->
         <tr>
-          <td align="center" style="padding:32px 40px 24px;border-bottom:1px solid #3d2f6e;">
-            <a href="${BASE_URL}" style="display:inline-block;">
-              <img src="${LOGO_URL}" alt="Spellful" width="150" height="auto"
-                   style="display:block;max-width:150px;height:auto;" />
+          <td align="center" style="padding:0;line-height:0;">
+            <a href="${BASE_URL}" style="display:block;line-height:0;">
+              <img src="${EMAIL_HEADER_URL}" alt="Spellful" width="600"
+                   style="display:block;width:100%;max-width:600px;height:auto;border:0;" />
             </a>
           </td>
         </tr>
@@ -57,17 +58,27 @@ function emailShell(opts: {
             ${opts.plusCtaHtml}
           </td>
         </tr>
-        <!-- Footer -->
+        <!-- Footer banner -->
         <tr>
-          <td align="center" style="padding:20px 40px 28px;border-top:1px solid #3d2f6e;">
-            <p style="margin:0 0 8px 0;font-size:11px;color:#7a6fa0;font-family:Arial,sans-serif;line-height:1.5;">
+          <td align="center" style="padding:0;line-height:0;">
+            <img src="${EMAIL_FOOTER_URL}" alt="" width="600"
+                 style="display:block;width:100%;max-width:600px;height:auto;border:0;" />
+          </td>
+        </tr>
+        <!-- Legal footer -->
+        <tr>
+          <td align="center" style="padding:16px 32px 24px;background:#0B0614;">
+            <p style="margin:0 0 6px 0;font-size:12px;color:#7a6fa0;font-family:Arial,Helvetica,sans-serif;line-height:1.5;">
               &copy; ${year} Spellful &nbsp;&middot;&nbsp;
               <a href="${BASE_URL}" style="color:#7a6fa0;text-decoration:underline;">spellful.com</a>
             </p>
-            <p style="margin:0;font-size:11px;color:#7a6fa0;font-family:Arial,sans-serif;line-height:1.5;">
-              <a href="${opts.preferencesUrl}" style="color:#c9a84c;text-decoration:underline;">Email preferences</a>
+            <p style="margin:0 0 6px 0;font-size:12px;color:#7a6fa0;font-family:Arial,Helvetica,sans-serif;line-height:1.5;">
+              <a href="${opts.preferencesUrl}" style="color:#D9B85C;text-decoration:underline;">Email preferences</a>
               &nbsp;&middot;&nbsp;
-              <a href="${opts.unsubscribeUrl}" style="color:#7a6fa0;text-decoration:underline;">Unsubscribe from marketing</a>
+              <a href="${opts.unsubscribeUrl}" style="color:#7a6fa0;text-decoration:underline;">Unsubscribe</a>
+            </p>
+            <p style="margin:0;font-size:11px;color:#4a4060;font-family:Arial,Helvetica,sans-serif;line-height:1.5;">
+              Cast. Create. Explore.
             </p>
           </td>
         </tr>

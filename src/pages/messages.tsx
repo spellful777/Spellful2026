@@ -1,5 +1,9 @@
+import { inboxFlag } from '@/lib/inbox-flag';
+import { parseInboxGroups, type GroupSummary } from '@/lib/inbox-groups';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams, useNavigate } from 'react-router';
+import { createPortal } from 'react-dom';
+import { uploadedMediaUrl } from '@/lib/native-api';
+import { Link, useSearchParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSession } from '@/lib/auth/auth-client';
@@ -7,10 +11,10 @@ import { OnlineDot } from '@/components/OnlineDot';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Send, Lock, MessageCircle, ArrowLeft, ShieldCheck,
-  Trash2, FileText, Inbox, MoreVertical, RotateCcw, PenSquare, Sparkles,
+  Send, Lock, MessageCircle, ArrowLeft, ShieldCheck, ShieldOff,
+  Trash2, FileText, Inbox, MoreVertical, RotateCcw, PenSquare,
   Search, X as XIcon, Users, Check, CheckCheck,
-  CornerUpLeft, Pencil, Palette, UserCheck,
+  CornerUpLeft, Pencil, Palette, UserCheck, Settings,
   type LucideIcon,
 } from 'lucide-react';
 import { getOrCreateKeyPair, encryptMessage, decryptMessage } from '@/lib/dm-crypto';
@@ -20,17 +24,11 @@ import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { InstallBanner } from '@/components/InstallSpellful';
 import MessengerWallpaperPicker, { MESSENGER_THEMES, type WallpaperPrefs } from '@/components/MessengerWallpaperPicker';
 import MessengerSearchPanel from '@/components/MessengerSearchPanel';
-
-// ── Horoscope types ───────────────────────────────────────────────────────────
-interface DailyHoroscope {
-  sign: string;
-  date: string;
-  headline: string;
-  body: string;
-  planetNote: string;
-  do: string[];
-  dont: string[];
-}
+import MessagingPrivacyModal from '@/components/MessagingPrivacyModal';
+import BlockedMembersModal from '@/components/BlockedMembersModal';
+import RichMessageCard, { isRichCard } from '@/components/RichMessageCard';
+import ActiveNowStrip from '@/components/ActiveNowStrip';
+import { useMessengerSSE } from '@/hooks/useMessengerSSE';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,12 +56,46 @@ interface ConversationSummary {
   isPinned?: boolean;
   isMuted?: boolean;
   isHidden?: boolean;
+  isCoven?: boolean;
 }
 
 interface Reaction {
   emoji: string;
   count: number;
   userIds: string[];
+}
+
+interface GroupMessage {
+  id: number;
+  groupId: number;
+  senderId: string;
+  senderName: string | null;
+  senderUsername: string | null;
+  senderImage: string | null;
+  content: string;
+  systemMessage: string | null;
+  createdAt: string;
+  editedAt: string | null;
+  deletedAt: string | null;
+}
+
+interface GroupMember {
+  userId: string;
+  name: string | null;
+  username: string | null;
+  image: string | null;
+  role: string;
+  joinedAt: string;
+}
+
+interface GroupInvitation {
+  id: number;
+  groupId: number;
+  groupName: string;
+  inviterId: string;
+  inviterName: string | null;
+  inviterUsername: string | null;
+  createdAt: string;
 }
 
 interface Message {
@@ -85,6 +117,16 @@ interface Message {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function richCardPreview(systemMessage: string): string {
+  try {
+    const c = JSON.parse(systemMessage) as { type?: string; emoji?: string; title?: string };
+    if (['blessing', 'spell', 'ritual', 'tarot_reading'].includes(c.type ?? '')) {
+      return (c.emoji ?? '✨') + ' ' + (c.title ?? 'Shared content');
+    }
+  } catch { /* fall through */ }
+  return '✨ Welcome to Spellful!';
+}
+
 function Avatar({ user, size = 44 }: { user: OtherUser | null; size?: number }) {
   const initials = user?.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() ?? '?';
   return (
@@ -97,7 +139,7 @@ function Avatar({ user, size = 44 }: { user: OtherUser | null; size?: number }) 
       }}
     >
       {user?.image ? (
-        <img src={user.image} alt={user.name ?? ''} className="w-full h-full object-cover" />
+        <img src={uploadedMediaUrl(user.image)} alt={user.name ?? ''} className="w-full h-full object-cover" />
       ) : (
         <span className="font-serif font-semibold text-sm" style={{ color: 'hsl(var(--primary-foreground))' }}>
           {initials}
@@ -109,6 +151,7 @@ function Avatar({ user, size = 44 }: { user: OtherUser | null; size?: number }) 
 
 function formatTime(iso: string) {
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
   const now = new Date();
   if (d.toDateString() === now.toDateString()) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -173,6 +216,14 @@ interface DesktopThreadProps {
   onToggleSearch: () => void;
   onSearchJump: (messageId: number) => void;
   sendError: string | null;
+  hasMoreMessages: boolean;
+  loadingOlder: boolean;
+  onLoadOlder: () => void;
+  deleteForSelf: (msgId: number) => void;
+  showSharedMedia: boolean;
+  onToggleSharedMedia: () => void;
+  onReportMessage: (msgId: number) => void;
+  onBlockUser: (userId: string) => void;
 }
 
 function DesktopThread({
@@ -186,6 +237,8 @@ function DesktopThread({
   onSaveWallpaper, activeConvId,
   showSearch, onToggleSearch, onSearchJump, sendError,
   refreshOtherUserKey, deleteConversation,
+  hasMoreMessages, loadingOlder, onLoadOlder, deleteForSelf,
+  showSharedMedia, onToggleSharedMedia, onReportMessage, onBlockUser,
 }: DesktopThreadProps) {
   const navigate = useNavigate();
   const [showWallpaperInline, setShowWallpaperInline] = React.useState(false);
@@ -240,6 +293,16 @@ function DesktopThread({
             aria-label="Search messages">
             <Search className="w-3.5 h-3.5" />
           </button>
+          <button
+            onClick={onToggleSharedMedia}
+            className="w-7 h-7 rounded-full flex items-center justify-center mr-0.5"
+            style={{
+              background: showSharedMedia ? 'hsl(var(--primary) / 0.15)' : 'hsl(var(--muted))',
+              color: showSharedMedia ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+            }}
+            aria-label="Shared media">
+            <Users className="w-3.5 h-3.5" />
+          </button>
           {isCoven && (
             <button
               onClick={() => setShowWallpaperInline(v => !v)}
@@ -267,6 +330,52 @@ function DesktopThread({
             onClose={onToggleSearch}
             onJumpTo={onSearchJump}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Shared media panel ── */}
+      <AnimatePresence>
+        {showSharedMedia && (
+          <motion.div
+            key="shared-media"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+            style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold" style={{ color: 'hsl(var(--foreground))' }}>Shared links</p>
+                <button onClick={onToggleSharedMedia} aria-label="Close" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  <XIcon className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              {(() => {
+                const urlPattern = /https?:\/\/\S+/;
+                const links = messages.filter(m => !m.deletedAt && m.plaintext && urlPattern.test(m.plaintext));
+                if (links.length === 0) return (
+                  <p className="text-xs text-center py-4" style={{ color: 'hsl(var(--muted-foreground))' }}>No shared links yet</p>
+                );
+                return (
+                  <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
+                    {links.slice(-20).reverse().map(m => {
+                      const urlMatch = (m.plaintext ?? '').match(/https?:\/\/\S+/);
+                      const url = urlMatch ? urlMatch[0] : '';
+                      return (
+                        <a key={m.id} href={url} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:opacity-80 transition-opacity"
+                          style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--primary))' }}>
+                          <span className="truncate flex-1">{url}</span>
+                          <span className="flex-shrink-0 text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{formatTime(m.createdAt)}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -334,6 +443,22 @@ function DesktopThread({
             </>
           ) : null;
         })()}
+        {/* Load older messages */}
+        {hasMoreMessages && !loadingMsgs && (
+          <div className="flex justify-center pt-2 pb-1">
+            <button
+              onClick={onLoadOlder}
+              disabled={loadingOlder}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+              style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}>
+              {loadingOlder ? (
+                <><span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin inline-block" />Loading…</>
+              ) : (
+                <>↑ Load older messages</>
+              )}
+            </button>
+          </div>
+        )}
         <div className="flex items-center justify-center gap-1.5 py-1">
           {folder === 'inbox' && (
             <><Lock className="w-3 h-3" style={{ color: 'hsl(var(--success))' }} />
@@ -350,7 +475,13 @@ function DesktopThread({
         </div>
 
         {loadingMsgs ? (
-          <div className="text-center text-sm py-8" style={{ color: 'hsl(var(--muted-foreground))' }}>{pageContent.decryptingLabel}</div>
+          <div className="flex flex-col gap-3 pt-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'} animate-pulse`}>
+                <div className="h-10 rounded-3xl" style={{ width: `${35 + i * 12}%`, background: 'hsl(var(--muted))' }} />
+              </div>
+            ))}
+          </div>
         ) : messages.length === 0 ? (
           <div className="text-center text-sm py-8" style={{ color: 'hsl(var(--muted-foreground))' }}>
             {folder === 'drafts' ? 'No drafts.' : folder === 'trash' ? 'Trash is empty.' : pageContent.emptyMessages}
@@ -360,6 +491,7 @@ function DesktopThread({
             {messages.map((msg, idx) => {
               const isMine = msg.senderId === myId;
               const isSystem = !!msg.systemMessage;
+              const isRich = isRichCard(msg.systemMessage);
               const prevMsg: Message | undefined = idx > 0 ? messages[idx - 1] : undefined;
               const showDateSep = !prevMsg || new Date(msg.createdAt).toDateString() !== new Date(prevMsg.createdAt).toDateString();
               const isLastMine = isMine && !isSystem && messages.slice(idx + 1).every(m => m.senderId !== myId || !!m.systemMessage);
@@ -378,9 +510,11 @@ function DesktopThread({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     className={'flex ' + (isMine ? 'justify-end' : 'justify-start')}>
-                  <div className={isSystem ? 'w-full max-w-[90%]' : 'max-w-[75%]'} style={{ marginLeft: isSystem ? 'auto' : undefined, marginRight: isSystem ? 'auto' : undefined }}>
+                  <div className={isSystem ? 'w-full max-w-[90%]' : 'min-w-0 max-w-[75%] [overflow-wrap:anywhere]'} style={{ marginLeft: isSystem ? 'auto' : undefined, marginRight: isSystem ? 'auto' : undefined }}>
                     <div className="relative group">
-                      {isSystem ? (
+                      {isRich && msg.systemMessage ? (
+                        <RichMessageCard systemMessage={msg.systemMessage} isMine={isMine} />
+                      ) : isSystem ? (
                         <div className="rounded-2xl overflow-hidden"
                           style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
                           <img
@@ -434,7 +568,7 @@ function DesktopThread({
                       )}
                       {/* Hover action bar — reaction + reply + menu */}
                       {!isSystem && !msg.deletedAt && (
-                        <div className={'absolute top-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ' + (isMine ? '-left-24' : '-right-24')}>
+                        <div className={'absolute top-0 flex items-center gap-1 opacity-80 focus:opacity-100 transition-opacity ' + (isMine ? '-left-24' : '-right-24')}>
                           {/* Reaction picker trigger */}
                           <div className="relative">
                             <button
@@ -454,7 +588,7 @@ function DesktopThread({
                                   className="absolute bottom-9 left-0 flex gap-1 px-2 py-1.5 rounded-2xl shadow-xl z-30"
                                   style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                                   onClick={e => e.stopPropagation()}>
-                                  {['👍', '❤️', '✨', '🌙'].map(emoji => {
+                                  {['👍', '❤️', '✨', '🌙', '🔮', '🕯️', '🌿', '⚡'].map(emoji => {
                                     const myReaction = msg.reactions?.find(r => r.emoji === emoji && r.userIds.includes(myId));
                                     return (
                                       <button key={emoji} onClick={() => void toggleReaction(msg.id, emoji)}
@@ -519,11 +653,33 @@ function DesktopThread({
                                       <Trash2 className="w-3.5 h-3.5" />Move to trash
                                     </button>
                                   )}
+                                  <button onClick={() => { deleteForSelf(msg.id); setOpenMenuId(null); }}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:opacity-80"
+                                    style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                    <Trash2 className="w-3.5 h-3.5" />Delete for me
+                                  </button>
                                   <button onClick={() => void softDeleteMessage(msg.id)}
                                     className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:opacity-80"
                                     style={{ color: 'hsl(var(--destructive))' }}>
                                     <Trash2 className="w-3.5 h-3.5" />Delete for everyone
                                   </button>
+                                  {!isMine && (
+                                    <>
+                                      <div style={{ borderTop: '1px solid hsl(var(--border))' }} className="my-1" />
+                                      <button onClick={() => { setOpenMenuId(null); onReportMessage(msg.id); }}
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:opacity-80"
+                                        style={{ color: 'hsl(var(--destructive))' }}>
+                                        🚩 Report message
+                                      </button>
+                                      {activeOtherUser && (
+                                        <button onClick={() => { setOpenMenuId(null); onBlockUser(activeOtherUser.id); }}
+                                          className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:opacity-80"
+                                          style={{ color: 'hsl(var(--destructive))' }}>
+                                          🚫 Block member
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -718,7 +874,7 @@ function DesktopThread({
               )}
               {!otherUserPublicKey && !sendError && (
                 <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  Your message will be sent now. Full encryption activates once they open Messages.
+                  You can send a private message once they open Messages.
                 </p>
               )}
               <div className="flex items-center justify-center gap-2 mt-1.5">
@@ -726,7 +882,7 @@ function DesktopThread({
                 <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Private conversation</span>
                 <button
                   onClick={() => {
-                    if (window.confirm('Delete this conversation? This cannot be undone.')) {
+                    if (window.confirm('Delete this conversation for you? The other person keeps their history.')) {
                       void deleteConversation();
                     }
                   }}
@@ -759,11 +915,14 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [loadingConvs, setLoadingConvs] = useState(true);
+  const [convLoadError, setConvLoadError] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [threadLoadError, setThreadLoadError] = useState(false);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [keyReady, setKeyReady] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'thread'>('list');
   const [folder, setFolder] = useState<Folder>('inbox');
-  type MsgRequest = { id: number; conversationId: number; requesterId: string; status: string; createdAt: string | null; requesterName: string | null; requesterUsername: string | null; requesterImage: string | null };
+  type MsgRequest = { id: number; conversationId: number; requesterId: string; status: string; createdAt: string | null; requesterName: string | null; requesterUsername: string | null; requesterImage: string | null; latest?: { ciphertext: string; iv: string; createdAt: string } | null };
   const [msgRequests, setMsgRequests] = useState<MsgRequest[]>([]);
   const [msgRequestsLoaded, setMsgRequestsLoaded] = useState(false);
   const [requestActionId, setRequestActionId] = useState<number | null>(null);
@@ -773,7 +932,14 @@ export default function MessagesPage() {
 
   // ── Inbox search + filter ─────────────────────────────────────────────────
   const [inboxSearch, setInboxSearch] = useState('');
-  const [inboxFilter, setInboxFilter] = useState<'all' | 'unread'>('all');
+  const [inboxFilter, setInboxFilter] = useState<'all' | 'unread' | 'read' | 'requests' | 'groups' | 'archived'>('all');
+  const [showPrivacySettings, setShowPrivacySettings] = useState(false);
+  const [showBlockedMembers, setShowBlockedMembers] = useState(false);
+  const [reportingMsgId, setReportingMsgId] = useState<number | null>(null);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportDone, setReportDone] = useState(false);
 
   // ── Realtime: typing + receipts ───────────────────────────────────────────
   const [otherIsTyping, setOtherIsTyping] = useState(false);
@@ -798,6 +964,14 @@ export default function MessagesPage() {
   const [showSearch, setShowSearch] = useState(false);
   const [showWallpaperMobile, setShowWallpaperMobile] = useState(false);
 
+  // ── Pagination ────────────────────────────────────────────────────────────
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [oldestMsgId, setOldestMsgId] = useState<number | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+
+  // ── Shared media panel ────────────────────────────────────────────────────
+  const [showSharedMedia, setShowSharedMedia] = useState(false);
+
   // ── Batch presence for inbox list ─────────────────────────────────────────
   const [batchPresence, setBatchPresence] = useState<Record<string, { online: boolean; lastSeen: string | null }>>({});
 
@@ -811,10 +985,33 @@ export default function MessagesPage() {
   const [composeSearching, setComposeSearching] = useState(false);
   const [composeStarting, setComposeStarting] = useState<string | null>(null);
 
-  // ── Daily horoscope popup ─────────────────────────────────────────────────
-  const [horoscope, setHoroscope] = useState<DailyHoroscope | null>(null);
-  // showHoroscope removed — horoscope popup replaced with inline strip
+  // ── Groups ────────────────────────────────────────────────────────────────
+  const [groups, setGroups] = useState<GroupSummary[]>([]);
+  const [friends, setFriends] = useState<OtherUser[]>([]);
+  const [groupsLoadError, setGroupsLoadError] = useState(false);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
+  const [groupMessages, setGroupMessages] = useState<GroupMessage[]>([]);
+  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+  const [loadingGroupMsgs, setLoadingGroupMsgs] = useState(false);
+  const [groupDraft, setGroupDraft] = useState('');
+  const [sendingGroup, setSendingGroup] = useState(false);
+  const [groupSendError, setGroupSendError] = useState<string | null>(null);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showGroupInvitations, setShowGroupInvitations] = useState(false);
+  const [groupInvitations, setGroupInvitations] = useState<GroupInvitation[]>([]);
+  const [loadingGroupInvitations, setLoadingGroupInvitations] = useState(false);
+  // Create group form state
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupDescription, setNewGroupDescription] = useState('');
+  const [newGroupMemberIds, setNewGroupMemberIds] = useState<string[]>([]);
+  const [newGroupMemberSearch, setNewGroupMemberSearch] = useState('');
+  const [newGroupMemberResults, setNewGroupMemberResults] = useState<OtherUser[]>([]);
+  const [creatingGroup, setCreatingGroup] = useState(false);
+
+  // horoscope state removed — strip removed from inbox per redesign spec
   const bottomRef = useRef<HTMLDivElement>(null);
+  const mobileMessageList = useRef<HTMLDivElement>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -825,16 +1022,361 @@ export default function MessagesPage() {
   usePwa(!!session);
   const { isInstalled } = usePWAInstall();
 
-  // ── Fetch daily horoscope (inline strip, not popup) ─────────────────────
-  useEffect(() => {
-    if (!session) return;
-    fetch('/api/horoscope/today', { credentials: 'include' })
-      .then(r => r.ok ? r.json() as Promise<DailyHoroscope> : null)
-      .then(data => { if (data) setHoroscope(data); })
-      .catch(() => undefined);
-  }, [session]);
+  // horoscope fetch removed — strip removed from inbox per redesign spec
 
-  // dismissHoroscope removed — horoscope popup replaced with inline strip
+  const loadGroups = useCallback(async () => {
+    setLoadingGroups(true);
+    setGroupsLoadError(false);
+    try {
+      const response = await fetch('/api/groups', { credentials: 'include' });
+      if (!response.ok) throw new Error('Could not load groups');
+      setGroups(parseInboxGroups(await response.json()));
+    } catch {
+      setGroupsLoadError(true);
+    } finally {
+      setLoadingGroups(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (myId && inboxFilter !== 'requests') void loadGroups();
+  }, [myId, inboxFilter, loadGroups]);
+
+  useEffect(() => {
+    setFriends([]);
+    if (!myId) return;
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const response = await fetch('/api/coven', {
+          credentials: 'include',
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const { connections } = await response.json() as {
+          connections: Array<{
+            status: string;
+            requesterId: string;
+            receiverId: string;
+            otherName: string | null;
+            otherUsername: string | null;
+            otherImage: string | null;
+          }>;
+        };
+        const accepted = new Map<string, OtherUser>();
+        for (const connection of connections) {
+          if (connection.status !== 'accepted') continue;
+          const id = connection.requesterId === myId ? connection.receiverId : connection.requesterId;
+          accepted.set(id, { id, name: connection.otherName, username: connection.otherUsername, image: connection.otherImage });
+        }
+        if (!controller.signal.aborted) setFriends([...accepted.values()]);
+      } catch { /* Inbox remains available if friends cannot be loaded. */ }
+    })();
+    return () => controller.abort();
+  }, [myId]);
+
+  // ── Group thread: load messages + members ────────────────────────────────
+  async function loadGroupThread(groupId: number) {
+    setLoadingGroupMsgs(true);
+    setGroupMessages([]);
+    setGroupMembers([]);
+    try {
+      const [msgsRes, membersRes] = await Promise.all([
+        fetch(`/api/groups/${groupId}/messages`, { credentials: 'include' }),
+        fetch(`/api/groups/${groupId}/members`, { credentials: 'include' }),
+      ]);
+      if (msgsRes.ok) {
+        const data = await msgsRes.json() as { messages: GroupMessage[] };
+        setGroupMessages(data.messages ?? []);
+      }
+      if (membersRes.ok) {
+        const data = await membersRes.json() as { members: GroupMember[] };
+        setGroupMembers(data.members ?? []);
+      }
+    } catch { /* non-fatal */ }
+    setLoadingGroupMsgs(false);
+  }
+
+  async function openGroupThread(groupId: number) {
+    setActiveGroupId(groupId);
+    setActiveConvId(null);
+    setMobileView('thread');
+    await loadGroupThread(groupId);
+  }
+
+  async function sendGroupMessage() {
+    if (!groupDraft.trim() || !activeGroupId || sendingGroup) return;
+    setSendingGroup(true);
+    setGroupSendError(null);
+    const content = groupDraft.trim();
+    setGroupDraft('');
+    try {
+      const res = await fetch(`/api/groups/${activeGroupId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ content }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { messageId?: number };
+        const optimistic: GroupMessage = {
+          id: data.messageId ?? Date.now(),
+          groupId: activeGroupId,
+          senderId: myId,
+          senderName: null,
+          senderUsername: null,
+          senderImage: null,
+          content,
+          systemMessage: null,
+          createdAt: new Date().toISOString(),
+          editedAt: null,
+          deletedAt: null,
+        };
+        setGroupMessages(prev => prev.some(message => message.id === optimistic.id) ? prev : [...prev, optimistic]);
+        setGroups(prev => prev.map(g => g.id === activeGroupId
+          ? { ...g, lastMessage: { content, senderId: myId, createdAt: new Date().toISOString() }, updatedAt: new Date().toISOString() }
+          : g));
+      } else {
+        setGroupSendError('Failed to send message');
+        setGroupDraft(content);
+      }
+    } catch {
+      setGroupSendError('Network error');
+      setGroupDraft(content);
+    }
+    setSendingGroup(false);
+  }
+
+  async function createGroup() {
+    if (!newGroupName.trim() || newGroupMemberIds.length === 0 || creatingGroup) return;
+    setCreatingGroup(true);
+    try {
+      const res = await fetch('/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: newGroupName.trim(), description: newGroupDescription.trim(), memberIds: newGroupMemberIds }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { groupId: number; name: string };
+        setShowCreateGroup(false);
+        setNewGroupName('');
+        setNewGroupDescription('');
+        setNewGroupMemberIds([]);
+        setNewGroupMemberSearch('');
+        setNewGroupMemberResults([]);
+        setInboxFilter('groups');
+        await loadGroups();
+        await openGroupThread(data.groupId);
+      }
+    } catch { /* non-fatal */ }
+    setCreatingGroup(false);
+  }
+
+  async function loadGroupInvitations() {
+    setLoadingGroupInvitations(true);
+    try {
+      const res = await fetch('/api/groups/invitations', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json() as { invitations: GroupInvitation[] };
+        setGroupInvitations(data.invitations ?? []);
+      }
+    } catch { /* non-fatal */ }
+    setLoadingGroupInvitations(false);
+  }
+
+  async function respondToGroupInvitation(invitationId: number, accept: boolean) {
+    const endpoint = accept ? 'accept' : 'decline';
+    const res = await fetch(`/api/groups/invitations/${invitationId}/${endpoint}`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (res.ok) {
+      setGroupInvitations(prev => prev.filter(inv => inv.id !== invitationId));
+      if (accept) await loadGroups();
+    }
+  }
+
+  const [requestPreviews, setRequestPreviews] = useState<Record<number, string>>({});
+  const [openedRequest, setOpenedRequest] = useState<number | null>(null);
+  const [requestMessages, setRequestMessages] = useState<Message[] | null>(null);
+  const [requestError, setRequestError] = useState(false);
+  const requestRefresh = useRef(0);
+
+  const loadMessageRequests = useCallback(async () => {
+    const generation = ++requestRefresh.current;
+    try {
+      const response = await fetch('/api/message-requests', { credentials: 'include' });
+      if (!response.ok) throw new Error('Could not load requests');
+      const data = await response.json() as { requests: MsgRequest[] };
+      if (generation !== requestRefresh.current) return;
+      setMsgRequests(data.requests);
+      setMsgRequestsLoaded(true);
+      setRequestError(false);
+    } catch {
+      if (generation === requestRefresh.current) setRequestError(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!myId) return;
+    void loadMessageRequests();
+    const interval = setInterval(() => void loadMessageRequests(), 15000);
+    return () => {
+      clearInterval(interval);
+      ++requestRefresh.current;
+    };
+  }, [myId, loadMessageRequests]);
+
+  const [inboxPreviews, setInboxPreviews] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    if (!keyReady) return;
+    let current = true;
+    const keys = new Map<string, Promise<string | undefined>>();
+    async function readPreview(userId: string, encrypted: { ciphertext: string; iv: string }) {
+      let key = keys.get(userId);
+      if (!key) {
+        key = fetch(`/api/keys?userId=${encodeURIComponent(userId)}`, { credentials: 'include' })
+          .then(async response => response.ok ? (await response.json()).publicKey as string | undefined : undefined);
+        keys.set(userId, key);
+      }
+      try {
+        const publicKey = await key;
+        return publicKey ? await decryptMessage(encrypted.ciphertext, encrypted.iv, publicKey) : null;
+      } catch {
+        return null;
+      }
+    }
+    void Promise.all(msgRequests.map(async request => [
+      request.id, (request.latest && await readPreview(request.requesterId, request.latest)) || 'Encrypted message',
+    ] as const)).then(entries => { if (current) setRequestPreviews(Object.fromEntries(entries)); });
+    void Promise.all(conversations.map(async conversation => [
+      conversation.id, (conversation.lastMessage && !conversation.lastMessage.systemMessage && conversation.otherUser
+        && await readPreview(conversation.otherUser.id, conversation.lastMessage)) || 'Encrypted message',
+    ] as const)).then(entries => { if (current) setInboxPreviews(Object.fromEntries(entries)); });
+    return () => { current = false; };
+  }, [conversations, msgRequests, keyReady]);
+
+  useEffect(() => {
+    setRequestMessages(null);
+    if (openedRequest === null) return;
+    const request = msgRequests.find(item => item.id === openedRequest);
+    if (!request) return;
+    const controller = new AbortController();
+    void (async () => {
+      const [thread, keys] = await Promise.all([
+        fetch(`/api/conversations/${request.conversationId}/messages`, { credentials: 'include', signal: controller.signal }),
+        fetch(`/api/keys?userId=${encodeURIComponent(request.requesterId)}`, { credentials: 'include', signal: controller.signal }),
+      ]);
+      if (!thread.ok) throw new Error('Could not read request');
+      const data = await thread.json() as Message[] | { messages: Message[] };
+      const key = keys.ok ? (await keys.json()).publicKey as string | undefined : undefined;
+      const rows = await decryptAll(Array.isArray(data) ? data : data.messages, key ?? null);
+      if (!controller.signal.aborted) setRequestMessages(rows);
+    })().catch(() => { if (!controller.signal.aborted) setRequestError(true); });
+    return () => controller.abort();
+    // A background refresh should not reopen the same request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openedRequest, keyReady]);
+
+  // ── Accept / decline a message request (mobile + desktop shared handler) ──
+  async function handleMsgRequest(reqId: number, action: 'accept' | 'decline') {
+    try {
+      const r = await fetch(`/api/message-requests/${reqId}/${action}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (r.ok) {
+        ++requestRefresh.current;
+        setMsgRequests(prev => prev.filter(x => x.id !== reqId));
+        setOpenedRequest(null);
+        if (action === 'accept') {
+          setInboxFilter('all');
+          setFolder('inbox');
+          // Refresh inbox so the newly-accepted conversation appears immediately
+          await loadConversations(false);
+        }
+      } else {
+        await loadMessageRequests();
+      }
+    } catch { setRequestError(true); }
+  }
+
+  async function blockUserFromConversation(userId: string) {
+    try {
+      await fetch('/api/community/blocks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ blockedId: userId }),
+      });
+      // Remove conversations with this user from the list
+      setConversations(prev => prev.filter(c => c.otherUser?.id !== userId));
+      if (activeOtherUser?.id === userId) {
+        setActiveConvId(null);
+        setMobileView('list');
+      }
+    } catch { /* silent */ }
+  }
+
+  async function submitMessageReport() {
+    if (!reportingMsgId || !reportReason) return;
+    setReportSubmitting(true);
+    try {
+      await fetch(`/api/messages/${reportingMsgId}/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reason: reportReason, details: reportDetails }),
+      });
+      setReportDone(true);
+      setTimeout(() => {
+        setReportingMsgId(null);
+        setReportReason('');
+        setReportDetails('');
+        setReportDone(false);
+      }, 2000);
+    } finally {
+      setReportSubmitting(false);
+    }
+  }
+
+  async function leaveGroup(groupId: number) {
+    if (!window.confirm('Leave this group? You will no longer receive messages.')) return;
+    const res = await fetch(`/api/groups/${groupId}/leave`, { method: 'POST', credentials: 'include' });
+    if (res.ok) {
+      setGroups(prev => prev.filter(g => g.id !== groupId));
+      if (activeGroupId === groupId) {
+        setActiveGroupId(null);
+        setGroupMessages([]);
+        setGroupMembers([]);
+        setMobileView('list');
+      }
+    }
+  }
+
+  // ── New group member search ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!showCreateGroup) return;
+    if (newGroupMemberSearch.length < 2) { setNewGroupMemberResults([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(newGroupMemberSearch)}`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json() as { users: OtherUser[] };
+          setNewGroupMemberResults(data.users.filter(u => !newGroupMemberIds.includes(u.id)));
+        }
+      } catch { /* non-fatal */ }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [newGroupMemberSearch, showCreateGroup, newGroupMemberIds]);
+
+  // ── Load group invitations when Groups tab opens ──────────────────────────
+  useEffect(() => {
+    if (inboxFilter === 'groups' && session) void loadGroupInvitations();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inboxFilter, session]);
 
   // ── Compose: search users ─────────────────────────────────────────────────
   useEffect(() => {
@@ -866,7 +1408,8 @@ export default function MessagesPage() {
       });
       if (!res.ok) return;
       const { id } = await res.json() as { id: number };
-      await loadConversations();
+      setInboxFilter('all');
+      void loadConversations();
       void openConversation(id, recipient);
       setShowCompose(false);
       setComposeQuery('');
@@ -902,62 +1445,104 @@ export default function MessagesPage() {
 
   // ── Key setup ─────────────────────────────────────────────────────────────
 
+  const registerMessagingKey = useCallback(async () => {
+    const { publicKeyJwk } = await getOrCreateKeyPair();
+    const result = await fetch('/api/keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ publicKey: publicKeyJwk }),
+    });
+    return result.ok;
+  }, []);
+
   useEffect(() => {
+    setKeyReady(false);
     if (!myId) return;
-    async function setup() {
-      const { publicKeyJwk } = await getOrCreateKeyPair();
-      await fetch('/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ publicKey: publicKeyJwk }),
-      });
-      setKeyReady(true);
-    }
-    void setup();
-  }, [myId]);
+    let current = true;
+    void registerMessagingKey().then(
+      ready => { if (current) setKeyReady(ready); },
+      () => { if (current) setKeyReady(false); },
+    );
+    return () => { current = false; };
+  }, [myId, registerMessagingKey]);
 
   // ── Load conversations ────────────────────────────────────────────────────
 
-  const loadConversations = useCallback(async () => {
+  const inboxLoadGeneration = useRef(0);
+  const loadConversations = useCallback(async (isInitialLoad = false) => {
+    const generation = ++inboxLoadGeneration.current;
     try {
-      const res = await fetch('/api/conversations?limit=50', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json() as { conversations?: ConversationSummary[]; hasMore?: boolean } | ConversationSummary[];
-        // Handle both plain-array and { conversations, hasMore } shapes
-        const convList = Array.isArray(data) ? data : (data.conversations ?? []);
-        setConversations(convList);
-
-        // Batch-fetch presence for all other participants
-        const otherIds = convList
-          .map(c => c.otherUser?.id)
-          .filter((id): id is string => !!id);
-        const uniqueIds = [...new Set(otherIds)];
-        if (uniqueIds.length > 0) {
-          try {
-            const presRes = await fetch('/api/presence/batch', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({ userIds: uniqueIds }),
-            });
-            if (presRes.ok) {
-              const presData = await presRes.json() as { presence: Record<string, { online: boolean; lastSeen: string | null }> };
-              setBatchPresence(presData.presence ?? {});
-            }
-          } catch { /* non-fatal — OnlineDot falls back to individual polling */ }
+      const convList: ConversationSummary[] = [];
+      const limit = 100;
+      for (let offset = 0; ; offset += limit) {
+        const res = await fetch(`/api/conversations?tab=chats&limit=${limit}&offset=${offset}`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Could not load conversations');
+        const data = await res.json() as { conversations: ConversationSummary[]; hasMore?: boolean } | ConversationSummary[];
+        const page = Array.isArray(data) ? data : data.conversations;
+        if (!Array.isArray(page)) throw new Error('Invalid conversation list');
+        for (const conversation of page) {
+          if (!conversation || !Number.isSafeInteger(Number(conversation.id)) || Number(conversation.id) <= 0) continue;
+          convList.push({
+            ...conversation,
+            id: Number(conversation.id),
+            unreadCount: Number(conversation.unreadCount) || 0,
+            isArchived: inboxFlag(conversation.isArchived),
+            isPinned: inboxFlag(conversation.isPinned),
+            isMuted: inboxFlag(conversation.isMuted),
+            isStarred: inboxFlag(conversation.isStarred),
+            isHidden: inboxFlag(conversation.isHidden),
+          });
         }
+        if (Array.isArray(data) || !data.hasMore) break;
       }
+      if (generation !== inboxLoadGeneration.current) return;
+      setIsOffline(false);
+      setConversations([...new Map(convList.map(conversation => [conversation.id, conversation])).values()]);
+      setConvLoadError(false);
+
+      // Batch-fetch presence for all other participants
+      const otherIds = convList
+        .map(c => c.otherUser?.id)
+        .filter((id): id is string => !!id);
+      const uniqueIds = [...new Set(otherIds)];
+      if (uniqueIds.length > 0) {
+        try {
+          const presRes = await fetch('/api/presence/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ userIds: uniqueIds }),
+          });
+          if (presRes.ok) {
+            const presData = await presRes.json() as { presence: Record<string, { online: boolean; lastSeen: string | null }> };
+            setBatchPresence(presData.presence ?? {});
+          }
+        } catch { /* non-fatal — OnlineDot falls back to individual polling */ }
+      }
+    } catch {
+      if (isInitialLoad && generation === inboxLoadGeneration.current) setConvLoadError(true);
     } finally {
-      setLoadingConvs(false);
+      if (generation === inboxLoadGeneration.current) setLoadingConvs(false);
     }
   }, []);
 
   useEffect(() => {
     if (!myId) return;
-    void loadConversations();
-    const interval = setInterval(() => { void loadConversations(); }, 10_000);
-    return () => clearInterval(interval);
+    void loadConversations(true);
+    const handleOnline = () => {
+      setIsOffline(false);
+      void loadConversations(true);
+    };
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    const interval = setInterval(() => { void loadConversations(false); }, 10_000);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, [myId, loadConversations]);
 
   // ── Handle ?with=username deep-link ──────────────────────────────────────
@@ -1011,6 +1596,8 @@ export default function MessagesPage() {
   // ── Open a conversation ───────────────────────────────────────────────────
 
   async function openConversation(convId: number, other: OtherUser) {
+    activeConvIdRef.current = convId;
+    setOtherUserPublicKey(null);
     setActiveConvId(convId);
     setActiveOtherUser(other);
     setMobileView('thread');
@@ -1041,19 +1628,21 @@ export default function MessagesPage() {
     setShowSearch(false);
 
     const [keyRes, wallpaperRes, covenRes] = await Promise.all([
-      fetch(`/api/keys?userId=${other.id}`, { credentials: 'include' }),
-      fetch(`/api/conversations/${convId}/wallpaper`, { credentials: 'include' }),
-      fetch(`/api/coven/status/${other.id}`, { credentials: 'include' }),
+      fetch(`/api/keys?userId=${other.id}`, { credentials: 'include' }).catch(() => null),
+      fetch(`/api/conversations/${convId}/wallpaper`, { credentials: 'include' }).catch(() => null),
+      fetch(`/api/coven/status/${other.id}`, { credentials: 'include' }).catch(() => null),
     ]);
-    const theirKey = keyRes.ok ? ((await keyRes.json() as { publicKey?: string }).publicKey ?? null) : null;
+    if (activeConvIdRef.current !== convId) return;
+    const theirKey = keyRes?.ok ? ((await keyRes.json() as { publicKey?: string }).publicKey ?? null) : null;
+    if (activeConvIdRef.current !== convId) return;
     setOtherUserPublicKey(theirKey);
-    if (wallpaperRes.ok) {
+    if (wallpaperRes?.ok) {
       const wp = await wallpaperRes.json() as WallpaperPrefs;
       setWallpaper(wp);
     } else {
       setWallpaper(defaultWallpaper);
     }
-    if (covenRes.ok) {
+    if (covenRes?.ok) {
       const cs = await covenRes.json() as { status: CovenStatus; connectionId: number | null };
       setCovenStatus(cs.status);
       setCovenConnectionId(cs.connectionId);
@@ -1064,9 +1653,10 @@ export default function MessagesPage() {
       setIsCoven(false);
     }
 
+    if (activeConvIdRef.current !== convId) return;
     await loadFolder('inbox', convId, theirKey);
     setConversations(prev => prev.map(c => c.id === convId ? { ...c, unreadCount: 0 } : c));
-    setTimeout(() => inputRef.current?.focus(), 300);
+
   }
 
   // ── Re-fetch the other user's public key (called on input focus so the UI
@@ -1077,7 +1667,21 @@ export default function MessagesPage() {
       const res = await fetch(`/api/keys?userId=${activeOtherUser.id}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json() as { publicKey?: string };
-        if (data.publicKey) setOtherUserPublicKey(data.publicKey);
+        const key = data.publicKey;
+        if (key && activeConvIdRef.current === activeConvId) {
+          setOtherUserPublicKey(key);
+          const unavailable = messages.filter(message => message.plaintext === '🔒 Encrypted');
+          if (unavailable.length) {
+            const decrypted = await decryptAll(unavailable, key);
+            if (activeConvIdRef.current !== activeConvId) return;
+            const byId = new Map(decrypted.map(message => [message.id, message.plaintext]));
+            setMessages(latest => latest.map(message =>
+              message.plaintext === '🔒 Encrypted' && byId.has(message.id)
+                ? { ...message, plaintext: byId.get(message.id) }
+                : message,
+            ));
+          }
+        }
       }
     } catch { /* non-fatal */ }
   }
@@ -1131,21 +1735,53 @@ export default function MessagesPage() {
 
   async function loadFolder(f: Folder, convId: number, theirKey: string | null) {
     setLoadingMsgs(true);
-    const statusParam = f === 'drafts' ? 'draft' : f === 'trash' ? 'trashed' : '';
-    const url = `/api/conversations/${convId}/messages${statusParam ? `?status=${statusParam}` : ''}`;
-    const res = await fetch(url, { credentials: 'include' });
-    if (!res.ok) { setLoadingMsgs(false); return; }
-    const responseData = await res.json() as { messages?: Message[]; hasMore?: boolean; oldestId?: number | null } | Message[];
-    // Handle both old array format and new { messages, hasMore, oldestId } format
-    const raw = Array.isArray(responseData) ? responseData : (responseData.messages ?? []);
-    const decrypted = await decryptAll(raw, theirKey);
-    setMessages(decrypted);
-    // Seed the since-pointer so polling only fetches new messages
-    if (decrypted.length && f === 'inbox') {
-      const latest = decrypted[decrypted.length - 1];
-      lastMsgTimestampRef.current = latest.createdAt;
+    setThreadLoadError(false);
+    try {
+      const statusParam = f === 'drafts' ? 'draft' : f === 'trash' ? 'trashed' : '';
+      const url = `/api/conversations/${convId}/messages${statusParam ? `?status=${statusParam}` : ''}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Conversation request failed');
+      const responseData = await res.json() as { messages?: Message[]; hasMore?: boolean; oldestId?: number | null } | Message[];
+      // Handle both old array format and new { messages, hasMore, oldestId } format
+      const raw = Array.isArray(responseData) ? responseData : (responseData.messages ?? []);
+      const hasMore = !Array.isArray(responseData) ? (responseData.hasMore ?? false) : false;
+      const oldestId = !Array.isArray(responseData) ? (responseData.oldestId ?? null) : null;
+      const decrypted = await decryptAll(raw, theirKey);
+      if (activeConvIdRef.current !== convId) return;
+      setMessages(decrypted);
+      setHasMoreMessages(hasMore);
+      setOldestMsgId(oldestId ?? (decrypted[0]?.id ?? null));
+      // Seed the since-pointer so polling only fetches new messages
+      if (decrypted.length && f === 'inbox') {
+        const latest = decrypted[decrypted.length - 1];
+        lastMsgTimestampRef.current = latest.createdAt;
+      }
+    } catch {
+      if (activeConvIdRef.current === convId) setThreadLoadError(true);
+    } finally {
+      if (activeConvIdRef.current === convId) setLoadingMsgs(false);
     }
-    setLoadingMsgs(false);
+  }
+
+
+  // ── Load older messages (pagination) ─────────────────────────────────────
+  async function loadOlderMessages() {
+    if (!activeConvId || !hasMoreMessages || loadingOlder || !oldestMsgId) return;
+    setLoadingOlder(true);
+    try {
+      const url = `/api/conversations/${activeConvId}/messages?before=${oldestMsgId}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) { setLoadingOlder(false); return; }
+      const responseData = await res.json() as { messages?: Message[]; hasMore?: boolean; oldestId?: number | null } | Message[];
+      const raw = Array.isArray(responseData) ? responseData : (responseData.messages ?? []);
+      const hasMore = !Array.isArray(responseData) ? (responseData.hasMore ?? false) : false;
+      const decrypted = await decryptAll(raw, otherUserPublicKey);
+      if (activeConvIdRef.current !== activeConvId) return;
+      setMessages(prev => [...decrypted.filter(message => !prev.some(existing => existing.id === message.id)), ...prev]);
+      setHasMoreMessages(hasMore);
+      if (decrypted.length) setOldestMsgId(decrypted[0].id);
+    } catch { /* non-fatal */ }
+    setLoadingOlder(false);
   }
 
   // ── Switch folder ─────────────────────────────────────────────────────────
@@ -1183,7 +1819,146 @@ export default function MessagesPage() {
     } catch { /* non-fatal */ }
   }
 
-  // ── Poll for new messages (since-based, efficient) ─────────────────────────
+  // ── SSE real-time stream ─────────────────────────────────────────────────
+  // Replaces the 3 s message poll, 2 s typing poll, and 5 s read-receipt poll.
+  // Falls back to the 15 s inbox poll (below) if SSE is unavailable.
+
+  const activeConvIdRef = useRef(activeConvId);
+  activeConvIdRef.current = activeConvId;
+  const otherUserPublicKeyRef = useRef(otherUserPublicKey);
+  otherUserPublicKeyRef.current = otherUserPublicKey;
+  const activeGroupIdRef = useRef(activeGroupId);
+  activeGroupIdRef.current = activeGroupId;
+
+  useMessengerSSE({
+    enabled: !!myId,
+    onConnect: () => {
+      setIsOffline(false);
+      // Reconnected — refresh inbox and active thread to catch up on missed events
+      void loadConversations(false);
+      if (activeConvIdRef.current && folder === 'inbox') {
+        void (async () => {
+          const after = lastMsgTimestampRef.current ?? new Date(0).toISOString();
+          const res = await fetch(
+            `/api/conversations/${activeConvIdRef.current}/messages/since?after=${encodeURIComponent(after)}`,
+            { credentials: 'include' },
+          );
+          if (!res.ok) return;
+          const raw = await res.json() as Message[];
+          if (!raw.length) return;
+          const decrypted = await decryptAll(raw, otherUserPublicKeyRef.current);
+          setMessages(prev => {
+            const existingIds = new Set(prev.map(m => m.id));
+            const newOnes = decrypted.filter(m => !existingIds.has(m.id));
+            if (!newOnes.length) return prev;
+            const merged = [...prev, ...newOnes].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            const latest = merged[merged.length - 1];
+            if (latest) lastMsgTimestampRef.current = latest.createdAt;
+            return merged;
+          });
+        })();
+      }
+    },
+    onDisconnect: () => { void loadConversations(false); },
+    onEvent: (event) => {
+      setIsOffline(false);
+      switch (event.type) {
+        case 'new_message': {
+          const p = event.payload;
+          if (!p) break;
+          // Refresh inbox list so unread counts + last-message preview update
+          void loadConversations(false);
+          // If the event is for the active DM thread, fetch new messages
+          if (p.conversationId === activeConvIdRef.current && folder === 'inbox') {
+            void (async () => {
+              const after = lastMsgTimestampRef.current ?? new Date(0).toISOString();
+              const res = await fetch(
+                `/api/conversations/${p.conversationId}/messages/since?after=${encodeURIComponent(after)}`,
+                { credentials: 'include' },
+              );
+              if (!res.ok) return;
+              const raw = await res.json() as Message[];
+              if (!raw.length) return;
+              const decrypted = await decryptAll(raw, otherUserPublicKeyRef.current);
+              setMessages(prev => {
+                const existingIds = new Set(prev.map(m => m.id));
+                const newOnes = decrypted.filter(m => !existingIds.has(m.id));
+                if (!newOnes.length) return prev;
+                const merged = [...prev, ...newOnes].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                const latest = merged[merged.length - 1];
+                if (latest) lastMsgTimestampRef.current = latest.createdAt;
+                return merged;
+              });
+              setConversations(prev => prev.map(c => c.id === p.conversationId ? { ...c, unreadCount: 0 } : c));
+            })();
+          }
+          break;
+        }
+        case 'group_message': {
+          const p = event.payload;
+          if (!p?.groupId) break;
+          // Refresh group messages if this group is active
+          if (p.groupId === activeGroupIdRef.current) {
+            void (async () => {
+              const res = await fetch(`/api/groups/${p.groupId}/messages`, { credentials: 'include' });
+              if (!res.ok) return;
+              const data = await res.json() as { messages: GroupMessage[] };
+              setGroupMessages(data.messages ?? []);
+            })();
+          }
+          break;
+        }
+        case 'typing': {
+          const p = event.payload;
+          if (p?.conversationId === activeConvIdRef.current) {
+            setOtherIsTyping(true);
+            // Auto-clear after 4 s (matches server TTL)
+            setTimeout(() => setOtherIsTyping(false), 4_000);
+          }
+          break;
+        }
+        case 'read_receipt': {
+          const p = event.payload;
+          if (p?.conversationId === activeConvIdRef.current) {
+            // Refresh read receipt state
+            void (async () => {
+              const res = await fetch(`/api/conversations/${p.conversationId}/receipts`, { credentials: 'include' });
+              if (!res.ok) return;
+              const data = await res.json() as { lastReadMessageId: number | null };
+              setLastReadMsgId(data.lastReadMessageId);
+            })();
+          }
+          break;
+        }
+        case 'presence_update': {
+          // Presence is managed by OnlineDot and batchPresence polling.
+          // The SSE event just triggers a refresh of the batch presence map.
+          void (async () => {
+            const convIds = conversations.map(c => c.otherUser?.id).filter(Boolean);
+            if (!convIds.length) return;
+            const res = await fetch('/api/presence/batch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ userIds: convIds }),
+            });
+            if (!res.ok) return;
+            const data = await res.json() as { presence: typeof batchPresence };
+            setBatchPresence(data.presence);
+          })();
+          break;
+        }
+        case 'request_update':
+          void loadConversations(false);
+          break;
+        default:
+          break;
+      }
+    },
+  });
+
+  // ── Fallback: poll for new messages every 15 s (SSE gap coverage) ─────────
+  // Kept as a safety net; SSE handles the fast path above.
 
   useEffect(() => {
     if (!activeConvId || folder !== 'inbox') return;
@@ -1193,7 +1968,6 @@ export default function MessagesPage() {
       if (!res.ok) return;
       const raw = await res.json() as Message[];
       if (!raw.length) return;
-      // otherUserPublicKey may be null for pre-key plaintext messages — decryptAll handles it
       const decrypted = await decryptAll(raw, otherUserPublicKey);
       setMessages(prev => {
         const existingIds = new Set(prev.map(m => m.id));
@@ -1204,15 +1978,14 @@ export default function MessagesPage() {
         if (latest) lastMsgTimestampRef.current = latest.createdAt;
         return merged;
       });
-      // Update unread count in sidebar
       setConversations(prev => prev.map(c => c.id === activeConvId ? { ...c, unreadCount: 0 } : c));
     };
-    const interval = setInterval(() => { void poll(); }, 3_000);
+    const interval = setInterval(() => { void poll(); }, 15_000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConvId, otherUserPublicKey, folder]);
 
-  // ── Poll typing indicator ─────────────────────────────────────────────────
+  // ── Fallback: poll typing indicator every 4 s (SSE gap coverage) ──────────
 
   useEffect(() => {
     if (!activeConvId || folder !== 'inbox') return;
@@ -1222,11 +1995,11 @@ export default function MessagesPage() {
       const data = await res.json() as { typing: boolean };
       setOtherIsTyping(data.typing);
     };
-    const interval = setInterval(() => { void poll(); }, 2_000);
+    const interval = setInterval(() => { void poll(); }, 4_000);
     return () => clearInterval(interval);
   }, [activeConvId, folder]);
 
-  // ── Poll read receipts ────────────────────────────────────────────────────
+  // ── Fallback: poll read receipts every 10 s (SSE gap coverage) ───────────
 
   useEffect(() => {
     if (!activeConvId || folder !== 'inbox') return;
@@ -1237,14 +2010,19 @@ export default function MessagesPage() {
       setLastReadMsgId(data.lastReadMessageId);
     };
     void poll(); // immediate on open
-    const interval = setInterval(() => { void poll(); }, 5_000);
+    const interval = setInterval(() => { void poll(); }, 10_000);
     return () => clearInterval(interval);
   }, [activeConvId, folder]);
 
   // ── Scroll to bottom on new messages ─────────────────────────────────────
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const list = mobileMessageList.current;
+    if (list) {
+      list.scrollTop = list.scrollHeight;
+    } else {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
   }, [messages.length]);
 
   // ── Auto-save draft after 2s of inactivity ───────────────────────────────
@@ -1290,6 +2068,12 @@ export default function MessagesPage() {
     // If in edit mode, submit the edit instead
     if (editingMsg) { await submitEdit(); return; }
     if (!draft.trim() || !activeConvId || sending) return;
+    if (!otherUserPublicKey || !keyReady) {
+      setSendError('Encryption is still connecting. Try again when both people have opened Messages.');
+      void refreshOtherUserKey();
+      if (!keyReady) void registerMessagingKey().then(setKeyReady).catch(() => undefined);
+      return;
+    }
     setSending(true);
     setSendError(null);
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
@@ -1297,11 +2081,7 @@ export default function MessagesPage() {
     // Generate a per-send idempotency key to prevent duplicate messages on retry
     const idempotencyKey = `${myId}-${activeConvId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     try {
-      // If the recipient hasn't set up their key yet, send as plaintext (base64-encoded, iv='plain')
-      // Once both parties have keys, messages are fully encrypted.
-      const { ciphertext, iv } = otherUserPublicKey
-        ? await encryptMessage(draft.trim(), otherUserPublicKey)
-        : { ciphertext: btoa(unescape(encodeURIComponent(draft.trim()))), iv: 'plain' };
+      const { ciphertext, iv } = await encryptMessage(draft.trim(), otherUserPublicKey);
       const res = await fetch(`/api/conversations/${activeConvId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1310,6 +2090,10 @@ export default function MessagesPage() {
       });
       if (res.ok) {
         const { id } = await res.json() as { id: number };
+        if (!Number.isSafeInteger(id) || id <= 0) {
+          setSendError('Message was not delivered.');
+          return;
+        }
         const text = draft.trim();
         setDraft('');
         setReplyTo(null);
@@ -1332,6 +2116,8 @@ export default function MessagesPage() {
         const errData = await res.json().catch(() => ({})) as { error?: string };
         setSendError(errData.error ?? 'Message could not be sent. Please try again.');
       }
+    } catch {
+      setSendError('Message could not be sent. Please try again.');
     } finally {
       setSending(false);
     }
@@ -1367,17 +2153,33 @@ export default function MessagesPage() {
     }
   }
 
-  async function deleteConversation() {
-    if (!activeConvId) return;
-    const res = await fetch(`/api/conversations/${activeConvId}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    if (res.ok) {
-      setConversations(prev => prev.filter(c => c.id !== activeConvId));
-      setActiveConvId(null);
-      setMessages([]);
-      setMobileView('list');
+  // Delete for self — removes from local view only (no server call; message stays for recipient)
+  function deleteForSelf(msgId: number) {
+    setMessages(prev => prev.filter(m => m.id !== msgId));
+    setOpenMenuId(null);
+  }
+
+  async function deleteConversation(convId = activeConvId) {
+    if (!convId) return;
+    try {
+      const res = await fetch(`/api/conversations/${convId}/state`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clearHistory: true }),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Could not delete conversation');
+      ++inboxLoadGeneration.current;
+      setConversations(prev => prev.filter(c => c.id !== convId));
+      if (activeConvIdRef.current === convId) {
+        activeConvIdRef.current = null;
+        setActiveConvId(null);
+        setMessages([]);
+        setMobileView('list');
+      }
+      void loadConversations();
+    } catch {
+      window.alert('Could not delete this conversation for you. Please try again.');
     }
   }
 
@@ -1449,16 +2251,89 @@ export default function MessagesPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const filteredConversations = conversations.filter(conv => {
+    if (conv.isHidden) return false;
     const matchesSearch = !inboxSearch || (
       (conv.otherUser?.name ?? '').toLowerCase().includes(inboxSearch.toLowerCase()) ||
       (conv.otherUser?.username ?? '').toLowerCase().includes(inboxSearch.toLowerCase())
     );
-    // Always show the currently-open conversation even if it has no unread messages —
+    // Always show the currently-open conversation regardless of filter —
     // marking messages as read drops unreadCount to 0, which would otherwise hide
-    // the active thread from the "Unread" filter and make it appear messages vanished.
-    const matchesFilter = inboxFilter === 'all' || conv.unreadCount > 0 || conv.id === activeConvId;
+    // the active thread and make it appear messages vanished.
+    let matchesFilter: boolean;
+    if (inboxFilter === 'all') {
+      // 'all' hides archived conversations unless they're the active one
+      matchesFilter = !conv.isArchived;
+    } else if (inboxFilter === 'unread') {
+      matchesFilter = (conv.unreadCount > 0 && !conv.isArchived) || conv.id === activeConvId;
+    } else if (inboxFilter === 'archived') {
+      matchesFilter = Boolean(conv.isArchived);
+    } else if (inboxFilter === 'groups') {
+      // Groups tab: show nothing from DM list (groups come from separate state)
+      matchesFilter = false;
+    } else if (inboxFilter === 'requests') {
+      // Requests tab: show nothing from DM list (requests come from separate state)
+      matchesFilter = false;
+    } else {
+      // 'read'
+      matchesFilter = (conv.unreadCount === 0 && !conv.isArchived) || conv.id === activeConvId;
+    }
     return matchesSearch && matchesFilter;
   });
+
+  const matchingGroups = groups.filter(group => {
+    if (!group.name.toLowerCase().includes(inboxSearch.trim().toLowerCase())) return false;
+    if (inboxFilter === 'archived') return group.isArchived;
+    if (group.isArchived) return false;
+    return inboxFilter === 'groups' || inboxFilter === 'all' || (inboxFilter === 'unread' && group.unreadCount > 0);
+  });
+  const inboxRows = [
+    ...filteredConversations.map(conv => ({ conv, group: null, time: conv.lastMessage?.createdAt ?? conv.updatedAt })),
+    ...matchingGroups.map(group => ({ conv: null, group, time: group.lastMessage?.createdAt ?? group.updatedAt })),
+  ].sort((a, b) => (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0));
+
+  const renderGroupRow = (group: GroupSummary, idx: number) => (
+<motion.button
+                    key={`group-${group.id}`}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                    onClick={() => void openGroupThread(group.id)}
+                    className="w-full flex items-center gap-3.5 px-4 py-2.5 text-left active:opacity-60 transition-opacity"
+                    style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)', background: activeGroupId === group.id ? 'hsl(var(--muted) / 0.5)' : 'transparent' }}>
+                    <span className="relative flex-shrink-0">
+                      <div className="rounded-full flex items-center justify-center"
+                        style={{ width: 42, height: 42, background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)', border: '2px solid hsl(var(--border))' }}>
+                        {group.avatarUrl ? (
+                          <img src={uploadedMediaUrl(group.avatarUrl)} alt={group.name} className="w-full h-full rounded-full object-cover" />
+                        ) : (
+                          <Users className="w-5 h-5" style={{ color: 'hsl(var(--primary-foreground))' }} />
+                        )}
+                      </div>
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={'text-sm font-semibold truncate ' + (group.unreadCount > 0 ? 'font-bold' : '')}
+                          style={{ color: 'hsl(var(--foreground))' }}>
+                          {group.name}
+                        </span>
+                        <span className="text-xs flex-shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                          {formatTime(group.lastMessage?.createdAt ?? group.updatedAt)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mt-0.5 gap-2">
+                        <span className="text-xs truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                          {group.lastMessage?.content ?? 'No messages yet'}
+                        </span>
+                        {group.unreadCount > 0 && (
+                          <span className="text-xs min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-semibold flex-shrink-0"
+                            style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                            {group.unreadCount > 9 ? '9+' : group.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </motion.button>
+  );
 
   return (
     <>
@@ -1470,6 +2345,9 @@ export default function MessagesPage() {
 
       {/* Horoscope popup removed — now shown as inline strip in sidebar */}
 
+      {/* Messaging privacy settings modal */}
+      <MessagingPrivacyModal open={showPrivacySettings} onClose={() => setShowPrivacySettings(false)} />
+
       {/* ── Mobile: full-screen native-feel stack ── Desktop: two-panel card ── */}
       <div className="md:max-w-5xl md:mx-auto md:px-4 md:py-8">
 
@@ -1479,33 +2357,48 @@ export default function MessagesPage() {
         <div className={`flex flex-col md:hidden ${mobileView === 'thread' ? 'hidden' : ''}`}
           style={{ minHeight: 'calc(100dvh - 4rem)' }}>
 
-          {/* List header */}
-          <div className="flex items-center justify-between px-5 pt-4 pb-3">
-            <div>
-              <h1 className="font-serif text-2xl font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-                Messages
-                {totalUnread > 0 && (
-                  <span className="ml-2 text-xs font-sans px-2 py-0.5 rounded-full align-middle"
-                    style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
-                    {totalUnread}
-                  </span>
-                )}
-              </h1>
-              <div className="flex items-center gap-1 mt-0.5">
-                <ShieldCheck className="w-3 h-3" style={{ color: 'hsl(var(--success))' }} />
-                <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Private conversation</span>
-              </div>
+          <div className="flex items-center justify-between px-4 pt-2 pb-1">
+            <div className="w-[65px] h-9 overflow-hidden">
+              <img
+                src="/airo-assets/images/logo/horizontal"
+                alt="Spellful"
+                className="max-w-none w-[72px] h-auto -ml-1"
+                style={{ filter: 'drop-shadow(0 0 7px hsl(var(--primary) / 0.25))' }}
+              />
             </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowPrivacySettings(true)}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+                style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}
+                aria-label="Messaging privacy settings">
+                <Settings className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => { setShowCompose(v => !v); setComposeQuery(''); setComposeResults([]); }}
+                className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90"
+                style={{
+                  background: showCompose ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
+                  color: showCompose ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary-foreground))',
+                  border: showCompose ? '1px solid hsl(var(--border))' : 'none',
+                }}
+                aria-label={showCompose ? 'Cancel' : 'New message'}>
+                {showCompose ? <XIcon className="w-4 h-4" /> : <PenSquare className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 px-4 pb-2">
+            <h1 className="font-serif text-2xl font-bold text-foreground">Messages</h1>
             <button
-              onClick={() => { setShowCompose(v => !v); setComposeQuery(''); setComposeResults([]); }}
-              className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90"
-              style={{
-                background: showCompose ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
-                color: showCompose ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary-foreground))',
-                border: showCompose ? '1px solid hsl(var(--border))' : 'none',
+              onClick={() => {
+                setInboxFilter(inboxFilter === 'requests' ? 'all' : 'requests');
+                setOpenedRequest(null);
+                void loadMessageRequests();
               }}
-              aria-label={showCompose ? 'Cancel' : 'New message'}>
-              {showCompose ? <XIcon className="w-4 h-4" /> : <PenSquare className="w-4 h-4" />}
+              aria-pressed={inboxFilter === 'requests'}
+              className="rounded-full border border-border px-3 py-2 text-xs font-semibold text-primary">
+              Requests{msgRequests.length > 0 ? ` (${msgRequests.length})` : ''}
             </button>
           </div>
 
@@ -1514,6 +2407,7 @@ export default function MessagesPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'hsl(var(--muted-foreground))' }} />
               <input
+                id="mobile-inbox-search"
                 type="search"
                 value={inboxSearch}
                 onChange={e => setInboxSearch(e.target.value)}
@@ -1537,38 +2431,78 @@ export default function MessagesPage() {
           </div>
 
           {/* Filter tabs */}
-          <div className="flex items-center gap-1 px-4 pb-2">
-            {(['all', 'unread'] as const).map(f => (
+          <div className="flex items-center gap-1 px-4 pb-2 overflow-x-auto scrollbar-none">
+            {([
+              { id: 'all' as const, label: 'All' },
+              { id: 'unread' as const, label: totalUnread > 0 ? `Unread (${totalUnread})` : 'Unread' },
+              { id: 'groups' as const, label: 'Groups' },
+              { id: 'archived' as const, label: 'Archived' },
+            ] as { id: 'all' | 'unread' | 'read' | 'requests' | 'groups' | 'archived'; label: string }[]).map(f => (
               <button
-                key={f}
-                onClick={() => setInboxFilter(f)}
-                className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                key={f.id}
+                onClick={() => setInboxFilter(f.id)}
+                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
                 style={{
-                  background: inboxFilter === f ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
-                  color: inboxFilter === f ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
-                  border: inboxFilter === f ? 'none' : '1px solid hsl(var(--border))',
+                  background: inboxFilter === f.id ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
+                  color: inboxFilter === f.id ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
+                  border: inboxFilter === f.id ? 'none' : '1px solid hsl(var(--border))',
                 }}>
-                {f === 'all' ? 'All' : 'Unread' + (totalUnread > 0 ? ' (' + totalUnread + ')' : '')}
+                {f.label}
               </button>
             ))}
           </div>
 
-          {/* ── Horoscope inline strip (mobile) ── */}
-          {horoscope && (
-            <div className="mx-4 mb-2 px-3 py-2.5 rounded-2xl flex items-center gap-2.5"
-              style={{ background: 'hsl(var(--primary) / 0.08)', border: '1px solid hsl(var(--primary) / 0.2)' }}>
-              <Sparkles className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'hsl(var(--primary))' }} />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate" style={{ color: 'hsl(var(--primary))' }}>
-                  {horoscope.sign} · {horoscope.headline}
-                </p>
-              </div>
-              <button
-                onClick={() => navigate('/horoscope')}
-                className="text-xs flex-shrink-0 transition-opacity hover:opacity-70"
-                style={{ color: 'hsl(var(--primary))' }}>
-                View
-              </button>
+          {inboxFilter === 'all' && <ActiveNowStrip users={friends} presence={batchPresence} />}
+
+          {/* ── Mobile requests panel ── */}
+          {inboxFilter === 'requests' && (
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                These members want to message you. Accept to move them to your inbox, or decline to remove the request.
+              </p>
+              {requestError ? (
+                <button className="text-xs underline text-primary" onClick={() => void loadMessageRequests()}>Could not load requests. Retry</button>
+              ) : !msgRequestsLoaded ? (
+                <p role="status" className="text-xs text-muted-foreground">Loading requests…</p>
+              ) : msgRequests.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                  <MessageCircle className="w-10 h-10 opacity-20" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                  <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>No pending requests</p>
+                  <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>New message requests will appear here</p>
+                </div>
+              ) : (
+                msgRequests.map(req => (
+                  <div key={req.id} className="space-y-2 rounded-xl border border-border bg-muted p-3">
+                    <button className="flex w-full items-center gap-3 text-left" onClick={() => setOpenedRequest(openedRequest === req.id ? null : req.id)} aria-expanded={openedRequest === req.id}>
+                      <Avatar user={{ id: req.requesterId, name: req.requesterName, username: req.requesterUsername, image: req.requesterImage }} size={36} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">{req.requesterName ?? req.requesterUsername ?? 'Member'}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{requestPreviews[req.id] ?? 'Encrypted message'}</span>
+                      </span>
+                      {(req.latest?.createdAt ?? req.createdAt) && <span className="text-xs text-muted-foreground">{formatTime((req.latest?.createdAt ?? req.createdAt)!)}</span>}
+                    </button>
+                    {openedRequest === req.id && (
+                      <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg bg-background p-3 text-sm">
+                        {!requestMessages ? 'Loading message…' : requestMessages.map(message => (
+                          <p key={message.id} className="break-words">{message.plaintext ?? 'Encrypted message'}</p>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-1.5">
+                      <Button size="sm" variant="default"
+                        onClick={() => void handleMsgRequest(req.id, 'accept')}
+                        className="text-xs h-8 px-3 rounded-full">
+                        Accept
+                      </Button>
+                      <Button size="sm" variant="outline"
+                        onClick={() => void handleMsgRequest(req.id, 'decline')}
+                        className="text-xs h-8 px-3 rounded-full">
+                        Decline
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
 
@@ -1659,7 +2593,7 @@ export default function MessagesPage() {
 
           {/* Conversation rows */}
           <div className="flex-1 overflow-y-auto">
-            {loadingConvs ? (
+            {inboxFilter === 'groups' || inboxFilter === 'requests' ? null : loadingConvs || (loadingGroups && inboxRows.length === 0) ? (
               <div className="flex flex-col gap-0 px-0 pt-2">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="flex items-center gap-3.5 px-5 py-3.5 animate-pulse"
@@ -1672,135 +2606,296 @@ export default function MessagesPage() {
                   </div>
                 ))}
               </div>
-            ) : conversations.length === 0 ? (
+            ) : convLoadError ? (
               <div className="flex flex-col items-center justify-center gap-4 px-8 pt-16 text-center">
                 <div className="w-20 h-20 rounded-full flex items-center justify-center"
                   style={{ background: 'hsl(var(--muted))' }}>
-                  <MessageCircle className="w-9 h-9" style={{ color: 'hsl(var(--primary))' }} />
+                  <MessageCircle className="w-9 h-9" style={{ color: 'hsl(var(--destructive))' }} />
                 </div>
-                <p className="font-serif text-lg" style={{ color: 'hsl(var(--foreground))' }}>No messages yet</p>
+                <p className="font-serif text-lg" style={{ color: 'hsl(var(--foreground))' }}>Couldn't load messages</p>
                 <p className="text-sm leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  Visit the Community to find members and start a conversation.
+                  There was a problem retrieving your conversations. Your messages are safe — please try again.
                 </p>
                 <button
-                  onClick={() => navigate('/community')}
+                  onClick={() => { setConvLoadError(false); setLoadingConvs(true); void loadConversations(true); }}
                   className="mt-2 px-6 py-2.5 rounded-full text-sm font-medium transition-opacity active:opacity-70"
                   style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
-                  Go to Community
+                  Try again
                 </button>
               </div>
-            ) : filteredConversations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 px-8 text-center gap-3">
-                <MessageCircle className="w-10 h-10 opacity-30" style={{ color: 'hsl(var(--muted-foreground))' }} />
-                <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-                  {inboxSearch ? 'No conversations match your search' : 'No unread messages'}
+            ) : isOffline ? (
+              <div className="flex flex-col items-center justify-center gap-4 px-8 pt-16 text-center">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center"
+                  style={{ background: 'hsl(var(--muted))' }}>
+                  <svg viewBox="0 0 24 24" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"
+                    style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M8.111 8.111A5.5 5.5 0 0112 7c1.657 0 3.156.733 4.172 1.899M15.536 15.536A5.5 5.5 0 0112 17a5.5 5.5 0 01-3.536-1.464M1.5 1.5l21 21" />
+                  </svg>
+                </div>
+                <p className="font-serif text-lg" style={{ color: 'hsl(var(--foreground))' }}>You're offline</p>
+                <p className="text-sm leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Your messages are safe. Check your connection and we'll reconnect automatically.
                 </p>
-                <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  {inboxSearch ? 'Try a different name or username' : 'You’re all caught up'}
-                </p>
-                {inboxFilter === 'unread' && (
-                  <button onClick={() => setInboxFilter('all')} className="text-xs underline mt-1" style={{ color: 'hsl(var(--primary))' }}>
-                    Show all conversations
-                  </button>
+                <button
+                  onClick={() => { setConvLoadError(false); setLoadingConvs(true); void loadConversations(true); }}
+                  className="mt-1 px-6 py-2.5 rounded-full text-sm font-medium transition-opacity active:opacity-70"
+                  style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }}>
+                  Check connection
+                </button>
+              </div>
+            ) : inboxRows.length === 0 && inboxFilter === 'all' && !inboxSearch ? null : inboxRows.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-14 px-8 text-center gap-3">
+                {inboxSearch ? (
+                  <>
+                    <svg viewBox="0 0 24 24" className="w-10 h-10 opacity-25" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"
+                      style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803 7.5 7.5 0 0015.803 15.803z" />
+                    </svg>
+                    <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>No results for "{inboxSearch}"</p>
+                    <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Try a different name or username</p>
+                    <button onClick={() => setInboxSearch('')} className="text-xs underline mt-1" style={{ color: 'hsl(var(--primary))' }}>
+                      Clear search
+                    </button>
+                  </>
+                ) : inboxFilter === 'unread' ? (
+                  <>
+                    <svg viewBox="0 0 24 24" className="w-10 h-10 opacity-25" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"
+                      style={{ color: 'hsl(var(--primary))' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>All caught up ✨</p>
+                    <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>No unread messages right now</p>
+                    <button onClick={() => setInboxFilter('all')} className="text-xs underline mt-1" style={{ color: 'hsl(var(--primary))' }}>
+                      View all conversations
+                    </button>
+                  </>
+                ) : inboxFilter === 'archived' ? (
+                  <>
+                    <svg viewBox="0 0 24 24" className="w-10 h-10 opacity-25" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"
+                      style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                    </svg>
+                    <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>No archived conversations</p>
+                    <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Archived chats will appear here</p>
+                    <button onClick={() => setInboxFilter('all')} className="text-xs underline mt-1" style={{ color: 'hsl(var(--primary))' }}>
+                      Back to inbox
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="w-10 h-10 opacity-25" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                    <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>No conversations here</p>
+                    <button onClick={() => setInboxFilter('all')} className="text-xs underline mt-1" style={{ color: 'hsl(var(--primary))' }}>
+                      Back to inbox
+                    </button>
+                  </>
                 )}
               </div>
             ) : (
-              filteredConversations.map((conv, idx) => (
-                <div key={conv.id} className="relative group" style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
-                  <motion.button
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.04 }}
-                  onClick={() => conv.otherUser && void openConversation(conv.id, conv.otherUser)}
-                  onContextMenu={(e) => { e.preventDefault(); setConvMenuId(convMenuId === conv.id ? null : conv.id); }}
-                  className="w-full flex items-center gap-3.5 px-5 py-4 text-left active:opacity-60 transition-opacity">
-                  <span className="relative flex-shrink-0">
-                    <Avatar user={conv.otherUser} size={52} />
-                    {conv.otherUser && (
-                      <div className="absolute bottom-0 right-0">
-                        <OnlineDot userId={conv.otherUser.id} size={12} presenceData={batchPresence[conv.otherUser.id] ?? null} />
-                      </div>
-                    )}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className={'text-sm truncate ' + (conv.unreadCount > 0 ? 'font-semibold' : 'font-medium')}
-                        style={{ color: 'hsl(var(--foreground))' }}>
-                        {conv.otherUser?.name ?? conv.otherUser?.username ?? 'Unknown'}
-                        {conv.isPinned && <span className="ml-1 text-xs">📌</span>}
-                        {conv.isMuted && <span className="ml-1 text-xs opacity-60">🔇</span>}
-                      </span>
-                      {conv.lastMessage && (
-                        <span className={'text-xs flex-shrink-0 ' + (conv.unreadCount > 0 ? 'font-semibold' : '')}
-                          style={{ color: conv.unreadCount > 0 ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}>
-                          {formatTime(conv.lastMessage.createdAt)}
-                        </span>
+              inboxRows.map(({ conv, group }, idx) => group ? renderGroupRow(group, idx) : conv && (
+                <React.Fragment key={conv.id}>
+                  <div className="relative group" style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+                    <motion.button
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                    onClick={() => conv.otherUser && void openConversation(conv.id, conv.otherUser)}
+                    onContextMenu={(e) => { e.preventDefault(); setConvMenuId(convMenuId === conv.id ? null : conv.id); }}
+                    className="w-full flex items-center gap-3.5 py-2.5 pl-4 pr-14 text-left active:opacity-60 transition-opacity">
+                    <span className="relative flex-shrink-0">
+                      <Avatar user={conv.otherUser} size={42} />
+                      {conv.otherUser && (
+                        <div className="absolute bottom-0 right-0">
+                          <OnlineDot userId={conv.otherUser.id} size={12} presenceData={batchPresence[conv.otherUser.id] ?? null} />
+                        </div>
                       )}
-                    </div>
-                    <div className="flex items-center justify-between mt-0.5 gap-2">
-                      <span className={'text-xs truncate ' + (conv.unreadCount > 0 ? 'font-medium' : '')}
-                        style={{ color: conv.unreadCount > 0 ? 'hsl(var(--foreground) / 0.85)' : 'hsl(var(--muted-foreground))' }}>
-                        {conv.lastMessage ? (conv.lastMessage.systemMessage ? '✨ Welcome to Spellful!' : '🔒 Encrypted message') : 'No messages yet'}
-                      </span>
-                      <span className="flex items-center gap-1 flex-shrink-0">
-                        {conv.isStarred && <span className="text-xs">⭐</span>}
-                        {conv.unreadCount > 0 && (
-                          <span className="text-xs min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-semibold"
-                            style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
-                            {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className={'text-sm truncate ' + (conv.unreadCount > 0 ? 'font-semibold' : 'font-medium')}
+                          style={{ color: 'hsl(var(--foreground))' }}>
+                          {conv.otherUser?.name ?? conv.otherUser?.username ?? 'Unknown'}
+                          {conv.isCoven && <span className="ml-1 text-xs" title="Coven friend">🔮</span>}
+                          {conv.isMuted && <span className="ml-1 text-xs opacity-60">🔇</span>}
+                        </span>
+                        {conv.lastMessage && (
+                          <span className={'text-xs flex-shrink-0 ' + (conv.unreadCount > 0 ? 'font-semibold' : '')}
+                            style={{ color: conv.unreadCount > 0 ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>
+                            {formatTime(conv.lastMessage.createdAt)}
                           </span>
                         )}
-                      </span>
+                      </div>
+                      <div className="flex items-center justify-between mt-0.5 gap-2">
+                        <span className={'text-xs truncate ' + (conv.unreadCount > 0 ? 'font-medium' : '')}
+                          style={{ color: conv.unreadCount > 0 ? 'hsl(var(--foreground) / 0.85)' : 'hsl(var(--muted-foreground))' }}>
+                          {conv.lastMessage
+                            ? conv.lastMessage.systemMessage
+                              ? richCardPreview(conv.lastMessage.systemMessage)
+                              : conv.lastMessage.senderId === session?.user?.id
+                                ? `You: ${inboxPreviews[conv.id] ?? 'Encrypted message'}`
+                                : inboxPreviews[conv.id] ?? 'Encrypted message'
+                            : 'No messages yet'}
+                        </span>
+                        <span className="flex items-center gap-1 flex-shrink-0">
+                          {conv.isStarred && <span className="text-xs">⭐</span>}
+                          {conv.unreadCount > 0 ? (
+                            <span className="text-xs min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center font-semibold"
+                              style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                              {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
+                            </span>
+                          ) : conv.lastMessage?.senderId === session?.user?.id ? (
+                            <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Sent</span>
+                          ) : null}
+                        </span>
+                      </div>
                     </div>
+                    </motion.button>
+                    <button
+                      onClick={() => setConvMenuId(convMenuId === conv.id ? null : conv.id)}
+                      className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground"
+                      aria-label="Conversation options"
+                      aria-expanded={convMenuId === conv.id}>
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                  {/* Conversation context menu */}
+                  {convMenuId === conv.id && (
+                    <>
+                      <div className="fixed inset-0 z-20" onClick={() => setConvMenuId(null)} />
+                      <div
+                        className="absolute right-3 top-12 z-30 rounded-2xl shadow-xl py-1 min-w-[190px]"
+                        style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                        onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => void convStateAction(conv.id, { isPinned: !conv.isPinned })}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs hover:opacity-80 text-left"
+                          style={{ color: 'hsl(var(--foreground))' }}>
+                          📌 {conv.isPinned ? 'Unpin' : 'Pin conversation'}
+                        </button>
+                        <button onClick={() => void convStateAction(conv.id, { isStarred: !conv.isStarred })}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs hover:opacity-80 text-left"
+                          style={{ color: 'hsl(var(--foreground))' }}>
+                          ⭐ {conv.isStarred ? 'Unstar' : 'Star conversation'}
+                        </button>
+                        <button onClick={() => void convStateAction(conv.id, { isArchived: !conv.isArchived })}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs hover:opacity-80 text-left"
+                          style={{ color: 'hsl(var(--foreground))' }}>
+                          📁 {conv.isArchived ? 'Unarchive' : 'Archive'}
+                        </button>
+                        <button onClick={() => void convStateAction(conv.id, { isMuted: !conv.isMuted })}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs hover:opacity-80 text-left"
+                          style={{ color: 'hsl(var(--foreground))' }}>
+                          🔇 {conv.isMuted ? 'Unmute' : 'Mute notifications'}
+                        </button>
+                        <div style={{ borderTop: '1px solid hsl(var(--border))' }} className="my-1" />
+                        {conv.otherUser && (
+                          <button onClick={() => { setConvMenuId(null); void blockUserFromConversation(conv.otherUser!.id); }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs hover:opacity-80 text-left"
+                            style={{ color: 'hsl(var(--destructive))' }}>
+                            🚫 Block member
+                          </button>
+                        )}
+                        <button onClick={() => {
+                          setConvMenuId(null);
+                          if (window.confirm('Delete this conversation for you? The other person keeps their history.')) {
+                            void deleteConversation(conv.id);
+                          }
+                        }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs hover:opacity-80 text-left"
+                          style={{ color: 'hsl(var(--destructive))' }}>
+                          🗑 Delete for me
+                        </button>
+                      </div>
+                    </>
+                  )}
                   </div>
-                  {/* Context menu trigger — visible on hover */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setConvMenuId(convMenuId === conv.id ? null : conv.id); }}
-                    className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    style={{ color: 'hsl(var(--muted-foreground))' }}
-                    aria-label="Conversation options">
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
-                </motion.button>
-                {/* Conversation context menu */}
-                {convMenuId === conv.id && (
-                  <>
-                    <div className="fixed inset-0 z-20" onClick={() => setConvMenuId(null)} />
-                    <div
-                      className="absolute right-3 top-12 z-30 rounded-2xl shadow-xl py-1 min-w-[190px]"
-                      style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
-                      onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => void convStateAction(conv.id, { isPinned: !conv.isPinned })}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs hover:opacity-80 text-left"
-                        style={{ color: 'hsl(var(--foreground))' }}>
-                        📌 {conv.isPinned ? 'Unpin' : 'Pin conversation'}
-                      </button>
-                      <button onClick={() => void convStateAction(conv.id, { isStarred: !conv.isStarred })}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs hover:opacity-80 text-left"
-                        style={{ color: 'hsl(var(--foreground))' }}>
-                        ⭐ {conv.isStarred ? 'Unstar' : 'Star conversation'}
-                      </button>
-                      <button onClick={() => void convStateAction(conv.id, { isArchived: !conv.isArchived })}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs hover:opacity-80 text-left"
-                        style={{ color: 'hsl(var(--foreground))' }}>
-                        📁 {conv.isArchived ? 'Unarchive' : 'Archive'}
-                      </button>
-                      <button onClick={() => void convStateAction(conv.id, { isMuted: !conv.isMuted })}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs hover:opacity-80 text-left"
-                        style={{ color: 'hsl(var(--foreground))' }}>
-                        🔇 {conv.isMuted ? 'Unmute' : 'Mute notifications'}
-                      </button>
-                      <div style={{ borderTop: '1px solid hsl(var(--border))' }} className="my-1" />
-                      <button onClick={() => void convStateAction(conv.id, { isHidden: true })}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs hover:opacity-80 text-left"
-                        style={{ color: 'hsl(var(--destructive))' }}>
-                        🗑 Delete for me
-                      </button>
-                    </div>
-                  </>
-                )}
-                </div>
+                </React.Fragment>
               ))
+            )}
+            {inboxFilter === 'all' && !loadingConvs && !loadingGroups && !convLoadError && !isOffline && (
+              <footer className="mx-4 my-4 rounded-2xl border border-border bg-card px-4 py-4">
+                <p className="mb-3 font-serif text-base text-foreground">Every connection begins with a little magic</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      setShowCompose(true);
+                      setComposeQuery('');
+                      setComposeResults([]);
+                      document.getElementById('mobile-inbox-search')?.scrollIntoView({ block: 'start' });
+                    }}
+                    className="min-h-10 rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground">
+                    Start a Conversation
+                  </button>
+                  <Link to="/community/discover" className="inline-flex min-h-10 items-center rounded-full border border-border px-3 text-xs font-semibold text-foreground">
+                    Discover Members
+                  </Link>
+                </div>
+              </footer>
+            )}
+
+            {/* ── Groups action bar ── */}
+            {inboxFilter === 'groups' && (
+              <div className="flex items-center justify-between px-5 py-2.5" style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+                <button
+                  onClick={() => { setShowGroupInvitations(true); void loadGroupInvitations(); }}
+                  className="flex items-center gap-1.5 text-xs font-medium transition-opacity active:opacity-70"
+                  style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  <UserCheck className="w-3.5 h-3.5" />
+                  Invitations
+                  {groupInvitations.length > 0 && (
+                    <span className="ml-0.5 w-4 h-4 rounded-full text-xs flex items-center justify-center font-semibold"
+                      style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                      {groupInvitations.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowCreateGroup(true)}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity active:opacity-70"
+                  style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                  <Users className="w-3 h-3" />
+                  New Group
+                </button>
+              </div>
+            )}
+            {/* ── Groups list (shown when Groups tab is active) ── */}
+            {inboxFilter === 'groups' && (
+              loadingGroups ? (
+                <div className="flex flex-col gap-0">
+                  {[0,1,2].map(i => (
+                    <div key={i} className="flex items-center gap-3.5 px-5 py-3.5 animate-pulse"
+                      style={{ borderBottom: '1px solid hsl(var(--border) / 0.4)' }}>
+                      <div className="w-13 h-13 rounded-full flex-shrink-0" style={{ width: 52, height: 52, background: 'hsl(var(--muted))' }} />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 rounded-full w-1/3" style={{ background: 'hsl(var(--muted))' }} />
+                        <div className="h-2.5 rounded-full w-2/3" style={{ background: 'hsl(var(--muted))' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : groupsLoadError && groups.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 p-6" role="status">
+                  <p>Group chats could not be loaded.</p>
+                  <button onClick={() => void loadGroups()} className="text-primary">Retry</button>
+                </div>
+              ) : matchingGroups.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-4 px-8 pt-12 pb-8 text-center">
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center"
+                    style={{ background: 'hsl(var(--muted))' }}>
+                    <Users className="w-7 h-7" style={{ color: 'hsl(var(--primary))' }} />
+                  </div>
+                  <p className="font-serif text-lg" style={{ color: 'hsl(var(--foreground))' }}>No group chats yet</p>
+                  <p className="text-sm leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Create a group to chat with multiple members at once.
+                  </p>
+                  <button
+                    onClick={() => setShowCreateGroup(true)}
+                    className="mt-1 px-6 py-2.5 rounded-full text-sm font-medium transition-opacity active:opacity-70"
+                    style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                    Create a Group
+                  </button>
+                </div>
+              ) : (
+                matchingGroups.map(renderGroupRow)
+              )
             )}
           </div>
 
@@ -1825,36 +2920,29 @@ export default function MessagesPage() {
             </div>
           )}
 
-          {/* Bottom bar */}
-          <div className="flex gap-2 px-4 py-3"
+          {/* Bottom bar — quick actions */}
+          <div className="flex items-center justify-between px-5 py-3"
             style={{ borderTop: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
             <button
-              onClick={() => { setShowCompose(v => !v); setComposeQuery(''); setComposeResults([]); }}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-medium transition-opacity active:opacity-70"
-              style={{
-                background: showCompose ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
-                color: showCompose ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary-foreground))',
-                border: showCompose ? '1px solid hsl(var(--border))' : 'none',
-              }}>
-              {showCompose ? <XIcon className="w-4 h-4" /> : <PenSquare className="w-4 h-4" />}
-              {showCompose ? 'Cancel' : 'New Message'}
+              onClick={() => navigate('/community/discover')}
+              className="flex items-center gap-1.5 text-xs transition-opacity active:opacity-70"
+              style={{ color: 'hsl(var(--muted-foreground))' }}>
+              <Users className="w-3.5 h-3.5" />
+              Discover members
             </button>
             <button
-              onClick={() => {
-                if (activeConvId) {
-                  void switchFolder('drafts');
-                  setMobileView('thread');
-                }
-              }}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-medium transition-opacity active:opacity-70"
-              style={{
-                background: 'hsl(var(--muted))',
-                color: activeConvId ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
-                border: '1px solid hsl(var(--border))',
-                opacity: activeConvId ? 1 : 0.5,
-              }}>
-              <FileText className="w-4 h-4" />
-              Drafts
+              onClick={() => setShowPrivacySettings(true)}
+              className="flex items-center gap-1.5 text-xs transition-opacity active:opacity-70"
+              style={{ color: 'hsl(var(--muted-foreground))' }}>
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Privacy
+            </button>
+            <button
+              onClick={() => setShowBlockedMembers(true)}
+              className="flex items-center gap-1.5 text-xs transition-opacity active:opacity-70"
+              style={{ color: 'hsl(var(--muted-foreground))' }}>
+              <ShieldOff className="w-3.5 h-3.5" />
+              Blocked
             </button>
           </div>
         </div>
@@ -1862,21 +2950,48 @@ export default function MessagesPage() {
         {/* ════════════════════════════════════════════════
             MOBILE THREAD VIEW (full-screen slide-in)
         ════════════════════════════════════════════════ */}
-        <AnimatePresence>
-          {mobileView === 'thread' && (
+        {typeof document !== 'undefined' && createPortal(
+          <AnimatePresence>
+          {mobileView === 'thread' && activeGroupId && (
+            <motion.div
+              key="group-thread"
+              className="spellful-mobile-thread md:hidden fixed inset-0 w-full max-w-full flex flex-col overflow-hidden"
+              style={{ background: 'hsl(var(--background))', zIndex: 60 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] as const }}>
+              <GroupThreadView
+                group={groups.find(g => g.id === activeGroupId) ?? null}
+                messages={groupMessages}
+                members={groupMembers}
+                loading={loadingGroupMsgs}
+                myId={myId}
+                draft={groupDraft}
+                setDraft={setGroupDraft}
+                sending={sendingGroup}
+                sendError={groupSendError}
+                onSend={() => void sendGroupMessage()}
+                onLeave={() => void leaveGroup(activeGroupId)}
+                onClose={() => { setActiveGroupId(null); setGroupMessages([]); setGroupMembers([]); setMobileView('list'); }}
+                mobile
+              />
+            </motion.div>
+          )}
+          {mobileView === 'thread' && !activeGroupId && (
             <motion.div
               key="thread"
-              className="md:hidden fixed inset-0 flex flex-col overflow-hidden"
+              className="spellful-mobile-thread md:hidden fixed inset-0 w-full max-w-full flex flex-col overflow-hidden"
               style={{ background: 'hsl(var(--background))', zIndex: 60 }}
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] as const }}>
 
               {/* Thread top bar */}
               <div className="flex-shrink-0 flex items-center gap-2 px-4 pb-3"
                 style={{
-                  paddingTop: 'max(12px, env(safe-area-inset-top, 0px))',
+                  paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
                   borderBottom: '1px solid hsl(var(--border))',
                   background: 'hsl(var(--card))',
                 }}>
@@ -1890,28 +3005,35 @@ export default function MessagesPage() {
                 <button
                   type="button"
                   onClick={() => { if (activeOtherUser?.username) navigate(`/u/${activeOtherUser.username}`); }}
-                  className="flex-1 flex flex-col items-center gap-0.5 cursor-pointer disabled:cursor-default"
+                  className="min-w-0 flex-1 flex flex-col items-center gap-0.5 cursor-pointer disabled:cursor-default"
                   disabled={!activeOtherUser?.username}
                   aria-label={activeOtherUser?.username ? `View ${activeOtherUser.name ?? activeOtherUser.username}'s profile` : undefined}>
-                  <Avatar user={activeOtherUser} size={32} />
-                  <p className="text-sm font-semibold leading-tight hover:underline" style={{ color: 'hsl(var(--foreground))' }}>
+                  <span className="relative">
+                    <Avatar user={activeOtherUser} size={32} />
+                    {activeOtherUser && (
+                      <span className="absolute -bottom-0.5 -right-0.5">
+                        <OnlineDot userId={activeOtherUser.id} size={9} presenceData={batchPresence[activeOtherUser.id] ?? null} />
+                      </span>
+                    )}
+                  </span>
+                  <p className="max-w-full truncate text-sm font-semibold leading-tight hover:underline" style={{ color: 'hsl(var(--foreground))' }}>
                     {activeOtherUser?.name ?? activeOtherUser?.username ?? 'Unknown'}
                   </p>
                   <AnimatePresence mode="wait">
                     {otherIsTyping ? (
                       <motion.p key="typing-m" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="text-xs leading-tight" style={{ color: 'hsl(var(--primary))' }}>
+                        className="max-w-full truncate text-xs leading-tight" style={{ color: 'hsl(var(--primary))' }}>
                         typing…
                       </motion.p>
                     ) : activeOtherUser?.username ? (
                       <motion.p key="username-m" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="text-xs leading-tight" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        className="max-w-full truncate text-xs leading-tight" style={{ color: 'hsl(var(--muted-foreground))' }}>
                         @{activeOtherUser.username}
                       </motion.p>
                     ) : null}
                   </AnimatePresence>
                 </button>
-                <div className="flex items-center gap-1">
+                <div className="flex shrink-0 items-center gap-1">
                   <button
                     onClick={() => setShowSearch(v => !v)}
                     className="w-8 h-8 rounded-full flex items-center justify-center"
@@ -1937,7 +3059,7 @@ export default function MessagesPage() {
                   <Lock className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'hsl(var(--success))' }} />
                   <button
                     onClick={() => {
-                      if (window.confirm('Delete this conversation? This cannot be undone.')) {
+                      if (window.confirm('Delete this conversation for you? The other person keeps their history.')) {
                         void deleteConversation();
                       }
                     }}
@@ -1984,7 +3106,7 @@ export default function MessagesPage() {
               </AnimatePresence>
 
               {/* Folder tabs */}
-              <div className="flex-shrink-0 flex items-center gap-1 px-4 pt-2 pb-0"
+              <div className="flex-shrink-0 flex items-center gap-1 px-2 pt-2 pb-0 overflow-x-auto scrollbar-none"
                 style={{ borderBottom: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}>
                 {([
                   { id: 'inbox', label: 'Inbox', icon: Inbox },
@@ -1993,7 +3115,7 @@ export default function MessagesPage() {
                   { id: 'trash', label: 'Trash', icon: Trash2 },
                 ] as { id: Folder; label: string; icon: LucideIcon }[]).map(tab => (
                   <button key={tab.id} onClick={() => void switchFolder(tab.id)}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs rounded-t-lg transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs rounded-t-lg transition-colors flex-shrink-0"
                     style={{
                       color: folder === tab.id ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
                       borderBottom: folder === tab.id ? '2px solid hsl(var(--primary))' : '2px solid transparent',
@@ -2046,7 +3168,30 @@ export default function MessagesPage() {
                   )}
                 </div>
 
-                {loadingMsgs ? (
+                {/* Load older messages — mobile */}
+                {hasMoreMessages && !loadingMsgs && (
+                  <div className="flex justify-center pt-2 pb-1">
+                    <button
+                      onClick={() => void loadOlderMessages()}
+                      disabled={loadingOlder}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium transition-opacity active:opacity-70 disabled:opacity-50"
+                      style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}>
+                      {loadingOlder ? (
+                        <><span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin inline-block" />Loading…</>
+                      ) : (
+                        <>↑ Load older</>
+                      )}
+                    </button>
+                  </div>
+                )}
+                {threadLoadError ? (
+                  <div className="py-12 text-center">
+                    <p className="mb-3 text-sm text-muted-foreground">Couldn’t load this conversation.</p>
+                    <Button variant="outline" onClick={() => {
+                      if (activeConvId) void loadFolder(folder, activeConvId, otherUserPublicKey);
+                    }}>Try again</Button>
+                  </div>
+                ) : loadingMsgs ? (
                   <div className="flex flex-col gap-3 pt-4">
                     {[1, 2, 3].map(i => (
                       <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'} animate-pulse`}>
@@ -2065,6 +3210,7 @@ export default function MessagesPage() {
                     {messages.map((msg, idx) => {
                       const isMine = msg.senderId === myId;
                       const isSystem = !!msg.systemMessage;
+                      const isRich = isRichCard(msg.systemMessage);
                       const prevMsgM: Message | undefined = idx > 0 ? messages[idx - 1] : undefined;
                       const showDateSepM = !prevMsgM || new Date(msg.createdAt).toDateString() !== new Date(prevMsgM.createdAt).toDateString();
                       const isLastMineM = isMine && !isSystem && messages.slice(idx + 1).every(m => m.senderId !== myId || !!m.systemMessage);
@@ -2084,9 +3230,11 @@ export default function MessagesPage() {
                             transition={{ duration: 0.18 }}
                             id={`msg-${msg.id}`}
                             className={'flex ' + (isMine ? 'justify-end' : 'justify-start')}>
-                          <div className={isSystem ? 'w-full' : 'max-w-[78%]'} style={{ marginLeft: isSystem ? 'auto' : undefined, marginRight: isSystem ? 'auto' : undefined }}>
+                            <div className={isSystem ? 'w-full' : 'min-w-0 max-w-[78%] [overflow-wrap:anywhere]'} style={{ marginLeft: isSystem ? 'auto' : undefined, marginRight: isSystem ? 'auto' : undefined }}>
                             <div className="relative group">
-                              {isSystem ? (
+                              {isRich && msg.systemMessage ? (
+                                <RichMessageCard systemMessage={msg.systemMessage} isMine={isMine} />
+                              ) : isSystem ? (
                                 <div className="rounded-2xl overflow-hidden"
                                   style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
                                   <img
@@ -2160,7 +3308,7 @@ export default function MessagesPage() {
                                           className={'absolute bottom-9 flex gap-1 px-2 py-1.5 rounded-2xl shadow-xl z-30 ' + (isMine ? 'right-0' : 'left-0')}
                                           style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                                           onClick={e => e.stopPropagation()}>
-                                          {['👍', '❤️', '✨', '🌙'].map(emoji => {
+                                          {['👍', '❤️', '✨', '🌙', '🔮', '🕯️', '🌿', '⚡'].map(emoji => {
                                             const myReaction = msg.reactions?.find(r => r.emoji === emoji && r.userIds.includes(myId));
                                             return (
                                               <button key={emoji} onClick={() => void toggleReaction(msg.id, emoji)}
@@ -2225,6 +3373,11 @@ export default function MessagesPage() {
                                               <Trash2 className="w-3.5 h-3.5" />Move to trash
                                             </button>
                                           )}
+                                          <button onClick={() => { deleteForSelf(msg.id); setOpenMenuId(null); }}
+                                            className="w-full flex items-center gap-2 px-4 py-2.5 text-xs hover:opacity-80"
+                                            style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                            <Trash2 className="w-3.5 h-3.5" />Delete for me
+                                          </button>
                                           <button onClick={() => void softDeleteMessage(msg.id)}
                                             className="w-full flex items-center gap-2 px-4 py-2.5 text-xs hover:opacity-80"
                                             style={{ color: 'hsl(var(--destructive))' }}>
@@ -2367,7 +3520,7 @@ export default function MessagesPage() {
                   style={{
                     borderTop: '1px solid hsl(var(--border))',
                     background: 'hsl(var(--card))',
-                    paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
+                    paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
                   }}>
                   <>
                       {/* Reply/edit context bar */}
@@ -2415,7 +3568,7 @@ export default function MessagesPage() {
                           onChange={e => setDraft(e.target.value)}
                           onFocus={() => void refreshOtherUserKey()}
                           placeholder={editingMsg ? 'Edit your message…' : 'Message…'}
-                          className="flex-1 rounded-full px-4 py-2.5 text-sm outline-none"
+                          className="min-w-0 flex-1 rounded-full px-4 py-2.5 text-base outline-none"
                           style={{
                             background: 'hsl(var(--muted))',
                             border: '1px solid hsl(var(--border))',
@@ -2435,7 +3588,7 @@ export default function MessagesPage() {
                       </form>
                       {!otherUserPublicKey && (
                         <p className="text-xs text-center px-2 mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          Message will send now — encryption activates once they open Messages.
+                          You can send a private message once they open Messages.
                         </p>
                       )}
                       {sendError && (
@@ -2447,7 +3600,9 @@ export default function MessagesPage() {
               )}
             </motion.div>
           )}
-        </AnimatePresence>
+          </AnimatePresence>,
+          document.body,
+        )}
 
         {/* ════════════════════════════════════════════════
             DESKTOP TWO-PANEL LAYOUT
@@ -2474,17 +3629,26 @@ export default function MessagesPage() {
                   <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Encrypted</span>
                 </div>
               </div>
-              <button
-                onClick={() => { setShowCompose(v => !v); setComposeQuery(''); setComposeResults([]); }}
-                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:opacity-80"
-                style={{
-                  background: showCompose ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
-                  color: showCompose ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary-foreground))',
-                  border: showCompose ? '1px solid hsl(var(--border))' : 'none',
-                }}
-                aria-label={showCompose ? 'Cancel' : 'New message'}>
-                {showCompose ? <XIcon className="w-3.5 h-3.5" /> : <PenSquare className="w-3.5 h-3.5" />}
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setShowPrivacySettings(true)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:opacity-80"
+                  style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}
+                  aria-label="Messaging privacy settings">
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => { setShowCompose(v => !v); setComposeQuery(''); setComposeResults([]); }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:opacity-80"
+                  style={{
+                    background: showCompose ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
+                    color: showCompose ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary-foreground))',
+                    border: showCompose ? '1px solid hsl(var(--border))' : 'none',
+                  }}
+                  aria-label={showCompose ? 'Cancel' : 'New message'}>
+                  {showCompose ? <XIcon className="w-3.5 h-3.5" /> : <PenSquare className="w-3.5 h-3.5" />}
+                </button>
+              </div>
             </div>
 
             {/* ── Inline compose panel (desktop) ── */}
@@ -2592,21 +3756,7 @@ export default function MessagesPage() {
               ))}
             </div>
 
-            {/* ── Horoscope strip (desktop sidebar) ── */}
-            {horoscope && (
-              <div className="mx-3 mt-2 px-3 py-2 rounded-xl flex items-center gap-2"
-                style={{ background: 'hsl(var(--primary) / 0.07)', border: '1px solid hsl(var(--primary) / 0.15)' }}>
-                <Sparkles className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(var(--primary))' }} />
-                <p className="text-xs flex-1 truncate" style={{ color: 'hsl(var(--primary))' }}>
-                  {horoscope.sign} · {horoscope.headline}
-                </p>
-                <button onClick={() => navigate('/horoscope')}
-                  className="text-xs flex-shrink-0 transition-opacity hover:opacity-70"
-                  style={{ color: 'hsl(var(--primary))' }}>
-                  View
-                </button>
-              </div>
-            )}
+            {/* Horoscope strip removed — per inbox redesign spec */}
 
             <div className="flex-1 overflow-y-auto">
               {/* Message Requests panel */}
@@ -2659,13 +3809,8 @@ export default function MessagesPage() {
                             style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
                             onClick={async () => {
                               setRequestActionId(req.id);
-                              try {
-                                const r = await fetch(`/api/message-requests/${req.id}/accept`, { method: 'POST', credentials: 'include' });
-                                if (r.ok) {
-                                  setMsgRequests(prev => prev.filter(x => x.id !== req.id));
-                                  void switchFolder('inbox');
-                                }
-                              } finally { setRequestActionId(null); }
+                              try { await handleMsgRequest(req.id, 'accept'); }
+                              finally { setRequestActionId(null); }
                             }}>
                             Accept
                           </Button>
@@ -2673,10 +3818,8 @@ export default function MessagesPage() {
                             className="h-7 text-xs"
                             onClick={async () => {
                               setRequestActionId(req.id);
-                              try {
-                                await fetch(`/api/message-requests/${req.id}/decline`, { method: 'POST', credentials: 'include' });
-                                setMsgRequests(prev => prev.filter(x => x.id !== req.id));
-                              } finally { setRequestActionId(null); }
+                              try { await handleMsgRequest(req.id, 'decline'); }
+                              finally { setRequestActionId(null); }
                             }}>
                             Decline
                           </Button>
@@ -2688,14 +3831,154 @@ export default function MessagesPage() {
               )}
 
               {folder !== 'requests' && loadingConvs ? (
-                <div className="p-6 text-center text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Loading…</div>
+                /* Desktop loading skeleton */
+                <div className="flex flex-col gap-0 pt-1">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse"
+                      style={{ borderBottom: '1px solid hsl(var(--border) / 0.4)' }}>
+                      <div className="rounded-full flex-shrink-0" style={{ width: 40, height: 40, background: 'hsl(var(--muted))' }} />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-2.5 rounded-full w-2/5" style={{ background: 'hsl(var(--muted))' }} />
+                        <div className="h-2 rounded-full w-3/5" style={{ background: 'hsl(var(--muted))' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : folder !== 'requests' && isOffline ? (
+                /* Desktop offline */
+                <div className="flex flex-col items-center justify-center gap-3 px-5 py-12 text-center">
+                  <svg viewBox="0 0 24 24" className="w-8 h-8 opacity-30" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"
+                    style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M8.111 8.111A5.5 5.5 0 0112 7c1.657 0 3.156.733 4.172 1.899M15.536 15.536A5.5 5.5 0 0112 17a5.5 5.5 0 01-3.536-1.464" />
+                  </svg>
+                  <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>You're offline</p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Check your connection — we'll reconnect automatically.
+                  </p>
+                  <button
+                    onClick={() => { setConvLoadError(false); setLoadingConvs(true); void loadConversations(true); }}
+                    className="text-xs underline mt-1"
+                    style={{ color: 'hsl(var(--primary))' }}>
+                    Check connection
+                  </button>
+                </div>
+              ) : folder !== 'requests' && convLoadError ? (
+                /* Desktop error */
+                <div className="flex flex-col items-center justify-center gap-3 px-5 py-12 text-center">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                    style={{ background: 'hsl(var(--destructive) / 0.1)' }}>
+                    <MessageCircle className="w-5 h-5" style={{ color: 'hsl(var(--destructive))' }} />
+                  </div>
+                  <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>Couldn't load messages</p>
+                  <p className="text-xs leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                    Your messages are safe. Please try again.
+                  </p>
+                  <button
+                    onClick={() => { setConvLoadError(false); setLoadingConvs(true); void loadConversations(true); }}
+                    className="mt-1 px-4 py-1.5 rounded-full text-xs font-medium transition-opacity hover:opacity-80"
+                    style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                    Try again
+                  </button>
+                </div>
               ) : folder !== 'requests' && conversations.length === 0 ? (
-                <div className="p-6 text-center space-y-2">
-                  <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>{pageContent.emptyConversations}</p>
-                  <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{pageContent.emptyConversationsHint}</p>
+                /* Desktop empty inbox — celestial treatment */
+                <div className="flex flex-col items-center justify-center gap-4 px-5 py-10 text-center">
+                  <div className="relative w-20 h-20 flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full opacity-15"
+                      style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
+                    <svg viewBox="0 0 80 80" className="w-16 h-16" aria-hidden="true">
+                      <circle cx="40" cy="40" r="16" fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" opacity="0.5" />
+                      <circle cx="40" cy="40" r="8" fill="hsl(var(--primary))" opacity="0.25" />
+                      <circle cx="40" cy="40" r="4" fill="hsl(var(--primary))" opacity="0.6" />
+                      {[0,60,120,180,240,300].map((deg, i) => {
+                        const rad = (deg * Math.PI) / 180;
+                        const x = 40 + 26 * Math.cos(rad);
+                        const y = 40 + 26 * Math.sin(rad);
+                        return <circle key={i} cx={x} cy={y} r="1.5" fill="hsl(var(--accent))" opacity="0.7" />;
+                      })}
+                      <path d="M40 12 L41.5 18 L40 16.5 L38.5 18 Z" fill="hsl(var(--primary))" opacity="0.5" />
+                    </svg>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-serif text-base" style={{ color: 'hsl(var(--foreground))' }}>
+                      Every connection begins with a little magic.
+                    </p>
+                    <p className="text-xs leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      Messages are private and encrypted.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1.5 w-full">
+                    <button
+                      onClick={() => { setShowCompose(v => !v); setComposeQuery(''); setComposeResults([]); }}
+                      className="w-full py-2 rounded-full text-xs font-medium transition-opacity hover:opacity-80"
+                      style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                      Start a Conversation
+                    </button>
+                    <button
+                      onClick={() => navigate('/community/discover')}
+                      className="w-full py-2 rounded-full text-xs font-medium transition-opacity hover:opacity-80"
+                      style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }}>
+                      Discover Members
+                    </button>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <button
+                        onClick={() => setShowPrivacySettings(true)}
+                        className="text-xs transition-opacity hover:opacity-70"
+                        style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        Privacy settings
+                      </button>
+                      <span style={{ color: 'hsl(var(--border))' }}>·</span>
+                      <button
+                        onClick={() => setShowBlockedMembers(true)}
+                        className="text-xs transition-opacity hover:opacity-70"
+                        style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        Blocked members
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : folder !== 'requests' && filteredConversations.length === 0 ? (
+                /* Desktop empty filter */
+                <div className="flex flex-col items-center justify-center gap-2 px-5 py-10 text-center">
+                  {inboxSearch ? (
+                    <>
+                      <svg viewBox="0 0 24 24" className="w-8 h-8 opacity-25" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"
+                        style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803 7.5 7.5 0 0015.803 15.803z" />
+                      </svg>
+                      <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>No results</p>
+                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Try a different name or username</p>
+                      <button onClick={() => setInboxSearch('')} className="text-xs underline mt-1" style={{ color: 'hsl(var(--primary))' }}>Clear search</button>
+                    </>
+                  ) : inboxFilter === 'unread' ? (
+                    <>
+                      <svg viewBox="0 0 24 24" className="w-8 h-8 opacity-25" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"
+                        style={{ color: 'hsl(var(--primary))' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>All caught up ✨</p>
+                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>No unread messages</p>
+                      <button onClick={() => setInboxFilter('all')} className="text-xs underline mt-1" style={{ color: 'hsl(var(--primary))' }}>View all</button>
+                    </>
+                  ) : inboxFilter === 'archived' ? (
+                    <>
+                      <svg viewBox="0 0 24 24" className="w-8 h-8 opacity-25" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"
+                        style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                      </svg>
+                      <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>No archived chats</p>
+                      <button onClick={() => setInboxFilter('all')} className="text-xs underline mt-1" style={{ color: 'hsl(var(--primary))' }}>Back to inbox</button>
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle className="w-8 h-8 opacity-25" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                      <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>No conversations here</p>
+                      <button onClick={() => setInboxFilter('all')} className="text-xs underline mt-1" style={{ color: 'hsl(var(--primary))' }}>Back to inbox</button>
+                    </>
+                  )}
                 </div>
               ) : folder === 'requests' ? null : (
-                conversations.map(conv => (
+                filteredConversations.map(conv => (
                   <button key={conv.id}
                     onClick={() => conv.otherUser && void openConversation(conv.id, conv.otherUser)}
                     className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:opacity-90"
@@ -2720,6 +4003,7 @@ export default function MessagesPage() {
                         <span className={`text-sm truncate ${conv.unreadCount > 0 ? 'font-semibold' : ''}`}
                           style={{ color: 'hsl(var(--foreground))' }}>
                           {conv.otherUser?.name ?? conv.otherUser?.username ?? 'Unknown'}
+                          {conv.isCoven && <span className="ml-1 text-xs" title="Coven friend">🔮</span>}
                         </span>
                         {conv.lastMessage && (
                           <span className="text-xs flex-shrink-0 ml-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
@@ -2729,7 +4013,7 @@ export default function MessagesPage() {
                       </div>
                       <div className="flex items-center justify-between mt-0.5">
                         <span className="text-xs truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          {conv.lastMessage ? (conv.lastMessage.systemMessage ? '✨ Welcome to Spellful!' : '🔒 Encrypted message') : 'No messages yet'}
+                          {conv.lastMessage ? (conv.lastMessage.systemMessage ? richCardPreview(conv.lastMessage.systemMessage) : '🔒 Encrypted message') : 'No messages yet'}
                         </span>
                         {conv.unreadCount > 0 && (
                           <span className="ml-1 flex-shrink-0 text-xs w-5 h-5 rounded-full flex items-center justify-center"
@@ -2744,23 +4028,12 @@ export default function MessagesPage() {
               )}
             </div>
 
-            {/* Desktop footer bar */}
+            {/* Desktop footer bar — Drafts only; New Message is the icon in the sidebar header */}
             <div className="flex gap-2 p-3" style={{ borderTop: '1px solid hsl(var(--border))' }}>
-              <button
-                onClick={() => { setShowCompose(v => !v); setComposeQuery(''); setComposeResults([]); }}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-medium transition-opacity hover:opacity-90"
-                style={{
-                  background: showCompose ? 'hsl(var(--primary) / 0.15)' : 'hsl(var(--primary))',
-                  color: showCompose ? 'hsl(var(--primary))' : 'hsl(var(--primary-foreground))',
-                  border: showCompose ? '1px solid hsl(var(--primary) / 0.4)' : 'none',
-                }}>
-                <PenSquare className="w-3.5 h-3.5" />
-                {showCompose ? 'Cancel' : 'New Message'}
-              </button>
               <button
                 onClick={() => { if (activeConvId) void switchFolder('drafts'); }}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-medium transition-opacity hover:opacity-80"
-                style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}>
+                style={{ background: 'hsl(var(--muted))', color: activeConvId ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))', opacity: activeConvId ? 1 : 0.5 }}>
                 <FileText className="w-3.5 h-3.5" />
                 Drafts
               </button>
@@ -2769,7 +4042,22 @@ export default function MessagesPage() {
 
           {/* Desktop thread panel */}
           <div className="flex-1 flex flex-col">
-            {!activeConvId ? (
+            {activeGroupId ? (
+              <GroupThreadView
+                group={groups.find(g => g.id === activeGroupId) ?? null}
+                messages={groupMessages}
+                members={groupMembers}
+                loading={loadingGroupMsgs}
+                myId={myId}
+                draft={groupDraft}
+                setDraft={setGroupDraft}
+                sending={sendingGroup}
+                sendError={groupSendError}
+                onSend={() => void sendGroupMessage()}
+                onLeave={() => void leaveGroup(activeGroupId)}
+                onClose={() => { setActiveGroupId(null); setGroupMessages([]); setGroupMembers([]); }}
+              />
+            ) : !activeConvId ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
                 <div className="w-16 h-16 rounded-full flex items-center justify-center"
                   style={{ background: 'hsl(var(--muted))' }}>
@@ -2820,6 +4108,14 @@ export default function MessagesPage() {
                 onToggleSearch={() => setShowSearch(v => !v)}
                 onSearchJump={scrollToMessage}
                 sendError={sendError}
+                hasMoreMessages={hasMoreMessages}
+                loadingOlder={loadingOlder}
+                onLoadOlder={() => void loadOlderMessages()}
+                deleteForSelf={deleteForSelf}
+                showSharedMedia={showSharedMedia}
+                onToggleSharedMedia={() => setShowSharedMedia(v => !v)}
+                onReportMessage={(msgId) => { setReportingMsgId(msgId); setReportReason(''); setReportDetails(''); setReportDone(false); }}
+                onBlockUser={blockUserFromConversation}
               />
             )}
           </div>
@@ -2831,6 +4127,444 @@ export default function MessagesPage() {
       {/* Visit Site button removed per UX brief — was obstructing composer */}
 
       {/* Wallpaper picker modal removed — now inline in thread header */}
+
+      {/* ── Blocked Members modal ── */}
+      <BlockedMembersModal open={showBlockedMembers} onClose={() => setShowBlockedMembers(false)} />
+
+      {/* ── Report Message modal ── */}
+      <AnimatePresence>
+        {reportingMsgId !== null && (
+          <>
+            <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setReportingMsgId(null)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 rounded-3xl shadow-2xl max-w-md mx-auto"
+              style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+              <div className="flex items-center justify-between px-5 pt-5 pb-3" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                <p className="font-serif text-lg" style={{ color: 'hsl(var(--foreground))' }}>Report Message</p>
+                <button onClick={() => setReportingMsgId(null)} style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-5 flex flex-col gap-3">
+                {reportDone ? (
+                  <div className="flex flex-col items-center gap-2 py-6 text-center">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'hsl(var(--success) / 0.15)' }}>
+                      <span className="text-2xl">✓</span>
+                    </div>
+                    <p className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>Report submitted</p>
+                    <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Thank you. Our team will review this message.</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Why are you reporting this message?</p>
+                    <div className="flex flex-col gap-1.5">
+                      {[
+                        { value: 'harassment', label: 'Harassment or bullying' },
+                        { value: 'hate_speech', label: 'Hate speech' },
+                        { value: 'spam', label: 'Spam' },
+                        { value: 'threats', label: 'Threats or violence' },
+                        { value: 'sexual_content', label: 'Unwanted sexual content' },
+                        { value: 'misinformation', label: 'Misinformation' },
+                        { value: 'other', label: 'Other' },
+                      ].map(opt => (
+                        <button key={opt.value}
+                          onClick={() => setReportReason(opt.value)}
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-opacity active:opacity-70"
+                          style={{
+                            background: reportReason === opt.value ? 'hsl(var(--primary) / 0.15)' : 'hsl(var(--muted))',
+                            border: reportReason === opt.value ? '1px solid hsl(var(--primary) / 0.4)' : '1px solid transparent',
+                            color: 'hsl(var(--foreground))',
+                          }}>
+                          <span className="w-4 h-4 rounded-full flex-shrink-0 border-2 flex items-center justify-center"
+                            style={{ borderColor: reportReason === opt.value ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}>
+                            {reportReason === opt.value && <span className="w-2 h-2 rounded-full" style={{ background: 'hsl(var(--primary))' }} />}
+                          </span>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    {reportReason && (
+                      <textarea
+                        value={reportDetails}
+                        onChange={e => setReportDetails(e.target.value)}
+                        placeholder="Additional details (optional)"
+                        maxLength={500}
+                        rows={3}
+                        className="w-full rounded-xl px-3 py-2 text-sm resize-none"
+                        style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }}
+                      />
+                    )}
+                    <button
+                      onClick={() => void submitMessageReport()}
+                      disabled={!reportReason || reportSubmitting}
+                      className="w-full py-3 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-50"
+                      style={{ background: 'hsl(var(--destructive))', color: 'hsl(var(--destructive-foreground))' }}>
+                      {reportSubmitting ? 'Submitting…' : 'Submit Report'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Create Group modal ── */}
+      <AnimatePresence>
+        {showCreateGroup && (
+          <>
+            <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setShowCreateGroup(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 rounded-3xl shadow-2xl max-w-md mx-auto"
+              style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+              <div className="flex items-center justify-between px-5 pt-5 pb-3" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                <p className="font-serif text-lg" style={{ color: 'hsl(var(--foreground))' }}>New Group</p>
+                <button onClick={() => setShowCreateGroup(false)} style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-5 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+                <div>
+                  <label className="text-xs font-medium mb-1.5 block" style={{ color: 'hsl(var(--muted-foreground))' }}>Group name *</label>
+                  <Input
+                    value={newGroupName}
+                    onChange={e => setNewGroupName(e.target.value)}
+                    placeholder="e.g. Moon Circle"
+                    maxLength={60}
+                    style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1.5 block" style={{ color: 'hsl(var(--muted-foreground))' }}>Description (optional)</label>
+                  <Input
+                    value={newGroupDescription}
+                    onChange={e => setNewGroupDescription(e.target.value)}
+                    placeholder="What's this group about?"
+                    maxLength={200}
+                    style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1.5 block" style={{ color: 'hsl(var(--muted-foreground))' }}>Add members *</label>
+                  <Input
+                    value={newGroupMemberSearch}
+                    onChange={e => setNewGroupMemberSearch(e.target.value)}
+                    placeholder="Search by name or username…"
+                    style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}
+                  />
+                  {newGroupMemberResults.length > 0 && (
+                    <div className="mt-1 rounded-xl overflow-hidden" style={{ border: '1px solid hsl(var(--border))' }}>
+                      {newGroupMemberResults.slice(0, 6).map(u => (
+                        <button key={u.id}
+                          onClick={() => { setNewGroupMemberIds(prev => [...prev, u.id]); setNewGroupMemberSearch(''); setNewGroupMemberResults([]); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:opacity-80 transition-opacity"
+                          style={{ background: 'hsl(var(--muted))', borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
+                          <Avatar user={u} size={28} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate" style={{ color: 'hsl(var(--foreground))' }}>{u.name ?? u.username}</p>
+                            {u.username && <p className="text-xs truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>@{u.username}</p>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {newGroupMemberIds.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {newGroupMemberIds.map(id => {
+                        const found = composeResults.find(u => u.id === id) ?? newGroupMemberResults.find(u => u.id === id);
+                        return (
+                          <span key={id} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+                            style={{ background: 'hsl(var(--primary) / 0.15)', color: 'hsl(var(--primary))', border: '1px solid hsl(var(--primary) / 0.3)' }}>
+                            {found?.name ?? found?.username ?? id}
+                            <button onClick={() => setNewGroupMemberIds(prev => prev.filter(i => i !== id))} aria-label="Remove">
+                              <XIcon className="w-3 h-3" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => void createGroup()}
+                  disabled={!newGroupName.trim() || newGroupMemberIds.length === 0 || creatingGroup}
+                  className="w-full py-3 rounded-2xl text-sm font-semibold transition-opacity disabled:opacity-50"
+                  style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                  {creatingGroup ? 'Creating…' : 'Create Group'}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Group Invitations modal ── */}
+      <AnimatePresence>
+        {showGroupInvitations && (
+          <>
+            <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setShowGroupInvitations(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 rounded-3xl shadow-2xl max-w-md mx-auto"
+              style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+              <div className="flex items-center justify-between px-5 pt-5 pb-3" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                <p className="font-serif text-lg" style={{ color: 'hsl(var(--foreground))' }}>Group Invitations</p>
+                <button onClick={() => setShowGroupInvitations(false)} style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
+                {loadingGroupInvitations ? (
+                  <div className="flex justify-center py-8">
+                    <span className="w-6 h-6 rounded-full border-2 border-current border-t-transparent animate-spin" style={{ color: 'hsl(var(--primary))' }} />
+                  </div>
+                ) : groupInvitations.length === 0 ? (
+                  <p className="text-sm text-center py-8" style={{ color: 'hsl(var(--muted-foreground))' }}>No pending invitations</p>
+                ) : groupInvitations.map(inv => (
+                  <div key={inv.id} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'hsl(var(--muted))' }}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)' }}>
+                      <Users className="w-4 h-4" style={{ color: 'hsl(var(--primary-foreground))' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>{inv.groupName}</p>
+                      <p className="text-xs truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        Invited by {inv.inviterName ?? inv.inviterUsername ?? 'a member'}
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5 flex-shrink-0">
+                      <button
+                        onClick={() => void respondToGroupInvitation(inv.id, true)}
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity active:opacity-70"
+                        style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+                        Join
+                      </button>
+                      <button
+                        onClick={() => void respondToGroupInvitation(inv.id, false)}
+                        className="px-3 py-1.5 rounded-full text-xs font-medium transition-opacity active:opacity-70"
+                        style={{ background: 'hsl(var(--muted-foreground) / 0.15)', color: 'hsl(var(--muted-foreground))' }}>
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
+  );
+}
+
+// ── GroupThreadView ───────────────────────────────────────────────────────────
+
+interface GroupThreadViewProps {
+  group: GroupSummary | null;
+  messages: GroupMessage[];
+  members: GroupMember[];
+  loading: boolean;
+  myId: string;
+  draft: string;
+  setDraft: (v: string) => void;
+  sending: boolean;
+  sendError: string | null;
+  onSend: () => void;
+  onLeave: () => void;
+  onClose: () => void;
+  mobile?: boolean;
+}
+
+function GroupThreadView({ group, messages, members, loading, myId, draft, setDraft, sending, sendError, onSend, onLeave, onClose, mobile }: GroupThreadViewProps) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [showMembers, setShowMembers] = useState(false);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); }
+  }
+
+  const activeGroup = group;
+
+  return (
+    <div className={mobile ? 'flex flex-col h-full' : 'flex flex-col h-full'}>
+      {/* Header */}
+      <div className="flex-shrink-0 flex items-center gap-3 px-4 py-3"
+        style={{
+          paddingTop: mobile ? 'max(12px, env(safe-area-inset-top, 0px))' : undefined,
+          borderBottom: '1px solid hsl(var(--border))',
+          background: 'hsl(var(--card))',
+        }}>
+        <button onClick={onClose} className="flex items-center gap-0.5 -ml-1 py-1 pr-2 rounded-lg active:opacity-60 transition-opacity" aria-label="Back">
+          <ArrowLeft className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} />
+          {mobile && <span className="text-sm font-medium" style={{ color: 'hsl(var(--primary))' }}>Back</span>}
+        </button>
+        <button
+          onClick={() => setShowMembers(v => !v)}
+          className="flex-1 flex items-center gap-2.5 min-w-0 text-left"
+          aria-label="View members">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)' }}>
+            {activeGroup?.avatarUrl ? (
+              <img src={activeGroup.avatarUrl} alt={activeGroup.name} className="w-full h-full rounded-full object-cover" />
+            ) : (
+              <Users className="w-4 h-4" style={{ color: 'hsl(var(--primary-foreground))' }} />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate" style={{ color: 'hsl(var(--foreground))' }}>{activeGroup?.name ?? 'Group'}</p>
+            <p className="text-xs truncate" style={{ color: 'hsl(var(--muted-foreground))' }}>{activeGroup?.memberCount ?? members.length} members</p>
+          </div>
+        </button>
+        <button
+          onClick={onLeave}
+          className="flex-shrink-0 text-xs px-2.5 py-1 rounded-full transition-opacity active:opacity-70"
+          style={{ color: 'hsl(var(--destructive))', border: '1px solid hsl(var(--destructive) / 0.3)' }}>
+          Leave
+        </button>
+      </div>
+
+      {/* Members panel */}
+      <AnimatePresence>
+        {showMembers && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden flex-shrink-0"
+            style={{ borderBottom: '1px solid hsl(var(--border))', background: 'hsl(var(--muted))' }}>
+            <div className="px-4 py-3">
+              <p className="text-xs font-semibold mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>Members ({members.length})</p>
+              <div className="flex flex-wrap gap-2">
+                {members.map(m => (
+                  <div key={m.userId} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
+                    style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+                    <div className="w-4 h-4 rounded-full overflow-hidden flex-shrink-0"
+                      style={{ background: 'hsl(var(--muted-foreground) / 0.3)' }}>
+                      {m.image && <img src={m.image} alt={m.name ?? ''} className="w-full h-full object-cover" />}
+                    </div>
+                    <span style={{ color: 'hsl(var(--foreground))' }}>{m.name ?? m.username ?? 'Member'}</span>
+                    {m.role === 'admin' && <span style={{ color: 'hsl(var(--primary))' }}>★</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2">
+        {loading ? (
+          <div className="flex flex-col gap-3 pt-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'} animate-pulse`}>
+                <div className="h-10 rounded-3xl" style={{ width: `${35 + i * 12}%`, background: 'hsl(var(--muted))' }} />
+              </div>
+            ))}
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+            <Users className="w-10 h-10 opacity-20" style={{ color: 'hsl(var(--muted-foreground))' }} />
+            <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>No messages yet. Say hello! ✨</p>
+          </div>
+        ) : (
+          messages.map((msg, idx) => {
+            const isMine = msg.senderId === myId;
+            const isSystem = !!msg.systemMessage;
+            const isRich = isRichCard(msg.systemMessage);
+            const prevMsg = idx > 0 ? messages[idx - 1] : undefined;
+            const showDateSep = !prevMsg || new Date(msg.createdAt).toDateString() !== new Date(prevMsg.createdAt).toDateString();
+            const showSender = !isMine && !isSystem && (!prevMsg || prevMsg.senderId !== msg.senderId);
+            return (
+              <React.Fragment key={msg.id}>
+                {showDateSep && (
+                  <div className="flex items-center gap-3 py-1">
+                    <div className="flex-1 h-px" style={{ background: 'hsl(var(--border))' }} />
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ color: 'hsl(var(--muted-foreground))', background: 'hsl(var(--muted))' }}>
+                      {new Date(msg.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+                    <div className="flex-1 h-px" style={{ background: 'hsl(var(--border))' }} />
+                  </div>
+                )}
+                {isRich && msg.systemMessage ? (
+                  <div className={isMine ? 'self-end' : 'self-start'} style={{ maxWidth: '78%' }}>
+                    <RichMessageCard systemMessage={msg.systemMessage} isMine={isMine} />
+                  </div>
+                ) : isSystem ? (
+                  <div className="text-center text-xs py-1" style={{ color: 'hsl(var(--muted-foreground))' }}>✨ {msg.systemMessage}</div>
+                ) : (
+                  <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
+                    {showSender && (
+                      <p className="text-xs mb-0.5 px-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        {msg.senderName ?? msg.senderUsername ?? 'Member'}
+                      </p>
+                    )}
+                    <div className={`max-w-[75%] px-3.5 py-2 rounded-3xl text-sm leading-relaxed ${isMine ? 'rounded-br-md' : 'rounded-bl-md'}`}
+                      style={{
+                        background: isMine ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
+                        color: isMine ? 'hsl(var(--primary-foreground))' : 'hsl(var(--foreground))',
+                      }}>
+                      {msg.deletedAt ? <em style={{ opacity: 0.6 }}>Message deleted</em> : msg.content}
+                    </div>
+                    <span className="text-xs mt-0.5 px-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                      {new Date(msg.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                    </span>
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          })
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Composer */}
+      <div className="flex-shrink-0 px-4 py-3 flex items-center gap-2"
+        style={{
+          paddingBottom: mobile ? 'max(12px, env(safe-area-inset-bottom, 0px))' : undefined,
+          borderTop: '1px solid hsl(var(--border))',
+          background: 'hsl(var(--card))',
+        }}>
+        {sendError && (
+          <p className="text-xs mb-1 w-full text-center" style={{ color: 'hsl(var(--destructive))' }}>{sendError}</p>
+        )}
+
+        <Input
+          ref={inputRef}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Message the group…"
+          disabled={sending}
+          className="flex-1 rounded-full text-sm"
+          style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}
+        />
+        <button
+          onClick={onSend}
+          disabled={!draft.trim() || sending}
+          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-opacity disabled:opacity-40"
+          style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
+          aria-label="Send">
+          <Send className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
   );
 }

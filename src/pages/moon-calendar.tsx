@@ -411,11 +411,11 @@ export default function MoonCalendarPage() {
         <meta property="og:description" content="Current moon phase, interactive calendar, tonight's ritual, and a private intention journal. Powered by verified astronomical calculations." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/moon-calendar/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Moon Calendar — Lunar Sanctuary | Spellful" />
         <meta name="twitter:description" content="Current moon phase, interactive calendar, tonight's ritual, and a private intention journal." />
-        <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/moon-calendar/og-image" />
         <script type="application/ld+json">{`{"@context":"https://schema.org","@type":"WebPage","@id":"${pageUrl}#webpage","name":"Moon Calendar — Lunar Sanctuary","url":"${pageUrl}","isPartOf":{"@id":"${siteUrl}/#website"},"about":{"@id":"${siteUrl}/#organization"}}`}</script>
       </Helmet>
 

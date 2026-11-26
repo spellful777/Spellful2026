@@ -32,7 +32,7 @@ export type ShareResult =
  * Returns true when running inside a Capacitor native container.
  * Safe to call during SSR — `window` is guarded.
  */
-function isNative(): boolean {
+export function hasNativeShare(): boolean {
   if (typeof window === 'undefined') return false;
   return !!(window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
 }
@@ -41,10 +41,11 @@ function isNative(): boolean {
  * Share content using the best available method for the current environment.
  */
 export async function shareContent(payload: SharePayload): Promise<ShareResult> {
-  const { title = 'Spellful', text = '', url = 'https://spellful.com' } = payload;
+  const { title = 'Spellful', text = '' } = payload;
+  const url = publicShareUrl(payload.url ?? 'https://spellful.com');
 
   // ── Native (Capacitor iOS / Android) ──────────────────────────────────────
-  if (isNative()) {
+  if (hasNativeShare()) {
     try {
       const { Share } = await import('@capacitor/share');
       await Share.share({ title, text, url, dialogTitle: title });
@@ -80,6 +81,15 @@ export async function shareContent(payload: SharePayload): Promise<ShareResult> 
     `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&via=spellful`;
   window.open(twitterUrl, '_blank', 'noopener,noreferrer');
   return { method: 'fallback-open', platform: 'twitter' };
+}
+
+/** Translate a bundled app route into a link recipients can open. */
+export function publicShareUrl(value: string): string {
+  const url = new URL(value, 'https://spellful.com');
+  if (url.protocol === 'capacitor:' || url.protocol === 'ionic:') {
+    return 'https://spellful.com' + url.pathname + url.search + url.hash;
+  }
+  return url.href;
 }
 
 /**

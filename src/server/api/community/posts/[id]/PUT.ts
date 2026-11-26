@@ -2,6 +2,7 @@
  * PUT /api/community/posts/:id
  * Edit a community post (author only). Updates title, body, tags, audience.
  */
+import { SPARK_LIMIT, countSparkCharacters, sparkBodyHtml } from '@/lib/sparks';
 import type { Request, Response } from 'express';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 import { db } from '@/server/db/client.js';
@@ -23,22 +24,36 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     audience?: string;
   };
 
-  if (!title?.trim() && !body?.trim()) {
-    return res.status(400).json({ error: 'title or body required' });
+  if ([title, body, tags, audience].some(value => value !== undefined && typeof value !== 'string')) {
+    return res.status(400).json({ error: 'Invalid post text' });
   }
 
   const VALID_AUDIENCES = ['public', 'coven'];
-  if (audience && !VALID_AUDIENCES.includes(audience)) {
+  if (audience !== undefined && !VALID_AUDIENCES.includes(audience)) {
     return res.status(400).json({ error: 'Invalid audience' });
   }
 
   // Verify ownership
-  const [post] = await db.select({ id: communityPosts.id, userId: communityPosts.userId })
+  const [post] = await db.select({ id: communityPosts.id, type: communityPosts.type, media: communityPosts.sparkMedia, reading: communityPosts.sparkReading, original: communityPosts.originalSparkId })
     .from(communityPosts)
     .where(and(eq(communityPosts.id, postId), eq(communityPosts.userId, myId)))
     .limit(1);
   if (!post) return res.status(404).json({ error: 'Post not found or not yours' });
 
+  if (post.type === 'spark') {
+    if (title === undefined || (!title.trim() && !post.media?.length && !post.reading && !post.original) || countSparkCharacters(title) > SPARK_LIMIT || body !== undefined || tags !== undefined) {
+      return res.status(400).json({ error: `A Spark must have media, a reference, or text up to ${SPARK_LIMIT} characters` });
+    }
+    const text = title.trim();
+    await db.update(communityPosts).set({
+      title: text, body: sparkBodyHtml(text),
+      ...(audience !== undefined ? { audience } : {}),
+      editedAt: new Date(),
+    }).where(and(eq(communityPosts.id, postId), eq(communityPosts.userId, myId)));
+    return res.json({ ok: true });
+  }
+
+  if (!title?.trim() && !body?.trim()) return res.status(400).json({ error: 'title or body required' });
   await db.update(communityPosts).set({
     ...(title !== undefined ? { title: title.slice(0, 300) } : {}),
     ...(body !== undefined ? { body } : {}),

@@ -1,3 +1,6 @@
+import type { SparkReading } from '@/lib/spark-reading';
+import type { ProfileFeature } from '@/lib/profile-feature';
+import type { SparkMedia } from '@/lib/spark-media';
 import { mysqlTable, bigint, int, tinyint, varchar, text, boolean, timestamp, json, index, uniqueIndex } from 'drizzle-orm/mysql-core';
 // Note: tinyint imported above; used for TINYINT columns
 
@@ -37,6 +40,9 @@ export const user = mysqlTable('user', {
   interestTags: json('interest_tags').$type<string[]>(),
   socialLinks: json('social_links').$type<Record<string, string>>(),
   welcomeSent: boolean('welcome_sent').default(false),
+  commentGifsEnabled: boolean('comment_gifs_enabled'),
+  shareLikesWithCoven: boolean('share_likes_with_coven').notNull().default(false),
+  shareFollowing: boolean('share_following').notNull().default(false),
   hideOnlineStatus: boolean('hide_online_status').default(false),
   messagePermission: varchar('message_permission', { length: 20 }).default('coven'), // everyone | coven | nobody
   invitePermission: varchar('invite_permission', { length: 20 }).default('coven'),   // everyone | nobody
@@ -47,6 +53,7 @@ export const user = mysqlTable('user', {
   avatarFrame: varchar('avatar_frame', { length: 50 }).default(''),             // moon | celestial | botanical | crystal | ornate | ''
   practiceLabels: json('practice_labels').$type<string[]>(),                   // e.g. ['Green Witch', 'Tarot Reader']
   profileStatus: varchar('profile_status', { length: 100 }).default(''),       // short mood/status
+  featuredAbout: json('featured_about').$type<ProfileFeature>(),
   profileSections: json('profile_sections').$type<{ id: string; enabled: boolean; order: number }[]>(), // modular sections config
   // Profile 4.0 fields
   profileLayout: varchar('profile_layout', { length: 20 }).default('classic'), // compact | classic | immersive
@@ -304,6 +311,7 @@ export const conversationUserState = mysqlTable('conversation_user_state', {
   isMuted: boolean('is_muted').default(false),
   isStarred: boolean('is_starred').default(false),
   isHidden: boolean('is_hidden').default(false), // delete-for-me: hides from inbox
+  clearedThroughMessageId: int('cleared_through_message_id').notNull().default(0),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
@@ -313,6 +321,97 @@ export const userPublicKeys = mysqlTable('user_public_keys', {
     .references(() => user.id, { onDelete: 'cascade' }),
   publicKey: text('public_key').notNull(), // JWK JSON string of ECDH public key
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+// ─── Group Conversations ──────────────────────────────────────────────────────
+// Group chats (coven chats, private groups). Separate from 1-1 conversations.
+export const groupConversations = mysqlTable('group_conversations', {
+  id: int('id').primaryKey().autoincrement(),
+  name: varchar('name', { length: 120 }).notNull(),
+  description: varchar('description', { length: 300 }).default(''),
+  avatarUrl: text('avatar_url'),
+  createdBy: varchar('created_by', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  // Optional link to a coven connection (for coven chats)
+  covenConnectionId: int('coven_connection_id'),
+  // History policy: 'all' | 'from_join' — what new members can see
+  historyPolicy: varchar('history_policy', { length: 20 }).default('from_join'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+export const groupMembers = mysqlTable('group_members', {
+  id: int('id').primaryKey().autoincrement(),
+  groupId: int('group_id').notNull().references(() => groupConversations.id, { onDelete: 'cascade' }),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  role: varchar('role', { length: 20 }).default('member'), // admin | member
+  joinedAt: timestamp('joined_at').defaultNow(),
+  // When this member joined — used to enforce historyPolicy
+  historyVisibleFrom: timestamp('history_visible_from').defaultNow(),
+  leftAt: timestamp('left_at'),
+});
+
+export const groupMessages = mysqlTable('group_messages', {
+  id: int('id').primaryKey().autoincrement(),
+  groupId: int('group_id').notNull().references(() => groupConversations.id, { onDelete: 'cascade' }),
+  senderId: varchar('sender_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),       // plaintext (no E2E for groups)
+  systemMessage: text('system_message'),    // system-originated messages
+  replyToId: int('reply_to_id'),
+  editedAt: timestamp('edited_at'),
+  deletedAt: timestamp('deleted_at'),
+  idempotencyKey: varchar('idempotency_key', { length: 128 }),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const groupInvitations = mysqlTable('group_invitations', {
+  id: int('id').primaryKey().autoincrement(),
+  groupId: int('group_id').notNull().references(() => groupConversations.id, { onDelete: 'cascade' }),
+  inviterId: varchar('inviter_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  inviteeId: varchar('invitee_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  status: varchar('status', { length: 20 }).default('pending'), // pending | accepted | declined
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+// Per-user group conversation state (mute, archive, pin)
+export const groupUserState = mysqlTable('group_user_state', {
+  id: int('id').primaryKey().autoincrement(),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  groupId: int('group_id').notNull().references(() => groupConversations.id, { onDelete: 'cascade' }),
+  isArchived: boolean('is_archived').default(false),
+  isPinned: boolean('is_pinned').default(false),
+  isMuted: boolean('is_muted').default(false),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+// Per-conversation draft storage (one draft per user per conversation)
+export const conversationDrafts = mysqlTable('conversation_drafts', {
+  id: int('id').primaryKey().autoincrement(),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  conversationId: int('conversation_id').references(() => conversations.id, { onDelete: 'cascade' }),
+  groupId: int('group_id').references(() => groupConversations.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+// Per-user messaging privacy settings (extends user.messagePermission with granular controls)
+export const messagingPrivacySettings = mysqlTable('messaging_privacy_settings', {
+  userId: varchar('user_id', { length: 36 }).primaryKey().references(() => user.id, { onDelete: 'cascade' }),
+  // Who can send DMs: everyone | requests | connections | nobody
+  whoCanMessage: varchar('who_can_message', { length: 20 }).default('everyone'),
+  // Show online presence to: everyone | connections | nobody
+  presenceVisibility: varchar('presence_visibility', { length: 20 }).default('everyone'),
+  // Show typing indicators: true | false
+  showTypingIndicators: boolean('show_typing_indicators').default(true),
+  // Show read receipts: true | false
+  showReadReceipts: boolean('show_read_receipts').default(true),
+  // Allow group invitations from: everyone | connections | nobody
+  groupInvitePermission: varchar('group_invite_permission', { length: 20 }).default('everyone'),
+  // Allow voice messages: true | false
+  allowVoiceMessages: boolean('allow_voice_messages').default(true),
+  // Message notification preview: true = show content, false = hide content
+  notificationPreview: boolean('notification_preview').default(true),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 // ─────────────────────────────────────────────────────────────────────────────
@@ -523,6 +622,11 @@ export const communityPosts = mysqlTable('community_posts', {
   title: varchar('title', { length: 300 }).notNull(),
   body: text('body').notNull(),
   imageUrl: text('image_url'),
+  sparkTopic: varchar('spark_topic', { length: 40 }),
+  sparkReading: json('spark_reading').$type<SparkReading>(),
+  sparkMedia: json('spark_media').$type<SparkMedia[]>(),
+  reshareOf: int('reshare_of'),
+  originalSparkId: int('original_spark_id'),
   tags: varchar('tags', { length: 500 }).default(''),
   isPinned: boolean('is_pinned').default(false),
   isLocked: boolean('is_locked').default(false),
@@ -538,12 +642,21 @@ export const communityPosts = mysqlTable('community_posts', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
+export const sparkMediaUploads = mysqlTable('spark_media_uploads', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  postId: int('post_id').references(() => communityPosts.id, { onDelete: 'set null' }),
+  kind: varchar('kind', { length: 10 }).$type<SparkMedia['kind']>().notNull(),
+});
+
 export const communityReplies = mysqlTable('community_replies', {
   id: int('id').primaryKey().autoincrement(),
   postId: int('post_id').notNull().references(() => communityPosts.id, { onDelete: 'cascade' }),
   userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
   parentId: int('parent_id'),
   body: text('body').notNull(),
+  gifUrl: text('gif_url'),
+  suppressLinkPreview: boolean('suppress_link_preview').notNull().default(false),
   isHidden: boolean('is_hidden').default(false),
   likeCount: int('like_count').default(0),
   depth: int('depth').default(0),
@@ -566,12 +679,25 @@ export const communityBookmarks = mysqlTable('community_bookmarks', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+export const communityReplyFavorites = mysqlTable('community_reply_favorites', {
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  replyId: int('reply_id').notNull().references(() => communityReplies.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [uniqueIndex('uq_reply_favorite').on(table.userId, table.replyId)]);
+
 export const communityFollows = mysqlTable('community_follows', {
   id: int('id').primaryKey().autoincrement(),
   followerId: varchar('follower_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
   followingId: varchar('following_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+export const userFollows = mysqlTable('user_follows', {
+  id: int('id').primaryKey().autoincrement(),
+  followerId: varchar('follower_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  followingId: varchar('following_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [uniqueIndex('uq_follow').on(table.followerId, table.followingId)]);
 
 export const communityBlocks = mysqlTable('community_blocks', {
   id: int('id').primaryKey().autoincrement(),
@@ -1406,6 +1532,84 @@ export const momentsSchedulerState = mysqlTable(
 );
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─── Community Help & Resources ─────────────────────────────────────────────
+
+export const communityRules = mysqlTable(
+  'community_rules',
+  {
+    id: int('id').primaryKey().autoincrement(),
+    version: varchar('version', { length: 20 }).notNull(),
+    title: varchar('title', { length: 200 }).notNull(),
+    effectiveDate: varchar('effective_date', { length: 10 }).notNull(), // YYYY-MM-DD
+    summary: text('summary').notNull(),
+    body: text('body').notNull(),
+    isCurrent: boolean('is_current').default(false),
+    createdBy: varchar('created_by', { length: 36 }).references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+  (t) => [
+    index('idx_cr_current').on(t.isCurrent),
+    index('idx_cr_version').on(t.version),
+  ],
+);
+
+export const communityRuleAcknowledgments = mysqlTable(
+  'community_rule_acknowledgments',
+  {
+    id: int('id').primaryKey().autoincrement(),
+    userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+    ruleVersion: varchar('rule_version', { length: 20 }).notNull(),
+    acknowledgedAt: timestamp('acknowledged_at').defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('uq_cra_user_version').on(t.userId, t.ruleVersion),
+    index('idx_cra_user').on(t.userId),
+  ],
+);
+
+export const communityFaq = mysqlTable(
+  'community_faq',
+  {
+    id: int('id').primaryKey().autoincrement(),
+    category: varchar('category', { length: 100 }).notNull(),
+    question: varchar('question', { length: 500 }).notNull(),
+    answer: text('answer').notNull(),
+    sortOrder: int('sort_order').default(0),
+    isPublished: boolean('is_published').default(true),
+    createdBy: varchar('created_by', { length: 36 }).references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+  (t) => [
+    index('idx_cfaq_category').on(t.category),
+    index('idx_cfaq_published').on(t.isPublished),
+  ],
+);
+
+export const communityGlossary = mysqlTable(
+  'community_glossary',
+  {
+    id: int('id').primaryKey().autoincrement(),
+    term: varchar('term', { length: 200 }).notNull(),
+    termNormalized: varchar('term_normalized', { length: 200 }).notNull(),
+    category: varchar('category', { length: 100 }).notNull(),
+    definition: text('definition').notNull(),
+    traditionNotes: text('tradition_notes'),
+    relatedTerms: json('related_terms').$type<string[]>(),
+    isPublished: boolean('is_published').default(true),
+    createdBy: varchar('created_by', { length: 36 }).references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+  },
+  (t) => [
+    index('idx_cg_category').on(t.category),
+    index('idx_cg_term').on(t.termNormalized),
+    index('idx_cg_published').on(t.isPublished),
+  ],
+);
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ─── Bug Reports ──────────────────────────────────────────────────────────────
 // Community-submitted bug reports. status: new | in_progress | resolved
 export const bugReports = mysqlTable(
@@ -1421,6 +1625,13 @@ export const bugReports = mysqlTable(
     resolvedAt: timestamp('resolved_at'),
     resolvedBy: varchar('resolved_by', { length: 36 }).references(() => user.id, { onDelete: 'set null' }),
     adminNote: text('admin_note').default(''),
+    category: varchar('category', { length: 50 }).default('general'),
+    stepsToReproduce: text('steps_to_reproduce'),
+    expectedBehavior: text('expected_behavior'),
+    deviceInfo: varchar('device_info', { length: 500 }).default(''),
+    ticketRef: varchar('ticket_ref', { length: 20 }).default(''),
+    isKnownIssue: boolean('is_known_issue').default(false),
+    knownIssueTitle: varchar('known_issue_title', { length: 255 }).default(''),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
   },
@@ -1430,3 +1641,55 @@ export const bugReports = mysqlTable(
     index('idx_br_created').on(t.createdAt),
   ],
 );
+
+// ─── Community Announcements ──────────────────────────────────────────────────
+export const communityAnnouncements = mysqlTable('community_announcements', {
+  id: int('id').primaryKey().autoincrement(),
+  type: varchar('type', { length: 30 }).notNull().default('announcement'),
+  title: varchar('title', { length: 255 }).notNull(),
+  body: text('body').notNull(),
+  isPinned: boolean('is_pinned').default(false),
+  isPublished: boolean('is_published').default(false),
+  publishedAt: timestamp('published_at'),
+  scheduledFor: timestamp('scheduled_for'),
+  authorId: varchar('author_id', { length: 36 }),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+// ─── Community Suggestions (Feature Requests) ─────────────────────────────────
+export const communitySuggestions = mysqlTable('community_suggestions', {
+  id: int('id').primaryKey().autoincrement(),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description').notNull(),
+  status: varchar('status', { length: 30 }).notNull().default('open'),
+  voteCount: int('vote_count').notNull().default(0),
+  staffResponse: text('staff_response'),
+  staffResponseBy: varchar('staff_response_by', { length: 36 }),
+  staffResponseAt: timestamp('staff_response_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});
+
+export const communitySuggestionVotes = mysqlTable('community_suggestion_votes', {
+  id: int('id').primaryKey().autoincrement(),
+  suggestionId: int('suggestion_id').notNull().references(() => communitySuggestions.id, { onDelete: 'cascade' }),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// ─── Community Appeals ────────────────────────────────────────────────────────
+export const communityAppeals = mysqlTable('community_appeals', {
+  id: int('id').primaryKey().autoincrement(),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  targetType: varchar('target_type', { length: 20 }).notNull(),
+  targetId: int('target_id').notNull().default(0),
+  reason: text('reason').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  adminNote: text('admin_note'),
+  reviewedBy: varchar('reviewed_by', { length: 36 }),
+  reviewedAt: timestamp('reviewed_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
+});

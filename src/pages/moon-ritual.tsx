@@ -771,14 +771,14 @@ export default function MoonRitualPage() {
         <meta property="og:description" content={moon_ritual.seo.description} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/moon-ritual" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/moon-ritual/og-image" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content={moon_ritual.seo.title} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={moon_ritual.seo.title} />
         <meta name="twitter:description" content={moon_ritual.seo.description} />
-        <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/moon-ritual/og-image" />
         <meta name="twitter:image:alt" content={moon_ritual.seo.title} />
         <link rel="canonical" href="https://spellful.com/moon-ritual" />
       </Helmet>

@@ -177,7 +177,7 @@ export default function AppStoreScreenshotsPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {app_store_screenshots.screens.map((s) => (
-                <div key={s.id} className={s.device === 'tablet' ? 'hidden' : undefined}>
+                <div key={s.id}>
                   <ScreenMockup {...s} />
                 </div>
               ))}
@@ -193,13 +193,13 @@ export default function AppStoreScreenshotsPage() {
               </h2>
               <span className="px-2 py-0.5 rounded-full text-xs font-medium"
                 style={{ background: 'hsl(var(--accent) / 0.12)', color: 'hsl(var(--accent))' }}>
-                3 screens
+                6 screens
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {app_store_screenshots.screens.map((s) => (
-                <div key={s.id} className={s.device === 'phone' ? 'hidden' : undefined}>
-                  <ScreenMockup {...s} />
+                <div key={s.id}>
+                  <ScreenMockup {...s} device="tablet" />
                 </div>
               ))}
             </div>

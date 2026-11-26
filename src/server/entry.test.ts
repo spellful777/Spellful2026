@@ -166,6 +166,13 @@ function expectNoBodyExcerpt(serialized: string): void {
 }
 
 describe("toLogError", () => {
+	it("records the MySQL cause code without logging its message", () => {
+		const cause = Object.assign(new Error("private connection details"), { code: "ER_NO_SUCH_TABLE" });
+		const result = toLogError(new Error("private query", { cause }));
+		expect(result.causeCode).toBe("ER_NO_SUCH_TABLE");
+		expect(JSON.stringify(result)).not.toContain("private");
+	});
+
 	it("keeps the error class, body-parser type, code and status", () => {
 		const err = Object.assign(new SyntaxError("Unexpected token 'e', \"email=vict\"..."), {
 			type: "entity.parse.failed",

@@ -8,8 +8,8 @@
 import type { Request, Response } from 'express';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 import { db } from '@/server/db/client.js';
-import { conversations, messages } from '@/server/db/schema.js';
-import { eq, and, gte, sql } from 'drizzle-orm';
+import { conversationUserState, conversations, messages } from '@/server/db/schema.js';
+import { gt, eq, and, gte, sql } from 'drizzle-orm';
 
 export default async function handler(req: Request<{ id: string }>, res: Response) {
   const session = await getAuthSession(req);
@@ -29,6 +29,12 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     return res.status(403).json({ error: 'Forbidden' });
   }
 
+  const [state] = await db.select({ cutoff: conversationUserState.clearedThroughMessageId })
+    .from(conversationUserState)
+    .where(and(eq(conversationUserState.userId, myId), eq(conversationUserState.conversationId, convId)))
+    .limit(1);
+  const cutoff = state?.cutoff ?? 0;
+
   // Mark incoming messages as delivered (first time recipient polls) and read
   // (recipient is actively viewing this thread while polling).
   await db.execute(sql`
@@ -37,6 +43,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
       delivered_at = COALESCE(delivered_at, NOW()),
       read_at      = COALESCE(read_at, NOW())
     WHERE conversation_id = ${convId}
+      AND id > ${cutoff}
       AND sender_id != ${myId}
       AND status = 'sent'
       AND read_at IS NULL
@@ -53,6 +60,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     .where(and(
       eq(messages.conversationId, convId),
       eq(messages.status, 'sent'),
+      gt(messages.id, cutoff),
       gte(messages.createdAt, afterDate),
     ));
 

@@ -1,3 +1,10 @@
+import { sparkShareMeta } from './lib/spark-share-meta';
+import { topicMembers } from './lib/topic-members';
+import sparkChartImage from './api/community/posts/[id]/chart/GET';
+import { commentLinkPreview } from './lib/comment-link-preview';
+import { sparkCollections } from './lib/spark-collections';
+import sparkReshare from './api/community/posts/[id]/reshare/POST';
+import { sparkMediaConfig, uploadSparkMedia, deleteSparkMedia, readSparkMedia, startSparkMediaCleanup } from "./lib/spark-media";
 import { selectRows } from '@/server/db/select-rows';
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import helmet from "helmet";
@@ -22,6 +29,7 @@ import account__email_consent__get from "./api/account/email-consent/GET";
 import account__email_consent__post from "./api/account/email-consent/POST";
 import account__export__get from "./api/account/export/GET";
 import account__password__post from "./api/account/password/POST";
+import account__social_summary__get from "./api/account/social-summary/GET";
 import account__privacy_settings__get from "./api/account/privacy-settings/GET";
 import account__privacy_settings__patch from "./api/account/privacy-settings/PATCH";
 import account__profile__get from "./api/account/profile/GET";
@@ -37,6 +45,7 @@ import admin__applications__id__patch from "./api/admin/applications/[id]/PATCH"
 import admin__audit__get from "./api/admin/audit/GET";
 import admin__badges__get from "./api/admin/badges/GET";
 import admin__badges__post from "./api/admin/badges/POST";
+import admin__bug_reports__get from "./api/admin/bug-reports/GET";
 import admin__bug_reports__id__patch from "./api/admin/bug-reports/[id]/PATCH";
 import admin__command_center__audit_log__get from "./api/admin/command-center/audit-log/GET";
 import admin__command_center__community__get from "./api/admin/command-center/community/GET";
@@ -51,6 +60,9 @@ import admin__command_center__security__get from "./api/admin/command-center/sec
 import admin__command_center__settings__get from "./api/admin/command-center/settings/GET";
 import admin__command_center__settings__patch from "./api/admin/command-center/settings/PATCH";
 import admin__community__announcements__post from "./api/admin/community/announcements/POST";
+import admin__community__announcements__id__patch from "./api/admin/community/announcements/[id]/PATCH";
+import admin__community__appeals__get from "./api/admin/community/appeals/GET";
+import admin__community__appeals__id__patch from "./api/admin/community/appeals/[id]/PATCH";
 import admin__community__badges__post from "./api/admin/community/badges/POST";
 import admin__community__categories__get from "./api/admin/community/categories/GET";
 import admin__community__categories__id__patch from "./api/admin/community/categories/[id]/PATCH";
@@ -59,9 +71,15 @@ import admin__community__posts__id__patch from "./api/admin/community/posts/[id]
 import admin__community__replies__id__patch from "./api/admin/community/replies/[id]/PATCH";
 import admin__community__reports__get from "./api/admin/community/reports/GET";
 import admin__community__reports__id__patch from "./api/admin/community/reports/[id]/PATCH";
+import admin__community__suggestions__id__patch from "./api/admin/community/suggestions/[id]/PATCH";
 import admin__dashboard__get from "./api/admin/dashboard/GET";
 import admin__engagement__get from "./api/admin/engagement/GET";
 import admin__inbox__get from "./api/admin/inbox/GET";
+import admin__messaging__analytics__get from "./api/admin/messaging/analytics/GET";
+import admin__messaging__config__get from "./api/admin/messaging/config/GET";
+import admin__messaging__config__patch from "./api/admin/messaging/config/PATCH";
+import admin__messaging__reports__get from "./api/admin/messaging/reports/GET";
+import admin__messaging__reports__id__patch from "./api/admin/messaging/reports/[id]/PATCH";
 import admin__moderator__assignments__get from "./api/admin/moderator/assignments/GET";
 import admin__moderator__assignments__post from "./api/admin/moderator/assignments/POST";
 import admin__moderator__assignments__id__delete from "./api/admin/moderator/assignments/[id]/DELETE";
@@ -82,12 +100,16 @@ import birthday__reflection__dismiss__post from "./api/birthday/reflection/dismi
 import birthday__reflection__save_journal__post from "./api/birthday/reflection/save-journal/POST";
 import blocks__get from "./api/blocks/GET";
 import blocks__userId__delete from "./api/blocks/[userId]/DELETE";
+import bug_reports__get from "./api/bug-reports/GET";
 import bug_reports__post from "./api/bug-reports/POST";
+import bug_reports__known_issues__get from "./api/bug-reports/known-issues/GET";
 import candles__get from "./api/candles/GET";
 import checkin__today__get from "./api/checkin/today/GET";
 import checkin__today__post from "./api/checkin/today/POST";
 import circles__get from "./api/circles/GET";
 import circles__id__join__post from "./api/circles/[id]/join/POST";
+import community__announcements__get from "./api/community/announcements/GET";
+import community__appeals__post from "./api/community/appeals/POST";
 import community__blocks__post from "./api/community/blocks/POST";
 import community__bookmarks__get from "./api/community/bookmarks/GET";
 import community__categories__get from "./api/community/categories/GET";
@@ -99,6 +121,18 @@ import community__friend_updates__hide__post from "./api/community/friend-update
 import community__friend_updates__react__post from "./api/community/friend-updates/react/POST";
 import community__grimoire_save__post from "./api/community/grimoire-save/POST";
 import community__hearth__get from "./api/community/hearth/GET";
+import community__help__faq__get from "./api/community/help/faq/GET";
+import community__help__faq__post from "./api/community/help/faq/POST";
+import community__help__faq__id__delete from "./api/community/help/faq/[id]/DELETE";
+import community__help__faq__id__put from "./api/community/help/faq/[id]/PUT";
+import community__help__glossary__get from "./api/community/help/glossary/GET";
+import community__help__glossary__post from "./api/community/help/glossary/POST";
+import community__help__glossary__id__delete from "./api/community/help/glossary/[id]/DELETE";
+import community__help__glossary__id__put from "./api/community/help/glossary/[id]/PUT";
+import community__help__rules__get from "./api/community/help/rules/GET";
+import community__help__rules__acknowledge__post from "./api/community/help/rules/acknowledge/POST";
+import community__help__rules__id__put from "./api/community/help/rules/[id]/PUT";
+import getCosmicPulse from "./api/cosmic-pulse/GET";
 import community__mute__post from "./api/community/mute/POST";
 import community__notifications__get from "./api/community/notifications/GET";
 import community__notifications__read__post from "./api/community/notifications/read/POST";
@@ -120,8 +154,12 @@ import community__replies__id__like__post from "./api/community/replies/[id]/lik
 import community__reports__post from "./api/community/reports/POST";
 import community__search__get from "./api/community/search/GET";
 import community__stats__get from "./api/community/stats/GET";
+import community__suggestions__get from "./api/community/suggestions/GET";
+import community__suggestions__post from "./api/community/suggestions/POST";
+import community__suggestions__id__vote__post from "./api/community/suggestions/[id]/vote/POST";
 import conversations__get from "./api/conversations/GET";
 import conversations__post from "./api/conversations/POST";
+import conversations__id__delete from "./api/conversations/[id]/DELETE";
 import conversations__id__messages__get from "./api/conversations/[id]/messages/GET";
 import conversations__id__messages__post from "./api/conversations/[id]/messages/POST";
 import conversations__id__messages__since__get from "./api/conversations/[id]/messages/since/GET";
@@ -132,7 +170,6 @@ import conversations__id__typing__get from "./api/conversations/[id]/typing/GET"
 import conversations__id__typing__post from "./api/conversations/[id]/typing/POST";
 import conversations__id__wallpaper__get from "./api/conversations/[id]/wallpaper/GET";
 import conversations__id__wallpaper__put from "./api/conversations/[id]/wallpaper/PUT";
-import conversations__id__delete from "./api/conversations/[id]/DELETE";
 import coven__get from "./api/coven/GET";
 import coven__check__get from "./api/coven/check/GET";
 import coven__request__post from "./api/coven/request/POST";
@@ -154,6 +191,16 @@ import grimoire__post from "./api/grimoire/POST";
 import grimoire__id__delete from "./api/grimoire/[id]/DELETE";
 import grimoire__id__get from "./api/grimoire/[id]/GET";
 import grimoire__id__put from "./api/grimoire/[id]/PUT";
+import groups__get from "./api/groups/GET";
+import groups__post from "./api/groups/POST";
+import groups__invitations__get from "./api/groups/invitations/GET";
+import groups__invitations__id__accept__post from "./api/groups/invitations/[id]/accept/POST";
+import groups__invitations__id__decline__post from "./api/groups/invitations/[id]/decline/POST";
+import groups__id__invite__post from "./api/groups/[id]/invite/POST";
+import groups__id__leave__post from "./api/groups/[id]/leave/POST";
+import groups__id__members__get from "./api/groups/[id]/members/GET";
+import groups__id__messages__get from "./api/groups/[id]/messages/GET";
+import groups__id__messages__post from "./api/groups/[id]/messages/POST";
 import health__get from "./api/health/GET";
 import health__db_cols__get from "./api/health/db-cols/GET";
 import herbs__get from "./api/herbs/GET";
@@ -170,6 +217,14 @@ import message_requests__id__decline__post from "./api/message-requests/[id]/dec
 import messages__id__patch from "./api/messages/[id]/PATCH";
 import messages__id__reactions__get from "./api/messages/[id]/reactions/GET";
 import messages__id__reactions__post from "./api/messages/[id]/reactions/POST";
+import messages__id__report__post from "./api/messages/[id]/report/POST";
+import messaging__drafts__put from "./api/messaging/drafts/PUT";
+import messaging__privacy__get from "./api/messaging/privacy/GET";
+import messaging__privacy__patch from "./api/messaging/privacy/PATCH";
+import messaging__share_options__rituals__get from "./api/messaging/share-options/rituals/GET";
+import messaging__share_options__spells__get from "./api/messaging/share-options/spells/GET";
+import messaging__share_options__tarot_readings__get from "./api/messaging/share-options/tarot-readings/GET";
+import moments__run__post from "./api/moments/run/POST";
 import moments__status__get from "./api/moments/status/GET";
 import moments__status__patch from "./api/moments/status/PATCH";
 import moon_rituals__get from "./api/moon-rituals/GET";
@@ -250,6 +305,7 @@ import spells__slug__reviews__reviewId__helpful__post from "./api/spells/[slug]/
 import spells__slug__reviews__reviewId__replies__post from "./api/spells/[slug]/reviews/[reviewId]/replies/POST";
 import spells__slug__reviews__reviewId__report__post from "./api/spells/[slug]/reviews/[reviewId]/report/POST";
 import spells__slug__save__post from "./api/spells/[slug]/save/POST";
+import stream__messages__get from "./api/stream/messages/GET";
 import synastry_partners__get from "./api/synastry-partners/GET";
 import synastry_partners__post from "./api/synastry-partners/POST";
 import synastry_partners__id__delete from "./api/synastry-partners/[id]/DELETE";
@@ -387,6 +443,11 @@ export function toLogError(err: unknown): Record<string, unknown> {
 	}
 	if (typeof fields.code === "string" || typeof fields.code === "number") {
 		shaped.code = fields.code;
+	}
+	const cause = err instanceof Error ? err.cause : undefined;
+	if (cause instanceof Error && "code" in cause && typeof cause.code === "string" &&
+		/^(?:ER_[A-Z0-9_]+|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|PROTOCOL_CONNECTION_LOST)$/.test(cause.code)) {
+		shaped.causeCode = cause.code;
 	}
 	if (typeof fields.status === "number") {
 		shaped.status = fields.status;
@@ -639,6 +700,7 @@ app.get("/api/account/email-consent", account__email_consent__get);
 app.post("/api/account/email-consent", account__email_consent__post);
 app.get("/api/account/export", account__export__get);
 app.post("/api/account/password", sensitiveAccountLimiter, account__password__post);
+app.get("/api/account/social-summary", account__social_summary__get);
 app.get("/api/account/privacy-settings", account__privacy_settings__get);
 app.patch("/api/account/privacy-settings", account__privacy_settings__patch);
 app.get("/api/account/profile", account__profile__get);
@@ -654,6 +716,7 @@ app.patch("/api/admin/applications/:id", admin__applications__id__patch);
 app.get("/api/admin/audit", admin__audit__get);
 app.get("/api/admin/badges", admin__badges__get);
 app.post("/api/admin/badges", admin__badges__post);
+app.get("/api/admin/bug-reports", admin__bug_reports__get);
 app.patch("/api/admin/bug-reports/:id", admin__bug_reports__id__patch);
 app.get("/api/admin/command-center/audit-log", admin__command_center__audit_log__get);
 app.get("/api/admin/command-center/community", admin__command_center__community__get);
@@ -668,6 +731,9 @@ app.get("/api/admin/command-center/security", admin__command_center__security__g
 app.get("/api/admin/command-center/settings", admin__command_center__settings__get);
 app.patch("/api/admin/command-center/settings", admin__command_center__settings__patch);
 app.post("/api/admin/community/announcements", admin__community__announcements__post);
+app.patch("/api/admin/community/announcements/:id", admin__community__announcements__id__patch);
+app.get("/api/admin/community/appeals", admin__community__appeals__get);
+app.patch("/api/admin/community/appeals/:id", admin__community__appeals__id__patch);
 app.post("/api/admin/community/badges", admin__community__badges__post);
 app.get("/api/admin/community/categories", admin__community__categories__get);
 app.patch("/api/admin/community/categories/:id", admin__community__categories__id__patch);
@@ -676,9 +742,15 @@ app.patch("/api/admin/community/posts/:id", admin__community__posts__id__patch);
 app.patch("/api/admin/community/replies/:id", admin__community__replies__id__patch);
 app.get("/api/admin/community/reports", admin__community__reports__get);
 app.patch("/api/admin/community/reports/:id", admin__community__reports__id__patch);
+app.patch("/api/admin/community/suggestions/:id", admin__community__suggestions__id__patch);
 app.get("/api/admin/dashboard", admin__dashboard__get);
 app.get("/api/admin/engagement", admin__engagement__get);
 app.get("/api/admin/inbox", admin__inbox__get);
+app.get("/api/admin/messaging/analytics", admin__messaging__analytics__get);
+app.get("/api/admin/messaging/config", admin__messaging__config__get);
+app.patch("/api/admin/messaging/config", admin__messaging__config__patch);
+app.get("/api/admin/messaging/reports", admin__messaging__reports__get);
+app.patch("/api/admin/messaging/reports/:id", admin__messaging__reports__id__patch);
 app.get("/api/admin/moderator/assignments", admin__moderator__assignments__get);
 app.post("/api/admin/moderator/assignments", admin__moderator__assignments__post);
 app.delete("/api/admin/moderator/assignments/:id", admin__moderator__assignments__id__delete);
@@ -699,13 +771,19 @@ app.post("/api/birthday/reflection/dismiss", birthday__reflection__dismiss__post
 app.post("/api/birthday/reflection/save-journal", birthday__reflection__save_journal__post);
 app.get("/api/blocks", blocks__get);
 app.delete("/api/blocks/:userId", blocks__userId__delete);
+app.get("/api/bug-reports", bug_reports__get);
 app.post("/api/bug-reports", bug_reports__post);
+app.get("/api/bug-reports/known-issues", bug_reports__known_issues__get);
 app.get("/api/candles", candles__get);
 app.get("/api/checkin/today", checkin__today__get);
 app.post("/api/checkin/today", checkin__today__post);
 app.get("/api/circles", circles__get);
 app.post("/api/circles/:id/join", circles__id__join__post);
+app.get("/api/community/announcements", community__announcements__get);
+app.post("/api/community/appeals", community__appeals__post);
 app.post("/api/community/blocks", community__blocks__post);
+app.get("/api/community/comment-link-preview", uploadLimiter, commentLinkPreview);
+app.get("/api/community/spark-collections", sparkCollections);
 app.get("/api/community/bookmarks", community__bookmarks__get);
 app.get("/api/community/categories", community__categories__get);
 app.get("/api/community/discover", community__discover__get);
@@ -716,16 +794,36 @@ app.post("/api/community/friend-updates/hide", community__friend_updates__hide__
 app.post("/api/community/friend-updates/react", community__friend_updates__react__post);
 app.post("/api/community/grimoire-save", community__grimoire_save__post);
 app.get("/api/community/hearth", community__hearth__get);
+app.get("/api/community/help/faq", community__help__faq__get);
+app.post("/api/community/help/faq", community__help__faq__post);
+app.delete("/api/community/help/faq/:id", community__help__faq__id__delete);
+app.put("/api/community/help/faq/:id", community__help__faq__id__put);
+app.get("/api/community/help/glossary", community__help__glossary__get);
+app.post("/api/community/help/glossary", community__help__glossary__post);
+app.delete("/api/community/help/glossary/:id", community__help__glossary__id__delete);
+app.put("/api/community/help/glossary/:id", community__help__glossary__id__put);
+app.get("/api/community/help/rules", community__help__rules__get);
+app.post("/api/community/help/rules/acknowledge", community__help__rules__acknowledge__post);
+app.put("/api/community/help/rules/:id", community__help__rules__id__put);
+app.get("/api/cosmic-pulse", getCosmicPulse);
 app.post("/api/community/mute", community__mute__post);
 app.get("/api/community/notifications", community__notifications__get);
 app.post("/api/community/notifications/read", community__notifications__read__post);
+app.get("/api/community/spark-media/config", sparkMediaConfig);
+app.put("/api/community/spark-media/:id", uploadLimiter, uploadSparkMedia);
+app.delete("/api/community/spark-media/:id", deleteSparkMedia);
+app.get(["/api/community/spark-media/:id", "/api/community/spark-media/:id/poster"], readSparkMedia);
+app.get("/api/community/topics/:topic/members", topicMembers);
 app.get("/api/community/posts", community__posts__get);
 app.post("/api/community/posts", community__posts__post);
 app.delete("/api/community/posts/:id", community__posts__id__delete);
+app.get("/api/community/posts/:id/reading-preview", sparkShareMeta);
+app.get("/api/community/posts/:id/chart.svg", sparkChartImage);
 app.get("/api/community/posts/:id", community__posts__id__get);
 app.put("/api/community/posts/:id", community__posts__id__put);
 app.post("/api/community/posts/:id/accept-answer", community__posts__id__accept_answer__post);
 app.post("/api/community/posts/:id/bookmark", community__posts__id__bookmark__post);
+app.post("/api/community/posts/:id/reshare", sparkReshare);
 app.post("/api/community/posts/:id/like", community__posts__id__like__post);
 app.post("/api/community/posts/:id/poll/vote", community__posts__id__poll__vote__post);
 app.get("/api/community/posts/:id/replies", community__posts__id__replies__get);
@@ -737,21 +835,22 @@ app.post("/api/community/replies/:id/like", community__replies__id__like__post);
 app.post("/api/community/reports", reportLimiter, community__reports__post);
 app.get("/api/community/search", community__search__get);
 app.get("/api/community/stats", community__stats__get);
+app.get("/api/community/suggestions", community__suggestions__get);
+app.post("/api/community/suggestions", community__suggestions__post);
+app.post("/api/community/suggestions/:id/vote", community__suggestions__id__vote__post);
 app.get("/api/conversations", conversations__get);
 app.post("/api/conversations", conversations__post);
-// /since must be registered before /:id/messages — Express matches in order
-// and /:id/messages would otherwise swallow the /since segment as part of the path
-app.get("/api/conversations/:id/messages/since", conversations__id__messages__since__get);
+app.delete("/api/conversations/:id", conversations__id__delete);
 app.get("/api/conversations/:id/messages", conversations__id__messages__get);
 app.post("/api/conversations/:id/messages", messagingLimiter, conversations__id__messages__post);
+app.get("/api/conversations/:id/messages/since", conversations__id__messages__since__get);
 app.patch("/api/conversations/:id/read", conversations__id__read__patch);
-app.patch("/api/conversations/:id/state", conversations__id__state__patch);
 app.get("/api/conversations/:id/receipts", conversations__id__receipts__get);
+app.patch("/api/conversations/:id/state", conversations__id__state__patch);
 app.get("/api/conversations/:id/typing", conversations__id__typing__get);
 app.post("/api/conversations/:id/typing", conversations__id__typing__post);
 app.get("/api/conversations/:id/wallpaper", conversations__id__wallpaper__get);
 app.put("/api/conversations/:id/wallpaper", conversations__id__wallpaper__put);
-app.delete("/api/conversations/:id", conversations__id__delete);
 app.get("/api/coven", coven__get);
 app.get("/api/coven/check", coven__check__get);
 app.post("/api/coven/request", coven__request__post);
@@ -773,6 +872,16 @@ app.post("/api/grimoire", grimoire__post);
 app.delete("/api/grimoire/:id", grimoire__id__delete);
 app.get("/api/grimoire/:id", grimoire__id__get);
 app.put("/api/grimoire/:id", grimoire__id__put);
+app.get("/api/groups", groups__get);
+app.post("/api/groups", groups__post);
+app.get("/api/groups/invitations", groups__invitations__get);
+app.post("/api/groups/invitations/:id/accept", groups__invitations__id__accept__post);
+app.post("/api/groups/invitations/:id/decline", groups__invitations__id__decline__post);
+app.post("/api/groups/:id/invite", groups__id__invite__post);
+app.post("/api/groups/:id/leave", groups__id__leave__post);
+app.get("/api/groups/:id/members", groups__id__members__get);
+app.get("/api/groups/:id/messages", groups__id__messages__get);
+app.post("/api/groups/:id/messages", groups__id__messages__post);
 app.get("/api/health", health__get);
 app.get("/api/health/db-cols", health__db_cols__get);
 app.get("/api/herbs", herbs__get);
@@ -789,6 +898,14 @@ app.post("/api/message-requests/:id/decline", message_requests__id__decline__pos
 app.patch("/api/messages/:id", messages__id__patch);
 app.get("/api/messages/:id/reactions", messages__id__reactions__get);
 app.post("/api/messages/:id/reactions", messages__id__reactions__post);
+app.post("/api/messages/:id/report", messages__id__report__post);
+app.put("/api/messaging/drafts", messaging__drafts__put);
+app.get("/api/messaging/privacy", messaging__privacy__get);
+app.patch("/api/messaging/privacy", messaging__privacy__patch);
+app.get("/api/messaging/share-options/rituals", messaging__share_options__rituals__get);
+app.get("/api/messaging/share-options/spells", messaging__share_options__spells__get);
+app.get("/api/messaging/share-options/tarot-readings", messaging__share_options__tarot_readings__get);
+app.post("/api/moments/run", moments__run__post);
 app.get("/api/moments/status", moments__status__get);
 app.patch("/api/moments/status", moments__status__patch);
 app.get("/api/moon-rituals", moon_rituals__get);
@@ -869,6 +986,7 @@ app.post("/api/spells/:slug/reviews/:reviewId/helpful", spells__slug__reviews__r
 app.post("/api/spells/:slug/reviews/:reviewId/replies", spells__slug__reviews__reviewId__replies__post);
 app.post("/api/spells/:slug/reviews/:reviewId/report", reportLimiter, spells__slug__reviews__reviewId__report__post);
 app.post("/api/spells/:slug/save", spells__slug__save__post);
+app.get("/api/stream/messages", stream__messages__get);
 app.get("/api/synastry-partners", synastry_partners__get);
 app.post("/api/synastry-partners", synastry_partners__post);
 app.delete("/api/synastry-partners/:id", synastry_partners__id__delete);
@@ -1019,10 +1137,10 @@ app.get("/sitemap.xml", (req, res) => {
 
 app.get("/llms.txt", llmsTxtHandler);
 
-// Redirect /og-image.png to the real uploaded PNG asset.
+// Redirect /og-image.png to the canonical social preview image.
 // All og:image meta tags point here; crawlers follow the 301 to the actual file.
 app.get("/og-image.png", (_req: Request, res: Response) => {
-	res.redirect(301, "/airo-assets/uploads/pages-og-image-7ff4c824.png");
+	res.redirect(301, "/airo-assets/images/pages/og-image");
 });
 
 // In dev mode, ssrLoadModule evaluates this file with import.meta.env.PROD=true
@@ -1264,7 +1382,7 @@ if (import.meta.env.PROD && _isBuiltBundle && existsSync(_ssrClientDir)) {
 
 	// Run startup migrations to ensure DB schema matches code (safe to re-run).
 	// Wrapped in void+then to avoid top-level await (not supported in the SSR bundle target).
-	void runStartupMigration().catch((e: unknown) => {
+	void runStartupMigration().then(startSparkMediaCleanup).catch((e: unknown) => {
 		console.error(JSON.stringify({ event: 'startup.migration.uncaught', msg: e instanceof Error ? e.message : String(e) }));
 	});
 

@@ -20,6 +20,8 @@ interface PrivacySettings {
   discoverable: boolean;
   searchIndexed: boolean;
   hideOnlineStatus: boolean;
+  shareLikesWithCoven: boolean;
+  shareFollowing: boolean;
   messagePermission: 'everyone' | 'coven' | 'nobody';
   birthdayVisibility: 'public' | 'coven' | 'private';
   shareBirthdayInFeed: boolean;
@@ -182,6 +184,27 @@ export default function PrivacySanctuaryPage() {
                 <div>
                   <Label className="text-xs text-muted-foreground mb-2 block">{pg.sections.profileVisibility.socialLinksLabel}</Label>
                   <VisibilitySelector id="social-links-visibility" value={settings.socialLinksVisibility} onChange={(v) => update('socialLinksVisibility', v)} />
+                </div>
+                <Separator className="bg-border" />
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <Label htmlFor="share-following">Share who I follow</Label>
+                    <p id="share-following-description" className="mt-1 text-xs text-muted-foreground">
+                      People who can see your profile can open your Following list.
+                    </p>
+                  </div>
+                  <Switch
+                    id="share-following"
+                    aria-describedby="share-following-description"
+                    checked={settings.shareFollowing}
+                    onCheckedChange={(value) => update('shareFollowing', value)}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3 py-2">
+                  <div><Label htmlFor="share-likes-coven">Show my likes to mutual Coven connections</Label>
+                    <p className="text-xs text-muted-foreground">Applies to regular post and reply likes. Spark Favorites stay private.</p></div>
+                  <Switch id="share-likes-coven" checked={!!settings.shareLikesWithCoven}
+                    onCheckedChange={value => update('shareLikesWithCoven', value)} />
                 </div>
                 <div className="pt-1">
                   <Link to={`/u/${username}?preview=guest`} className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">

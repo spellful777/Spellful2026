@@ -5,24 +5,24 @@
     "subtitle": "Complete metadata, copy, and checklist for submitting Spellful to the App Store and Google Play."
   },
   "identity": {
-    "appName": "Spellful: Witchcraft & Tarot",
-    "subtitle": "Horoscope, Moon & Grimoire",
+    "appName": "Spellful",
+    "subtitle": "",
     "bundleId": "com.spellful.app"
   },
   "categories": {
     "iosPrimary": "Lifestyle",
-    "iosSecondary": "Health & Fitness",
+    "iosSecondary": "Reference",
     "googlePrimary": "Lifestyle",
     "contentRating": "Complete the Apple and Google age-rating questionnaires for community content and messaging."
   },
   "descriptions": {
-    "promotional": "Your complete witchcraft companion. Personalized horoscopes, 78-card tarot, moon rituals, and a private grimoire — all in one sacred space.",
+    "promotional": "Discover your cosmic self with daily horoscopes, birth charts, tarot readings, moon rituals and astrology. Make magic your own with Spellful.",
     "short": "Personalized horoscopes, 78-card tarot, moon rituals & grimoire journaling. Your witchcraft companion.",
-    "full": "Spellful is your complete witchcraft companion — built for practitioners of every level, from curious beginners to seasoned witches.\n\nPERSONALIZED DAILY HOROSCOPE\nEnter your birth date and receive a horoscope tailored to your sun sign every morning. Spellful uses astronomically accurate calculations to track the moon, planets, and transits that matter to your practice.\n\n78-CARD TAROT DECK\nExplore all 78 tarot cards with original hand-crafted artwork. Choose from five spreads — one-card daily draw, three-card past/present/future, Celtic Cross, new moon, and shadow work. Each card includes upright and reversed meanings, symbolism, and journaling prompts.\n\nMOON RITUAL PLANNER\nFollow the lunar cycle with 48 rituals aligned to every moon phase. From new moon intentions to full moon releases, Spellful guides your practice through the complete lunar calendar.\n\nBIRTH CHART & SYNASTRY\nGenerate your full natal chart with VSOP87 astronomical accuracy — 10 planets, Ascendant, and Midheaven. Explore synastry with a partner to understand your astrological compatibility.\n\nPERSONAL GRIMOIRE\nKeep a private digital grimoire with your spells, rituals, herbs, and intentions. Add dream journal entries, shadow work reflections, and track your practice over time.\n\nSPELLFUL ACADEMY\nLearn witchcraft through 22 structured lessons across 9 topics — from tarot basics to advanced lunar magic. Complete quizzes, earn progress, and bookmark lessons for later.\n\nCOMMUNITY\nConnect with a private community of practitioners. Share insights, ask questions, and grow your practice alongside others.\n\nFEATURES:\n• Astronomically accurate moon phase engine (±2 min accuracy)\n• 78-card tarot deck with original artwork and 5 spreads\n• Daily horoscope personalized to your birth chart\n• Full natal chart and synastry wheel\n• 48 moon rituals across all lunar phases\n• Personal grimoire, dream journal & shadow work\n• Herb library with 49 botanicals\n• Spellful Academy with 22 lessons\n• Private community with polls and Q&A\n• Moon phases and practice reminders\n\nSpellful is free to download. An optional, auto-renewing monthly Spellful Plus subscription unlocks additional features. The app shows the local price before purchase. Manage or cancel your subscription in your Apple Account settings.",
+    "full": "Discover your cosmic self. Awaken your intuition. Make magic your own.\n\nSpellful is your personal sanctuary for astrology, tarot, moon magic, modern witchcraft and spiritual self-discovery.\n\nDAILY HOROSCOPES & ASTROLOGY\n\nExplore personalized daily horoscopes, zodiac insights and planetary movements. Discover what the cosmos reveals about your everyday life.\n\nBIRTH CHART & SELF-DISCOVERY\n\nExplore your astrological identity through your birth chart, sun sign, moon sign and rising sign. Discover deeper perspectives on your personality and spiritual journey.\n\nTAROT & DIVINATION\n\nExplore a complete 78-card tarot deck with five different spreads. Connect with your intuition through tarot readings and personal reflection.\n\nMOON PHASES & RITUALS\n\nFollow lunar cycles, discover upcoming moon phases and receive personalized ritual guidance aligned with your intentions.\n\nCOSMIC CALENDAR\n\nExplore planetary movements, zodiac transitions and upcoming astrological events.\n\nPERSONAL GRIMOIRE\n\nCreate your digital Book of Shadows. Save spells, rituals, herbs, crystals, dreams, tarot readings and journal entries.\n\nFIND YOUR COVEN\n\nConnect with like-minded spiritual seekers, share wisdom, explore magical interests and discover your community.\n\nPERSONALIZE YOUR EXPERIENCE\n\nCreate your spiritual profile and build a sacred space that reflects your unique magical journey.\n\nWhether you are curious about astrology, exploring manifestation or developing your witchcraft practice, Spellful brings your cosmic world together.\n\nYour journey. Your universe. Your magic.\n\nCast. Create. Explore.\n\nAstrology and divination are intended for personal reflection and entertainment.\n\nSpellful is free to download. An optional, auto-renewing monthly Spellful Plus subscription unlocks additional features. The app shows the local price before purchase. Manage or cancel your subscription in your Apple Account settings.",
     "whatsNew": "Welcome to Spellful! This is our initial release. We've launched with the full 78-card tarot deck, personalized daily horoscopes, moon ritual planner, birth chart calculator, personal grimoire, and Spellful Academy. More features coming soon."
   },
   "keywords": {
-    "ios": "tarot,horoscope,astrology,witchcraft,moon,grimoire,birth chart,spell,ritual,lunar,zodiac,divination"
+    "ios": "astrology,horoscope,zodiac,birth,chart,tarot,moon,witchcraft,natal,manifestation,grimoire,ritual"
   },
   "urls": {
     "marketing": "https://spellful.com",
@@ -31,28 +31,22 @@
   },
   "SCREENSHOT_SIZES_APPLE": [
     {
-      "id": "iphone-67",
-      "device": "iPhone 6.7\"",
-      "size": "1290 × 2796 px",
-      "note": "Required — iPhone 15 Pro Max"
+      "id": "iphone-large",
+      "device": "iPhone large",
+      "size": "1320 × 2868 px",
+      "note": "Capture on the matching native device or simulator with demo data."
     },
     {
-      "id": "iphone-65",
-      "device": "iPhone 6.5\"",
-      "size": "1242 × 2688 px",
-      "note": "Required — iPhone 11 Pro Max"
+      "id": "iphone-medium",
+      "device": "iPhone",
+      "size": "1206 × 2622 px",
+      "note": "Capture on the matching native device or simulator with demo data."
     },
     {
-      "id": "ipad-129",
-      "device": "iPad 12.9\"",
-      "size": "2048 × 2732 px",
-      "note": "Required if supporting iPad"
-    },
-    {
-      "id": "ipad-11",
-      "device": "iPad 11\"",
-      "size": "1668 × 2388 px",
-      "note": "Optional — iPad Pro 11\""
+      "id": "ipad-13",
+      "device": "iPad 13″",
+      "size": "2064 × 2752 px",
+      "note": "Capture on the matching native device or simulator with demo data."
     }
   ],
   "SCREENSHOT_SIZES_GOOGLE": [
@@ -84,33 +78,33 @@
   "SCREENSHOT_SCREENS": [
     {
       "id": "dashboard",
-      "screen": "Daily Dashboard",
-      "desc": "Show the 8-widget dashboard with Card of the Day, moon phase, and horoscope"
+      "screen": "Daily Magic",
+      "desc": "Daily dashboard and horoscope"
     },
     {
       "id": "tarot",
-      "screen": "Tarot Reading",
-      "desc": "Show a 3-card spread with original artwork face-up"
-    },
-    {
-      "id": "birth-chart",
-      "screen": "Birth Chart",
-      "desc": "Show the SVG natal wheel with planet placements"
+      "screen": "Tarot",
+      "desc": "Draw and reveal a tarot spread"
     },
     {
       "id": "grimoire",
-      "screen": "Personal Grimoire",
-      "desc": "Show the grimoire entry list with categories"
+      "screen": "Grimoire",
+      "desc": "Browse private journal entries"
     },
     {
-      "id": "moon-calendar",
+      "id": "rituals",
+      "screen": "Moon Rituals",
+      "desc": "Plan a lunar ritual"
+    },
+    {
+      "id": "calendar",
       "screen": "Moon Calendar",
-      "desc": "Show the lunar calendar with phase icons and ritual suggestions"
+      "desc": "Explore lunar phases"
     },
     {
       "id": "community",
-      "screen": "Community Feed",
-      "desc": "Show the community feed with posts and engagement"
+      "screen": "Community",
+      "desc": "Explore the coven with a demo account"
     }
   ],
   "AGE_RATING": [

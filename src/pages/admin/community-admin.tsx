@@ -17,6 +17,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSession } from '@/lib/auth/auth-client';
 import { admin_community_admin } from 'virtual:content';
 import { formatDistanceToNow } from 'date-fns';
+import HelpResourcesAdmin from '@/components/admin/HelpResourcesAdmin';
+import AdminAppealsPanel from '@/components/admin/AdminAppealsPanel';
+import AdminAnnouncementsPanel from '@/components/admin/AdminAnnouncementsPanel';
+import AdminSuggestionsPanel from '@/components/admin/AdminSuggestionsPanel';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -365,6 +369,18 @@ export default function CommunityAdminConsolePage() {
             )}
           </div>
         </div>
+
+        {/* Help & Resources management */}
+        <HelpResourcesAdmin />
+
+        {/* Announcements management */}
+        <AdminAnnouncementsPanel />
+
+        {/* Feature requests management */}
+        <AdminSuggestionsPanel />
+
+        {/* Moderation appeals */}
+        <AdminAppealsPanel />
       </main>
     </>
   );

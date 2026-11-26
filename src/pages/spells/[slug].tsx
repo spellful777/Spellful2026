@@ -597,9 +597,9 @@ export default function SpellDetailPage() {
         <meta property="og:description" content={spell.subtitle || spell.purpose.slice(0, 155)} />
         <meta property="og:url" content={`${siteUrl}/spells/${spell.slug}`} />
         <meta property="og:type" content="article" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'HowTo',

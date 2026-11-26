@@ -19,6 +19,7 @@ import { getBlockedUserIds } from '@/server/lib/block-check.js';
 export default async function handler(req: Request, res: Response) {
   const session = await getAuthSession(req);
   if (!session?.user?.id) return res.status(401).json({ error: 'Unauthorized' });
+  res.set('Cache-Control', 'private, no-store');
   const myId = session.user.id;
 
   const limit = Math.min(parseInt((req.query.limit as string) || '30'), 100);
@@ -32,7 +33,7 @@ export default async function handler(req: Request, res: Response) {
     .select()
     .from(conversations)
     .where(or(eq(conversations.participant1Id, myId), eq(conversations.participant2Id, myId)))
-    .orderBy(desc(conversations.updatedAt));
+    .orderBy(desc(conversations.updatedAt), desc(conversations.id));
 
   if (!convRows.length) return res.json({ conversations: [], hasMore: false });
 
@@ -102,11 +103,13 @@ export default async function handler(req: Request, res: Response) {
         SELECT m.*
         FROM messages m
         INNER JOIN (
-          SELECT conversation_id, MAX(id) AS max_id
-          FROM messages
-          WHERE conversation_id IN (${sql.join(paginated.map((c) => sql`${c.id}`), sql`, `)})
+          SELECT msg.conversation_id, MAX(msg.id) AS max_id
+          FROM messages msg
+          LEFT JOIN conversation_user_state state ON state.conversation_id = msg.conversation_id AND state.user_id = ${myId}
+          WHERE msg.id > COALESCE(state.cleared_through_message_id, 0)
+            AND msg.conversation_id IN (${sql.join(paginated.map((c) => sql`${c.id}`), sql`, `)})
             AND status = 'sent'
-          GROUP BY conversation_id
+          GROUP BY msg.conversation_id
         ) latest ON m.id = latest.max_id
       `)) as unknown as [Array<{
         id: number;
@@ -126,13 +129,15 @@ export default async function handler(req: Request, res: Response) {
   // Batch: unread counts per conversation
   const unreadRows = paginated.length
     ? (await db.execute(sql`
-        SELECT conversation_id, COUNT(*) AS cnt
-        FROM messages
-        WHERE conversation_id IN (${sql.join(paginated.map((c) => sql`${c.id}`), sql`, `)})
+        SELECT msg.conversation_id, COUNT(*) AS cnt
+        FROM messages msg
+        LEFT JOIN conversation_user_state state ON state.conversation_id = msg.conversation_id AND state.user_id = ${myId}
+        WHERE msg.id > COALESCE(state.cleared_through_message_id, 0)
+          AND msg.conversation_id IN (${sql.join(paginated.map((c) => sql`${c.id}`), sql`, `)})
           AND sender_id != ${myId}
           AND read_at IS NULL
           AND status = 'sent'
-        GROUP BY conversation_id
+        GROUP BY msg.conversation_id
       `)) as unknown as [Array<{ conversation_id: number; cnt: number }>, unknown]
     : [[], undefined];
   const unreadByConvId = new Map(
@@ -154,11 +159,26 @@ export default async function handler(req: Request, res: Response) {
     : [];
   const stateByConvId = new Map(stateRows.map((s) => [s.conversationId, s]));
 
+  // Batch: coven connection status for all other users
+  const covenRows = uniqueOtherIds.length
+    ? (await db.execute(sql`
+        SELECT requester_id, receiver_id
+        FROM coven_connections
+        WHERE status = 'accepted'
+          AND (requester_id = ${myId} OR receiver_id = ${myId})
+          AND (requester_id IN (${sql.join(uniqueOtherIds.map(id => sql`${id}`), sql`, `)})
+            OR receiver_id IN (${sql.join(uniqueOtherIds.map(id => sql`${id}`), sql`, `)}))
+      `)) as unknown as [Array<{ requester_id: string; receiver_id: string }>, unknown]
+    : [[], undefined];
+  const covenPartnerIds = new Set(
+    (covenRows[0] as Array<{ requester_id: string; receiver_id: string }>).flatMap(r => [r.requester_id, r.receiver_id]).filter(id => id !== myId)
+  );
+
   const result = paginated
     .filter((conv) => {
       // Filter out conversations the user has hidden (delete-for-me)
       const state = stateByConvId.get(conv.id);
-      return !state?.isHidden;
+      return !state?.isHidden || Boolean(state.clearedThroughMessageId && lastMsgByConvId.has(conv.id));
     })
     .map((conv) => {
     const otherId = conv.participant1Id === myId ? conv.participant2Id : conv.participant1Id;
@@ -192,6 +212,7 @@ export default async function handler(req: Request, res: Response) {
       isPinned: state?.isPinned ?? false,
       isMuted: state?.isMuted ?? false,
       isStarred: state?.isStarred ?? false,
+      isCoven: otherId ? covenPartnerIds.has(otherId) : false,
     };
   });
 
