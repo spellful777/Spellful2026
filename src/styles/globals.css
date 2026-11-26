@@ -637,3 +637,29 @@ html.high-contrast {
   18%, 76% { opacity: 1; }
   100% { background-position: 0 0; opacity: 0; }
 }
+
+.coven-footer-panel::before,
+.coven-footer-panel::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 1rem;
+  content: '';
+}
+
+.coven-footer-panel::before {
+  z-index: -2;
+  inset: 5px 7px -6px;
+  border: 1px solid hsl(var(--footer-lavender) / 0.15);
+  background: hsl(var(--footer-bg-deep));
+  box-shadow: 0 10px 20px hsl(var(--footer-bg-darkest) / 0.72);
+}
+
+.coven-footer-panel::after {
+  z-index: -1;
+  border: 1px solid hsl(var(--footer-lavender) / 0.2);
+  background:
+    radial-gradient(ellipse at 50% 0%, hsl(var(--footer-gold) / 0.08), transparent 74%),
+    linear-gradient(160deg, hsl(var(--muted)), hsl(var(--footer-bg-deep)));
+  box-shadow: inset 0 1px 0 hsl(var(--footer-gold) / 0.06);
+}

@@ -136,7 +136,7 @@ export default function Footer() {
 
       <nav
         aria-labelledby="footer-coven-heading"
-        className="relative z-10 mx-auto flex w-fit max-w-full flex-col items-center px-5 pb-5 pt-4 text-center"
+        className="coven-footer-panel relative isolate z-10 mx-5 mb-6 flex max-w-xs flex-col items-center px-5 pb-2 pt-4 text-center min-[362px]:mx-auto"
       >
         <Link
           to={COMMUNITY_FEED}
