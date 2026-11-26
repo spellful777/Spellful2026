@@ -600,3 +600,13 @@ html.high-contrast {
   color: hsl(var(--coven-lilac-ink));
   font-weight: 600;
 }
+
+:is(
+  .coven-community :is(button, [role='button'], .coven-nav-link),
+  .coven-entry :is(a, button),
+  [data-coven-controls] button,
+  .coven-action,
+  .coven-press
+):not(:disabled, [aria-disabled='true']):active {
+  filter: drop-shadow(0 0 7px hsl(var(--hero-gold) / 0.56)) drop-shadow(0 0 14px hsl(var(--hero-gold) / 0.32));
+}

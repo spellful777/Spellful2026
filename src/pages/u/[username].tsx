@@ -842,7 +842,7 @@ export default function UserProfilePage() {
 
             {!isOwn && viewerId && (
               <>
-                <div className="mb-1 flex flex-wrap gap-2">
+                <div data-coven-controls className="mb-1 flex flex-wrap gap-2">
                   <Button
                     size="sm"
                     variant={isFollowing ? 'outline' : 'default'}

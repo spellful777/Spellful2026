@@ -61,7 +61,7 @@ export default function ProfileFollowingDialog({ username }: { username: string 
       if (!next) changePage([]);
     }}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="rounded-full">Following list</Button>
+        <Button variant="outline" size="sm" className="coven-press rounded-full">Following list</Button>
       </DialogTrigger>
       <DialogContent className="max-h-[80dvh] overflow-y-auto">
         <DialogHeader>
