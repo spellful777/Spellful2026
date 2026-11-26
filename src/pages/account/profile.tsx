@@ -37,7 +37,7 @@ const THEME_OVERRIDES: Record<string, React.CSSProperties> = {
 
 // ─── Default avatar presets ──────────────────────────────────────────────────
 const DEFAULT_AVATARS = [
-  { key: 'default-hat-black',   label: 'Midnight',  src: '/airo-assets/images/avatars/default-hat-black' },
+  { key: 'default-hat-black',   label: 'White Hat',  src: '/airo-assets/images/avatars/default-hat-black' },
   { key: 'default-hat-blue',    label: 'Sapphire',  src: '/airo-assets/images/avatars/default-hat-blue' },
   { key: 'default-hat-green',   label: 'Emerald',   src: '/airo-assets/images/avatars/default-hat-green' },
   { key: 'default-hat-orange',  label: 'Amber',     src: '/airo-assets/images/avatars/default-hat-orange' },
