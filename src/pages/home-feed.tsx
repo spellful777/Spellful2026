@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Button } from '@/components/ui/button';
 import { useCommunityPosts } from '@/hooks/useCommunity';
+import { COMMUNITY_FEED, HOME_EXPLORE } from '@/lib/community-navigation';
+import HomeSocialMenu from '@/components/HomeSocialMenu';
 import HomeCovenCard from '@/components/HomeCovenCard';
 import { PostCard } from './community/index';
 
-export default function HomeFeed() {
-  const [filter, setFilter] = useState<'following' | 'discover'>('following');
-  const [page, setPage] = useState(1);
+export default function HomeFeed({ username }: { username?: string | null }) {
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get('feed') === 'explore' ? 'discover' : 'following';
+  const [pagination, setPagination] = useState({ filter, page: 1 });
+  const page = pagination.filter === filter ? pagination.page : 1;
+  const setPage = (next: number) => setPagination({ filter, page: next });
   const [newPosts, setNewPosts] = useState(false);
   const anchor = useRef<{ id: string; top: number; scrollY: number } | null>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -66,21 +71,22 @@ export default function HomeFeed() {
   return (
     <main className="mx-auto max-w-3xl space-y-5 px-4 pb-24 pt-8">
       <Helmet><title>Home feed | Spellful</title><meta name="robots" content="noindex" /></Helmet>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-heading text-3xl">Home</h1>
-        <Button asChild><Link to="/community/new">Create post</Link></Button>
-      </div>
-      <nav aria-label="Home feed" className="flex flex-wrap gap-2">
-        {(['following', 'discover'] as const).map(option => (
-          <Button key={option} variant={filter === option ? 'default' : 'outline'} aria-pressed={filter === option} onClick={() => {
-            setFilter(option);
-            setPage(1);
-          }}>
-            {option === 'following' ? 'Following' : 'Discover'}
-          </Button>
-        ))}
-        <Button asChild variant="ghost"><Link to="/community/discover">Find members</Link></Button>
+      <HomeSocialMenu username={username} />
+      <nav aria-label="Home feed" className="grid grid-cols-3 gap-2">
+        <Button asChild className="min-h-11 px-1.5" variant={filter === 'following' ? 'default' : 'outline'}>
+          <Link to="/" aria-current={filter === 'following' ? 'page' : undefined}>Following</Link>
+        </Button>
+        <Button asChild className="min-h-11 px-1.5" variant={filter === 'discover' ? 'default' : 'outline'}>
+          <Link to={HOME_EXPLORE} aria-current={filter === 'discover' ? 'page' : undefined}>Explore</Link>
+        </Button>
+        <Button asChild variant="outline" className="min-h-11 px-1.5"><Link to={COMMUNITY_FEED}>Community</Link></Button>
       </nav>
+      {filter === 'discover' && (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+          <h2 className="font-medium text-foreground">Public posts</h2>
+          <Link to="/community/discover" className="min-h-11 inline-flex items-center text-primary hover:underline">Find members</Link>
+        </div>
+      )}
       {newPosts && <div className="sticky top-16 z-20"><Button onClick={refresh}>New posts</Button></div>}
       <div ref={list} className="space-y-3" aria-busy={loading}>
         {error ? (
@@ -93,7 +99,7 @@ export default function HomeFeed() {
             {visiblePosts.slice(0, 2).map(post => <PostCard key={post.id} post={post} />)}
             {loading && !anchor.current && <p role="status">Loading posts…</p>}
             {!loading && !posts.length && (
-              <p role="status">{filter === 'following' ? 'Follow members to see their posts here.' : 'No new conversations to discover yet.'}</p>
+              <p role="status">{filter === 'following' ? 'Follow members to see their posts here.' : 'No public posts to explore yet.'}</p>
             )}
           </>
         )}

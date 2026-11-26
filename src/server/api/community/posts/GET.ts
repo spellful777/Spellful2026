@@ -35,7 +35,7 @@ export default async function handler(req: Request, res: Response) {
   const follows = followsPostAuthor(myId);
   if (filter === 'following') conditions.push(follows);
   if (filter === 'discover') {
-    conditions.push(ne(communityPosts.userId, myId), sql`not ${follows}`);
+    conditions.push(eq(communityPosts.audience, 'public'), ne(communityPosts.userId, myId), sql`not ${follows}`);
   }
 
   if (typeof req.query.afterId === 'string') {
