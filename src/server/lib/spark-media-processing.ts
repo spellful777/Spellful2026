@@ -43,4 +43,5 @@ export async function processSparkMedia(input: string, directory: string, kind: 
     '-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p',
     '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', video], options);
   await run('ffmpeg', ['-nostdin', '-v', 'error', '-i', video, '-frames:v', '1', '-q:v', '4', '-update', '1', photo], options);
+  return duration;
 }

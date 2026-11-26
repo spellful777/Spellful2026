@@ -1,3 +1,8 @@
+import { Image, RotateCcw, Video, X } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useEffect, useRef, useState } from 'react';
 import { sparkMediaPath, type SparkMediaKind, type SparkMediaLimits } from '@/lib/spark-media';
 
@@ -8,6 +13,7 @@ type Upload = {
   state: 'queued' | 'uploading' | 'processing' | 'ready' | 'failed';
   progress: number;
   error?: string;
+  duration?: number;
 };
 const photoTypes = ['image/jpeg', 'image/png', 'image/webp'];
 const videoTypes = ['video/mp4', 'video/quicktime', 'video/webm'];
@@ -16,6 +22,9 @@ export function useSparkAttachments(enabled: boolean) {
   const [limits, setLimits] = useState<(SparkMediaLimits & { enabled: boolean }) | null>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [error, setError] = useState('');
+  const [replacement, setReplacement] = useState<Upload[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const removing = useRef(false);
   const active = useRef<{ id: string; request: XMLHttpRequest } | null>(null);
 
   useEffect(() => {
@@ -42,7 +51,7 @@ export function useSparkAttachments(enabled: boolean) {
 
   useEffect(() => {
     const next = uploads.find(upload => upload.state === 'queued');
-    if (!next || active.current) return;
+    if (!next || active.current || removing.current || !enabled) return;
     const request = new XMLHttpRequest();
     active.current = { id: next.id, request };
     const finish = (patch: Partial<Upload>) => {
@@ -58,21 +67,20 @@ export function useSparkAttachments(enabled: boolean) {
     };
     request.upload.onload = () => update(next.id, { state: 'processing', progress: 100 });
     request.onload = () => finish(request.status === 201
-      ? { state: 'ready', progress: 100 }
+      ? { state: 'ready', progress: 100, duration: request.response?.duration }
       : { state: 'failed', error: request.response?.error ?? 'Upload failed. Try again.' });
     request.onerror = () => finish({ state: 'failed', error: 'Connection lost. Try again.' });
     request.timeout = 310000;
     request.ontimeout = () => finish({ state: 'failed', error: 'Upload timed out. Try again.' });
     update(next.id, { state: 'uploading' });
     request.send(next.file);
-  }, [uploads]);
+  }, [uploads, busy, enabled]);
 
-  function select(files: FileList | null) {
-    if (!limits?.enabled || !files?.length) return;
+  function select(files: FileList | null, kind: SparkMediaKind) {
+    if (removing.current || !limits?.enabled || !files?.length) return;
     setError('');
     const selected: Upload[] = [];
     for (const file of files) {
-      const kind = file.type.startsWith('video/') ? 'video' : 'photo';
       if (!(kind === 'video' ? videoTypes : photoTypes).includes(file.type)) {
         setError('Choose JPEG, PNG, WebP, MP4, MOV, or WebM files.');
         return;
@@ -83,61 +91,150 @@ export function useSparkAttachments(enabled: boolean) {
       }
       selected.push({ id: crypto.randomUUID(), file, kind, state: 'queued', progress: 0 });
     }
-    const all = [...uploads, ...selected];
+    const switching = uploads.some(upload => upload.kind !== kind);
+    const all = switching ? selected : [...uploads, ...selected];
     if (all.some(file => file.kind === 'video') ? all.length !== 1 : all.length > limits.photos) {
       setError('Choose up to ' + limits.photos + ' photos or one video.');
       return;
     }
-    setUploads(all);
+    if (switching) setReplacement(selected);
+    else setUploads(all);
   }
 
-  async function remove(upload: Upload) {
-    if (active.current?.id === upload.id) {
-      const { request } = active.current;
+  async function discard(removed: Upload[], added: Upload[] = []) {
+    if (removing.current) return;
+    removing.current = true;
+    setBusy(true);
+    const ids = new Set(removed.map(upload => upload.id));
+    const running = active.current;
+    if (running && ids.has(running.id)) {
       active.current = null;
-      request.abort();
+      running.request.abort();
     }
-    setUploads(items => items.filter(item => item.id !== upload.id));
-    if (upload.state !== 'queued') await fetch(sparkMediaPath(upload.id), { method: 'DELETE' }).catch(() => {});
+    setUploads(items => items.filter(item => !ids.has(item.id)));
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
+    try {
+      await Promise.all(removed.filter(upload => upload.state !== 'queued' || upload.id === running?.id)
+        .map(upload => fetch(sparkMediaPath(upload.id), { method: 'DELETE', signal: controller.signal })
+          .catch(() => {})));
+      setUploads(items => [...items, ...added]);
+    } finally {
+      window.clearTimeout(timeout);
+      removing.current = false;
+      setBusy(false);
+    }
+  }
+
+  function confirmReplacement() {
+    if (!replacement) return;
+    const next = replacement;
+    setReplacement(null);
+    void discard(uploads, next);
   }
 
   const retry = (upload: Upload) => {
     void fetch(sparkMediaPath(upload.id), { method: 'DELETE' }).catch(() => {});
     update(upload.id, { id: crypto.randomUUID(), state: 'queued', progress: 0, error: undefined });
   };
-  return { limits, uploads, error, select, remove, retry };
+  return {
+    limits, uploads, error, select, discard, retry, busy,
+    replacement, confirmReplacement, cancelReplacement: () => setReplacement(null),
+  };
+}
+
+function AttachmentThumbnail({ upload, disabled, onRemove, onRetry }: {
+  upload: Upload;
+  disabled: boolean;
+  onRemove: () => void;
+  onRetry: () => void;
+}) {
+  const [preview, setPreview] = useState('');
+  useEffect(() => {
+    if (upload.kind !== 'photo') return;
+    const url = URL.createObjectURL(upload.file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [upload.file, upload.kind]);
+
+  const source = upload.kind === 'photo' ? preview
+    : upload.state === 'ready' ? sparkMediaPath(upload.id, true) + '?draft=1' : '';
+  const duration = upload.duration ? Math.ceil(upload.duration) : null;
+  return (
+    <div className="spark-draft-thumbnail">
+      {source ? <img src={source} alt={upload.kind === 'video' ? 'Video poster' : upload.file.name} />
+        : <Video className="size-6" aria-hidden="true" />}
+      <button type="button" className="spark-draft-remove" disabled={disabled} onClick={onRemove}
+        aria-label={(upload.state === 'ready' || upload.state === 'failed' ? 'Remove ' : 'Cancel upload of ') + upload.file.name}>
+        <X className="size-4" aria-hidden="true" />
+      </button>
+      {upload.state === 'ready' && duration !== null && <span className="spark-draft-overlay">0:{String(duration).padStart(2, '0')}</span>}
+      {upload.state === 'queued' && <span className="spark-draft-overlay">Queued</span>}
+      {upload.state === 'processing' && <span className="spark-draft-overlay" role="status">Processing…</span>}
+      {upload.state === 'uploading' && <span className="spark-draft-overlay">
+        {upload.progress}%<progress aria-label={'Uploading ' + upload.file.name} max={100} value={upload.progress} />
+      </span>}
+      {upload.state === 'failed' && <button type="button" className="spark-draft-retry" disabled={disabled} onClick={onRetry}
+        aria-label={'Retry ' + upload.file.name}><RotateCcw className="size-3" aria-hidden="true" /> Retry</button>}
+    </div>
+  );
 }
 
 export function SparkAttachments({ attachments, disabled }: {
   attachments: ReturnType<typeof useSparkAttachments>;
   disabled: boolean;
 }) {
-  const { limits, uploads, error, select, remove, retry } = attachments;
+  const { limits, uploads, error, select, discard, retry, busy, replacement, confirmReplacement, cancelReplacement } = attachments;
+  const photos = useRef<HTMLInputElement>(null);
+  const video = useRef<HTMLInputElement>(null);
+  const kind = uploads[0]?.kind;
+  const unavailable = disabled || busy || !limits?.enabled;
   const mb = 1024 * 1024;
-  return <section className="space-y-2 text-sm" aria-label="Spark attachments">
-    <p id="spark-media-limits" className="text-muted-foreground">{limits
-      ? 'Up to ' + limits.photos + ' photos (' + limits.photoBytes / mb + ' MB each) or one video (' + limits.videoBytes / mb + ' MB, ' + limits.videoSeconds + ' seconds max).'
-      : error ? 'Attachment limits unavailable.' : 'Loading attachment limits…'}</p>
-    {limits?.enabled && <label className="block">
-      <span className="sr-only">Add photos or video</span>
-      <input type="file" multiple accept={[...photoTypes, ...videoTypes].join(',')} aria-describedby="spark-media-limits" disabled={disabled}
-        className="block min-h-11 w-full rounded-lg border border-border p-2 file:mr-2 file:border-0 file:bg-transparent file:font-semibold file:text-primary"
-        onChange={event => { select(event.currentTarget.files); event.currentTarget.value = ''; }} />
-    </label>}
-    {limits && !limits.enabled && <p className="text-muted-foreground">Uploads are currently unavailable.</p>}
-    {error && <p role="alert" className="text-destructive">{error}</p>}
-    {uploads.map(upload => <div key={upload.id} className="flex items-center gap-2 rounded border border-border px-2">
-      <div className="min-w-0 flex-1 py-1">
-        <p className="truncate">{upload.file.name}</p>
-        {upload.state === 'uploading' && <progress aria-label={'Uploading ' + upload.file.name} value={upload.progress} max={100} className="w-full" />}
-        {upload.state !== 'uploading' && <p role="status" className={upload.error ? 'text-xs text-destructive' : 'text-xs text-muted-foreground'}>
-          {upload.error ?? { queued: 'Waiting to upload', processing: 'Processing…', ready: 'Ready', failed: 'Upload failed' }[upload.state]}
-        </p>}
+  return <section className="spark-draft-media" aria-label="Spark attachments">
+    {uploads.length > 0 && <div className="spark-draft-preview">
+      <div className="spark-draft-thumbnails" data-single={uploads.length === 1}>
+        {uploads.map(upload => <AttachmentThumbnail key={upload.id} upload={upload} disabled={disabled || busy}
+          onRemove={() => void discard([upload])} onRetry={() => retry(upload)} />)}
       </div>
-      {upload.state === 'failed' && <button type="button" className="min-h-11 px-1 text-primary" onClick={() => retry(upload)} disabled={disabled}>Retry</button>}
-      <button type="button" className="min-h-11 px-1" disabled={disabled} onClick={() => void remove(upload)}>
-        {['queued', 'uploading', 'processing'].includes(upload.state) ? 'Cancel' : 'Remove'}
+      {kind === 'photo' && <span className="spark-draft-count">{uploads.length} / {limits?.photos} photos</span>}
+    </div>}
+    <div className="spark-draft-media-buttons">
+      <button type="button" disabled={unavailable || (kind === 'photo' && uploads.length === limits?.photos)}
+        data-selected={kind === 'photo'} aria-describedby="spark-media-limits spark-photo-size" onClick={() => photos.current?.click()}>
+        <Image className="size-5" aria-hidden="true" /> Photos
       </button>
-    </div>)}
+      <button type="button" disabled={unavailable || kind === 'video'} data-selected={kind === 'video'}
+        aria-describedby="spark-media-limits spark-video-size" onClick={() => video.current?.click()}>
+        <Video className="size-5" aria-hidden="true" /> Video
+      </button>
+      <input type="file" hidden ref={photos} multiple accept={photoTypes.join(',')}
+        onChange={event => { select(event.currentTarget.files, 'photo'); event.currentTarget.value = ''; }} />
+      <input type="file" hidden ref={video} accept={videoTypes.join(',')}
+        onChange={event => { select(event.currentTarget.files, 'video'); event.currentTarget.value = ''; }} />
+    </div>
+    <p id="spark-media-limits">{limits
+      ? 'Up to ' + limits.photos + ' photos or 1 video · ' + limits.videoSeconds + 's max'
+      : error ? 'Attachment limits unavailable.' : 'Loading attachment limits…'}</p>
+    {limits && <>
+      <span id="spark-photo-size" className="sr-only">Up to {limits.photoBytes / mb} MB per photo.</span>
+      <span id="spark-video-size" className="sr-only">Up to {limits.videoBytes / mb} MB per video.</span>
+    </>}
+    {limits && !limits.enabled && <p>Uploads are currently unavailable.</p>}
+    {error && <p role="alert" className="text-destructive">{error}</p>}
+    {uploads.filter(upload => upload.error).map(upload =>
+      <p key={upload.id} role="alert" className="text-destructive">{upload.file.name}: {upload.error}</p>)}
+    <AlertDialog open={!!replacement} onOpenChange={open => { if (!open) cancelReplacement(); }}>
+      <AlertDialogContent>
+        <AlertDialogTitle>Replace attachments?</AlertDialogTitle>
+        <AlertDialogDescription>
+          {kind === 'photo' ? 'Adding a video will replace your photos.' : 'Adding photos will replace your video.'}
+          {' Your Spark text will stay in the draft.'}
+        </AlertDialogDescription>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep current media</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmReplacement}>Replace</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </section>;
 }

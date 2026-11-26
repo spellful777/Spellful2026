@@ -1,10 +1,8 @@
 import { SparkAttachments, useSparkAttachments } from '@/components/SparkAttachments';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
-import { Button } from '@/components/ui/button';
-import SparkIcon from '@/components/SparkIcon';
-import { sparkActionClass } from '@/components/SparkItLink';
+import { X } from 'lucide-react';
 import { SPARK_COMPOSE } from '@/lib/community-navigation';
 import { SPARK_LIMIT, countSparkCharacters } from '@/lib/sparks';
 import { useSession } from '@/lib/auth/auth-client';
@@ -17,19 +15,52 @@ export default function SparkComposer() {
   const quote = Number(params.get('quote'));
   const quotedPostId = Number.isSafeInteger(quote) && quote > 0 ? quote : undefined;
   const attachments = useSparkAttachments(Boolean(session && !quotedPostId));
-  const canPublish = (!!text.trim() || attachments.uploads.length > 0 || !!quotedPostId) &&
+  const canPublish = !attachments.busy && !attachments.replacement &&
+    (!!text.trim() || attachments.uploads.length > 0 || !!quotedPostId) &&
     attachments.uploads.every(upload => upload.state === 'ready');
   const [audience, setAudience] = useState<'public' | 'coven'>('public');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const submitLock = useRef(false);
+  const form = useRef<HTMLFormElement>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
   const count = countSparkCharacters(text);
   const overLimit = count > SPARK_LIMIT;
+  const author = session?.user;
+  const username = (author as { username?: string } | undefined)?.username;
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const root = form.current;
+    if (!viewport || !root) return;
+    const sync = () => root.style.setProperty('--spark-keyboard-offset', Math.round(viewport.offsetTop) + 'px');
+    sync();
+    viewport.addEventListener('resize', sync);
+    viewport.addEventListener('scroll', sync);
+    return () => {
+      viewport.removeEventListener('resize', sync);
+      viewport.removeEventListener('scroll', sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    const textarea = field.current;
+    if (!textarea || CSS.supports('field-sizing', 'content')) return;
+    const resize = () => {
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, [text]);
 
   if (!isPending && !session) return <Navigate to={`/login?redirect=${encodeURIComponent(quotedPostId ? SPARK_COMPOSE + '&quote=' + quotedPostId : SPARK_COMPOSE)}`} replace />;
 
   async function publish(event: FormEvent) {
     event.preventDefault();
-    if (!session || submitting || !canPublish || overLimit) return;
+    if (!session || submitLock.current || !canPublish || overLimit) return;
+    submitLock.current = true;
     setSubmitting(true);
     setError('');
     try {
@@ -40,50 +71,56 @@ export default function SparkComposer() {
       });
       const result = await response.json() as { id?: number; error?: string };
       if (!response.ok || !result.id) throw new Error(result.error ?? 'Couldn’t publish your Spark.');
-      navigate(`/community/post/${result.id}`);
+      navigate(`/community/post/${result.id}`, { replace: true });
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Couldn’t publish your Spark.');
-    } finally {
+      submitLock.current = false;
       setSubmitting(false);
     }
   }
 
   return (
-    <main className="mx-auto max-w-xl px-4 py-6">
+    <main className="spark-draft">
       <Helmet><title>Spark it — Spellful</title></Helmet>
-      <h1 className="font-heading text-3xl">Spark it</h1>
-      <form onSubmit={publish} className="mt-4 space-y-3 rounded-xl border border-border bg-card p-4">
-        <label htmlFor="spark-text" className="block text-sm font-semibold">Your Spark</label>
-        <textarea
-          id="spark-text"
-          value={text}
-          onChange={event => setText(event.target.value)}
-          rows={4}
-          aria-describedby="spark-count"
-          aria-invalid={overLimit}
-          className="w-full rounded-lg border border-border bg-background p-3 text-base focus-visible:outline focus-visible:outline-primary"
-        />
-        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-          <label className="flex items-center gap-2">
-            Audience
-            <select value={audience} onChange={event => setAudience(event.target.value === 'coven' ? 'coven' : 'public')} className="min-h-11 rounded-lg border border-border bg-background px-2">
-              <option value="public">Public</option>
-              <option value="coven">Coven</option>
-            </select>
-          </label>
-          <span id="spark-count" className={overLimit ? 'text-destructive' : 'text-muted-foreground'}>{count}/{SPARK_LIMIT} characters</span>
+      <form ref={form} onSubmit={publish} className="spark-draft-form">
+        <header className="spark-draft-header">
+          <button type="button" className="spark-draft-close" aria-label="Close composer" disabled={submitting}
+            onClick={() => window.history.state?.idx > 0 ? navigate(-1) : navigate('/', { replace: true })}>
+            <X aria-hidden="true" className="size-6" />
+          </button>
+          <h1>Spark it</h1>
+          <button type="submit" disabled={!session || submitting || !canPublish || overLimit}
+            aria-busy={submitting} className="spark-draft-post coven-press">
+            {submitting ? 'Posting…' : 'Post'}
+          </button>
+        </header>
+        <div className="spark-draft-card">
+          {author && <div className="spark-draft-author">
+            {author.image ? <img src={author.image} alt="" />
+              : <span className="spark-draft-avatar" aria-hidden="true">{author.name?.charAt(0)?.toUpperCase() || '✦'}</span>}
+            <strong>{author.name}</strong>
+            {username && <span>@{username}</span>}
+          </div>}
+          <label htmlFor="spark-text" className="sr-only">Your Spark</label>
+          <textarea ref={field} id="spark-text" value={text} readOnly={submitting}
+            onChange={event => setText(event.target.value)} rows={1} placeholder="Write a Spark…"
+            aria-describedby="spark-count" aria-invalid={overLimit} />
+          {quotedPostId ? <p className="spark-draft-quote">
+            This Spark includes the <Link to={'/community/post/' + quotedPostId}>original Spark</Link> and its media. Leave the text blank to reshare.
+          </p> : <SparkAttachments attachments={attachments} disabled={submitting} />}
+          <div className="spark-draft-meta">
+            <label>
+              <span className="sr-only">Audience</span>
+              <select value={audience} disabled={submitting} onChange={event => setAudience(event.target.value === 'coven' ? 'coven' : 'public')}>
+                <option value="public">Public</option>
+                <option value="coven">Coven</option>
+              </select>
+            </label>
+            <span id="spark-count" className={overLimit ? 'text-destructive' : undefined}>{count}/{SPARK_LIMIT} characters</span>
+          </div>
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         </div>
-        {quotedPostId ? <p className="text-sm text-muted-foreground">
-          This Spark will include the <Link className="text-primary underline" to={'/community/post/' + quotedPostId}>original Spark</Link> and its media. Leave the text blank to reshare.
-        </p> : <SparkAttachments attachments={attachments} disabled={submitting} />}
-        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button type="submit" variant="outline" disabled={!session || submitting || !canPublish || overLimit} className={sparkActionClass}>
-            <SparkIcon className="size-5" monochrome />
-            {submitting ? 'Publishing…' : 'Spark it'}
-          </Button>
-          <Link to="/community/new" state={{ discussionBody: text }} className="inline-flex min-h-11 items-center text-sm text-primary hover:underline">Start a discussion</Link>
-        </div>
+        {!submitting && <Link to="/community/new" state={{ discussionBody: text }} className="spark-draft-discussion">Start a discussion</Link>}
       </form>
     </main>
   );
