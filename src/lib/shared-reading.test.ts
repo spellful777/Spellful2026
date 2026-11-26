@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { renderSharedReading, sharedReadingSchema, type SharedReading } from './shared-reading';
+import { renderSharedReading, sharedReadingSchema, type TarotSharedReading } from './shared-reading';
 
-const selected: SharedReading = {
+const selected: TarotSharedReading = {
   type: 'tarot',
   spreadType: 'three-card',
   cards: [{ cardId: 'the-hermit', displayOrder: 1, reversed: false }],
@@ -24,4 +24,15 @@ describe('shared tarot projection', () => {
     expect(sharedReadingSchema.safeParse({ ...selected, cards: [selected.cards[0], selected.cards[0]] }).success).toBe(false);
     expect(renderSharedReading({ ...selected, cards: [{ ...selected.cards[0], cardId: 'unknown' }] })).toBeNull();
   });
+});
+
+it('shares numerology results and excludes raw inputs', () => {
+  const payload = { type: 'numerology', numbers: [{ kind: 'lifePath', value: 7 }], includeInterpretations: false };
+  const reading = sharedReadingSchema.parse(payload);
+  expect(renderSharedReading(reading)).toContain('Life Path · 7');
+  expect(renderSharedReading(reading)).not.toContain('<details>');
+  expect(renderSharedReading(sharedReadingSchema.parse({ ...payload, includeInterpretations: true }))).toContain('Interpretation for Life Path 7');
+  expect(sharedReadingSchema.safeParse({ ...payload, fullName: 'Private Name' }).success).toBe(false);
+  expect(sharedReadingSchema.safeParse({ ...payload, birthdate: '2000-10-01' }).success).toBe(false);
+  expect(sharedReadingSchema.safeParse({ ...payload, numbers: [{ kind: 'lifePath', value: 2000 }] }).success).toBe(false);
 });

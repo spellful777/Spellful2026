@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { SPREADS, TAROT_CARDS } from './tarot-data';
+import { NUMEROLOGY_MEANINGS } from './numerology-meanings';
 
-export const sharedReadingSchema = z.object({
+const tarotSharedReadingSchema = z.object({
   type: z.literal('tarot'),
   spreadType: z.string().max(40),
   cards: z.array(z.object({
@@ -16,6 +17,30 @@ export const sharedReadingSchema = z.object({
   'Select each spread position only once',
 );
 
+export const NUMEROLOGY_RESULT_LABELS = {
+  lifePath: 'Life Path',
+  expression: 'Expression',
+  soulUrge: 'Soul Urge',
+  personality: 'Personality',
+  personalYear: 'Personal Year',
+} as const;
+
+const numerologySharedReadingSchema = z.object({
+  type: z.literal('numerology'),
+  numbers: z.array(z.object({
+    kind: z.enum(['lifePath', 'expression', 'soulUrge', 'personality', 'personalYear']),
+    value: z.number().int().refine(value => Object.hasOwn(NUMEROLOGY_MEANINGS, value)),
+  }).strict()).min(1).max(5),
+  includeInterpretations: z.boolean(),
+}).strict().refine(
+  reading => new Set(reading.numbers.map(number => number.kind)).size === reading.numbers.length,
+  'Select each result only once',
+);
+
+export const sharedReadingSchema = z.union([tarotSharedReadingSchema, numerologySharedReadingSchema]);
+export type TarotSharedReading = z.infer<typeof tarotSharedReadingSchema>;
+export type NumerologySharedReading = z.infer<typeof numerologySharedReadingSchema>;
+
 export type SharedReading = z.infer<typeof sharedReadingSchema>;
 
 const cardsBySlug = new Map(TAROT_CARDS.map(card => [
@@ -23,7 +48,7 @@ const cardsBySlug = new Map(TAROT_CARDS.map(card => [
   card,
 ]));
 
-export function projectTarot(reading: SharedReading) {
+export function projectTarot(reading: TarotSharedReading) {
   const spread = SPREADS.find(item => item.id === reading.spreadType);
   const cards = reading.cards.map(selected => {
     const card = cardsBySlug.get(selected.cardId);
@@ -44,6 +69,17 @@ function escapeText(value: string) {
 }
 
 export function renderSharedReading(reading: SharedReading) {
+  if (reading.type === 'numerology') {
+    return '<section><h3>Shared numerology reading</h3>' + reading.numbers.map(({ kind, value }) => {
+      const label = NUMEROLOGY_RESULT_LABELS[kind];
+      const overview = NUMEROLOGY_MEANINGS[value]?.overview;
+      const interpretation = reading.includeInterpretations && overview
+        ? `<details><summary>Interpretation for ${label} ${value}</summary><p>${escapeText(overview)}</p></details>`
+        : '';
+      return `<p><strong>${label} · ${value}</strong></p>${interpretation}`;
+    }).join('') + '</section>';
+  }
+
   const cards = projectTarot(reading);
   if (!cards) return null;
   return '<section><h3>Shared tarot reading</h3>' + cards.map(card => {

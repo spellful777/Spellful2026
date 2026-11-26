@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CommunityPostBody } from '@/components/CommunityPostBody';
-import { renderSharedReading, sharedReadingSchema } from '@/lib/shared-reading';
+import { NUMEROLOGY_RESULT_LABELS, renderSharedReading, sharedReadingSchema } from '@/lib/shared-reading';
 import { community_new } from 'virtual:content';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -258,14 +258,19 @@ export default function NewPostPage() {
   const location = useLocation();
   const initialReading = sharedReadingSchema.safeParse(location.state?.reading);
   const [reading, setReading] = useState(() => initialReading.success ? initialReading.data : null);
-  const [selectedCards, setSelectedCards] = useState<number[]>(() => reading?.cards.map(card => card.displayOrder) ?? []);
-  const sharedReading = reading ? { ...reading, cards: reading.cards.filter(card => selectedCards.includes(card.displayOrder)) } : null;
-  const selectedPreview = sharedReading?.cards.length ? renderSharedReading(sharedReading) : null;
+  const readingItems = reading?.type === 'tarot'
+    ? reading.cards.map(card => ({ id: String(card.displayOrder), label: card.cardId.replaceAll('-', ' ') + (card.reversed ? ' (reversed)' : '') }))
+    : reading?.numbers.map(number => ({ id: number.kind, label: `${NUMEROLOGY_RESULT_LABELS[number.kind]} · ${number.value}` })) ?? [];
+  const [selectedItems, setSelectedItems] = useState<string[]>(() => readingItems.map(item => item.id));
+  const sharedReading = reading?.type === 'tarot'
+    ? { ...reading, cards: reading.cards.filter(card => selectedItems.includes(String(card.displayOrder))) }
+    : reading ? { ...reading, numbers: reading.numbers.filter(number => selectedItems.includes(number.kind)) } : null;
+  const selectedPreview = (sharedReading?.type === 'tarot' ? sharedReading.cards.length : sharedReading?.numbers.length) && sharedReading ? renderSharedReading(sharedReading) : null;
 
   // Form state
   const [postType, setPostType] = useState<PostType>('discussion');
   const [categoryId, setCategoryId] = useState<number | ''>('');
-  const [title, setTitle] = useState(reading ? 'My tarot reading' : '');
+  const [title, setTitle] = useState(reading ? `My ${reading.type} reading` : '');
   const [body, setBody] = useState('');
   const [tags, setTags] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -286,12 +291,12 @@ export default function NewPostPage() {
 
   const validate = (): string => {
     if (followUpPostId) {
-      if (reading && !selectedPreview) return 'Select at least one valid card to share.';
+      if (reading && !selectedPreview) return 'Select at least one result to share.';
       if (!canPostFollowUp) return 'This discussion is unavailable for a follow-up.';
       if (!selectedPreview && !body.trim()) return 'Add a note or select a tarot card.';
       return '';
     }
-    if (reading && !selectedPreview) return 'Select at least one valid card to share.';
+    if (reading && !selectedPreview) return 'Select at least one result to share.';
     if (!categoryId) return community_new.errors.categoryRequired;
     if (!title.trim()) return community_new.errors.titleRequired;
     if (title.trim().length < 5) return community_new.errors.titleTooShort;
@@ -438,27 +443,27 @@ export default function NewPostPage() {
                 )}
                 {reading && (
                   <fieldset className="space-y-3 rounded-xl border border-border bg-card p-4">
-                    <legend className="px-1 font-semibold">Share a tarot reading</legend>
+                    <legend className="px-1 font-semibold">Share a {reading.type} reading</legend>
                     {!followUpPostId && <p className="text-sm">Destination: Coven feed · {audience === 'coven' ? 'Your Coven' : 'Spellful members'}{selectedCategory ? ` · ${selectedCategory.name}` : ''}</p>}
-                    <p className="text-sm text-muted-foreground">Choose what to include. Your original reading question and private notes stay private. Add your own caption or question in the post body.</p>
+                    <p className="text-sm text-muted-foreground">Choose what to include. Your original reading question, name, birth details, and private notes stay private. Add your own caption or question in the post body.</p>
                     <div className="space-y-1">
-                      {reading.cards.map(card => (
-                        <label key={card.displayOrder} className="flex items-center gap-2 text-sm">
-                          <input type="checkbox" checked={selectedCards.includes(card.displayOrder)} onChange={event => {
+                      {readingItems.map(item => (
+                        <label key={item.id} className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" checked={selectedItems.includes(item.id)} onChange={event => {
                             const checked = event.target.checked;
-                            setSelectedCards(current => checked ? [...current, card.displayOrder] : current.filter(order => order !== card.displayOrder));
+                            setSelectedItems(current => checked ? [...current, item.id] : current.filter(id => id !== item.id));
                           }} />
-                          {card.cardId.replaceAll('-', ' ')}{card.reversed ? ' (reversed)' : ''}
+                          {item.label}
                         </label>
                       ))}
                     </div>
-                    <label className="flex items-center gap-2 text-sm">
+                    {reading.type === 'tarot' && <label className="flex items-center gap-2 text-sm">
                       <input type="checkbox" checked={reading.includePositions} onChange={event => setReading({ ...reading, includePositions: event.target.checked })} />
                       Include spread positions
-                    </label>
+                    </label>}
                     <label className="flex items-center gap-2 text-sm">
                       <input type="checkbox" checked={reading.includeInterpretations} onChange={event => setReading({ ...reading, includeInterpretations: event.target.checked })} />
-                      Include card interpretations
+                      Include interpretations
                     </label>
                     {selectedPreview && <CommunityPostBody html={selectedPreview} />}
                     <Button type="button" variant="outline" size="sm" onClick={() => setReading(null)}>Remove reading</Button>

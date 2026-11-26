@@ -14,7 +14,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { X, Copy, Check, ExternalLink, Download, Share2 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router';
 import { useSession } from '@/lib/auth/auth-client';
-import type { SharedReading } from '@/lib/shared-reading';
+import type { TarotSharedReading } from '@/lib/shared-reading';
 import { shareContent } from '@/lib/share-studio';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -481,7 +481,7 @@ export default function ShareTarotModal({ payload, onClose }: Props) {
   const [params] = useSearchParams();
   const thread = Number(params.get('followUp'));
   const followUpPostId = Number.isSafeInteger(thread) && thread > 0 ? thread : undefined;
-  const reading: SharedReading = {
+  const reading: TarotSharedReading = {
     type: 'tarot',
     spreadType: payload.spreadType,
     cards: payload.cards.map(({ cardId, reversed, displayOrder }) => ({ cardId, reversed, displayOrder })),
