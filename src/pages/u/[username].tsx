@@ -27,7 +27,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useSession } from '@/lib/auth/auth-client';
 import { Button } from '@/components/ui/button';
 import {
-  MapPin, Users, Lock, Check, Clock, MessageCircle,
+  MapPin, Users, Lock, Check, MessageCircle,
   ExternalLink, Settings, MoreHorizontal, Share2,
   Star, Sparkles, BookOpen, Heart, Image as ImageIcon,
   Music, Scroll, Globe, FileText,
@@ -37,6 +37,7 @@ import AvatarWithFrame from '@/components/AvatarWithFrame';
 import { OnlineDot } from '@/components/OnlineDot';
 import { BlockUserSheet } from '@/components/BlockUserSheet';
 import { ReportModal } from '@/components/ReportModal';
+import ProfileFollowingDialog from '@/components/ProfileFollowingDialog';
 import ProfileLinkShareSheet from '@/components/ProfileLinkShareSheet';
 import { user_profile as pageContent } from 'virtual:content';
 
@@ -82,6 +83,9 @@ type ProfileData = {
   isOwn: boolean;
   covenCount: number;
   followerCount: number;
+  isFollowing: boolean;
+  canViewFollowing: boolean;
+  canRequestCoven: boolean;
 };
 
 type IdentityData = {
@@ -431,6 +435,9 @@ export default function UserProfilePage() {
 
   // UI state
   const [covenActionLoading, setCovenActionLoading] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [followError, setFollowError] = useState('');
+  const [covenError, setCovenError] = useState('');
   const [guestbookText, setGuestbookText] = useState('');
   const [guestbookSubmitting, setGuestbookSubmitting] = useState(false);
   const [guestbookSuccess, setGuestbookSuccess] = useState(false);
@@ -443,6 +450,7 @@ export default function UserProfilePage() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const viewerId = session?.user?.id ?? null;
+  const profileUrl = username ? `/api/profile/${encodeURIComponent(username)}` : '';
 
   // Close overflow menu on outside click
   useEffect(() => {
@@ -458,19 +466,24 @@ export default function UserProfilePage() {
     if (!username) return;
     setLoading(true);
     setError(null);
+    setFollowError('');
+    setCovenError('');
+    const controller = new AbortController();
+    const { signal } = controller;
     const u = encodeURIComponent(username);
     const pq = previewMode ? `?preview=${previewMode}` : '';
 
     Promise.all([
-      fetch(`/api/profile/${u}${pq}`).then(r => r.json()),
-      fetch(`/api/profile/${u}/identity`).then(r => r.ok ? r.json() : null),
-      fetch(`/api/profile/${u}/gallery`).then(r => r.ok ? r.json() : null),
-      fetch(`/api/profile/${u}/featured`).then(r => r.ok ? r.json() : null),
-      fetch(`/api/profile/${u}/collections`).then(r => r.ok ? r.json() : null),
-      fetch(`/api/profile/${u}/milestones`).then(r => r.ok ? r.json() : null),
-      fetch(`/api/profile/${u}/soundscapes`).then(r => r.ok ? r.json() : null),
-      fetch(`/api/profile/${u}/guestbook`).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}${pq}`, { signal }).then(r => r.json()),
+      fetch(`/api/profile/${u}/identity`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/gallery`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/featured`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/collections`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/milestones`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/soundscapes`, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(`/api/profile/${u}/guestbook`, { signal }).then(r => r.ok ? r.json() : null),
     ]).then(([pd, id, gal, feat, col, mil, snd, gb]) => {
+      if (signal.aborted) return;
       if (pd?.error) { setError(pd.error); setLoading(false); return; }
       setProfileData(pd);
       setIdentity(id?.identity ?? null);
@@ -481,25 +494,105 @@ export default function UserProfilePage() {
       setSoundscapes(snd?.soundscapes ?? []);
       setGuestbook(gb ?? null);
       setLoading(false);
-    }).catch(() => { setError('Failed to load profile'); setLoading(false); });
+    }).catch(() => {
+      if (!signal.aborted) { setError('Failed to load profile'); setLoading(false); }
+    });
+    return () => controller.abort();
   }, [username, previewMode, viewerId]);
 
-  // Coven invite / accept / cancel
+  useEffect(() => {
+    if (!profileUrl || loading || error || followLoading || covenActionLoading || previewMode) return;
+    const controller = new AbortController();
+    let refreshing = false;
+    async function updateRelationships() {
+      if (document.hidden || refreshing) return;
+      refreshing = true;
+      try {
+        const response = await fetch(profileUrl, { signal: controller.signal, cache: 'no-store' });
+        const updated = response.ok ? await response.json() as ProfileData : null;
+        if (controller.signal.aborted) return;
+        if (updated) {
+          setProfileData(current => current?.profile.id === updated.profile.id ? updated : current);
+        } else if (response.status === 403 || response.status === 404) {
+          setProfileData(null);
+          setError('Profile unavailable');
+        }
+      } catch {
+        // Keep the last confirmed state while the connection is unavailable.
+      } finally {
+        refreshing = false;
+      }
+    }
+    const timer = setInterval(() => { void updateRelationships(); }, 15_000);
+    window.addEventListener('focus', updateRelationships);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+      window.removeEventListener('focus', updateRelationships);
+    };
+  }, [profileUrl, viewerId, loading, error, followLoading, covenActionLoading, previewMode]);
+
+  async function handleFollow() {
+    if (!profileData || followLoading) return;
+    const { profile, isFollowing } = profileData;
+    setFollowLoading(true);
+    setFollowError('');
+    try {
+      const response = await fetch('/api/community/follows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId: profile.id, following: !isFollowing }),
+      });
+      if (!response.ok) throw new Error('Follow action failed');
+      const { following, followersCount } = await response.json() as { following: boolean; followersCount: number };
+      setProfileData(current => current?.profile.id === profile.id
+        ? { ...current, isFollowing: following, followerCount: followersCount }
+        : current);
+    } catch {
+      setFollowError(isFollowing ? 'Couldn’t unfollow. Try again.' : 'Couldn’t follow. Try again.');
+    } finally {
+      setFollowLoading(false);
+    }
+  }
+
   async function handleCovenAction() {
     if (!profileData || covenActionLoading) return;
-    setCovenActionLoading(true);
     const { connectionStatus, connectionId, profile } = profileData;
+    setCovenActionLoading(true);
+    setCovenError('');
+    const headers = { 'Content-Type': 'application/json' };
     try {
+      let updated: Partial<ProfileData>;
       if (!connectionStatus) {
-        const r = await fetch('/api/coven/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receiverId: profile.id }) });
-        if (r.ok) setProfileData(prev => prev ? { ...prev, connectionStatus: 'pending_sent' } : prev);
+        const response = await fetch('/api/coven/request', {
+          method: 'POST', headers, body: JSON.stringify({ receiverId: profile.id }),
+        });
+        if (response.status === 409) {
+          const latest = await fetch(profileUrl, { cache: 'no-store' });
+          if (!latest.ok) throw new Error('Could not refresh Coven request');
+          const current = await latest.json() as ProfileData;
+          updated = { connectionStatus: current.connectionStatus, connectionId: current.connectionId, covenCount: current.covenCount };
+        } else {
+          if (!response.ok) throw new Error('Could not send Coven request');
+          const result = await response.json() as { connectionId: number };
+          updated = { connectionStatus: 'pending_sent', connectionId: result.connectionId };
+        }
       } else if (connectionStatus === 'pending_sent' && connectionId) {
-        const r = await fetch(`/api/coven/invite/${connectionId}`, { method: 'DELETE' });
-        if (r.ok) setProfileData(prev => prev ? { ...prev, connectionStatus: null, connectionId: null } : prev);
+        const response = await fetch(`/api/coven/${connectionId}?pending=1`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Could not cancel Coven request');
+        updated = { connectionStatus: null, connectionId: null };
       } else if (connectionStatus === 'pending_received' && connectionId) {
-        const r = await fetch(`/api/coven/invite/${connectionId}/accept`, { method: 'POST' });
-        if (r.ok) setProfileData(prev => prev ? { ...prev, connectionStatus: 'accepted' } : prev);
+        const response = await fetch('/api/coven/respond', {
+          method: 'POST', headers, body: JSON.stringify({ connectionId, action: 'accept' }),
+        });
+        if (!response.ok) throw new Error('Could not accept Coven request');
+        updated = { connectionStatus: 'accepted', covenCount: profileData.covenCount + 1 };
+      } else {
+        return;
       }
+      setProfileData(current => current?.profile.id === profile.id ? { ...current, ...updated } : current);
+    } catch {
+      setCovenError('Couldn’t update the Coven request. Try again.');
     } finally {
       setCovenActionLoading(false);
     }
@@ -556,7 +649,7 @@ export default function UserProfilePage() {
     );
   }
 
-  const { profile, connectionStatus, isOwn, covenCount, followerCount } = profileData;
+  const { profile, connectionStatus, isOwn, covenCount, followerCount, isFollowing, canViewFollowing, canRequestCoven } = profileData;
   const isCovenMember = connectionStatus === 'accepted';
 
   // Field-level visibility guard (belt-and-suspenders; server already strips values)
@@ -727,48 +820,73 @@ export default function UserProfilePage() {
             )}
 
             {/* Coven + follower count pills */}
-            {(covenCount > 0 || followerCount > 0) && (
+            {(covenCount > 0 || followerCount > 0 || canViewFollowing || !!viewerId) && (
               <div className="flex items-center gap-3 text-muted-foreground text-xs mb-3 flex-wrap">
-                {followerCount > 0 && (
+                {(followerCount > 0 || viewerId) && (
                   <div className="flex items-center gap-1.5">
                     <Heart className="w-3.5 h-3.5" />
-                    <span><strong className="text-foreground">{followerCount}</strong> {followerCount === 1 ? 'follower' : 'followers'}</span>
+                    <span aria-live="polite"><strong className="text-foreground">{followerCount}</strong> {followerCount === 1 ? 'follower' : 'followers'}</span>
                   </div>
                 )}
                 {covenCount > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5" />
-                    <span><strong className="text-foreground">{covenCount}</strong> coven {covenCount === 1 ? 'member' : 'members'}</span>
+                    <span aria-live="polite"><strong className="text-foreground">{covenCount}</strong> coven {covenCount === 1 ? 'member' : 'members'}</span>
                   </div>
+                )}
+                {canViewFollowing && profile.username && (
+                  <ProfileFollowingDialog key={profile.id} username={profile.username} />
                 )}
               </div>
             )}
 
-            {/* Action buttons */}
             {!isOwn && viewerId && (
-              <div className="flex gap-2 mb-1 flex-wrap">
-                <Button size="sm" className="flex-1 min-w-0 text-xs font-semibold" onClick={handleCovenAction} disabled={covenActionLoading}>
-                  {connectionStatus === 'accepted'
-                    ? <><Check className="w-3.5 h-3.5 mr-1" />In Coven</>
-                    : connectionStatus === 'pending_sent'
-                    ? <><Clock className="w-3.5 h-3.5 mr-1" />Invited</>
-                    : connectionStatus === 'pending_received'
-                    ? <><Users className="w-3.5 h-3.5 mr-1" />Accept</>
-                    : <><UserPlus className="w-3.5 h-3.5 mr-1" />Follow</>}
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1 min-w-0 text-xs" onClick={() => navigate(`/messages?user=${profile.id}`)}>
-                  <MessageCircle className="w-3.5 h-3.5 mr-1" />Message
-                </Button>
-                {connectionStatus !== 'accepted' && (
-                  <Button size="sm" variant="outline" className="flex-1 min-w-0 text-xs" onClick={handleCovenAction} disabled={covenActionLoading}>
-                    <Users className="w-3.5 h-3.5 mr-1" />Invite to Coven
+              <>
+                <div className="mb-1 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant={isFollowing ? 'outline' : 'default'}
+                    onClick={handleFollow}
+                    disabled={followLoading}
+                    aria-label={isFollowing ? 'Unfollow' : 'Follow'}
+                    title={isFollowing ? 'Unfollow' : 'Follow'}
+                    className="min-h-10"
+                  >
+                    <UserPlus className="h-4 w-4" aria-hidden="true" />
+                    {followLoading ? 'Saving…' : isFollowing ? 'Following' : 'Follow'}
                   </Button>
-                )}
-              </div>
+                  {connectionStatus === 'accepted' ? (
+                    <span role="status" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 text-sm">
+                      <Check className="h-4 w-4" aria-hidden="true" /> In Coven
+                    </span>
+                  ) : connectionStatus === 'pending_sent' ? (
+                    <Button size="sm" variant="outline" className="min-h-10" onClick={handleCovenAction} disabled={covenActionLoading}>
+                      Cancel Coven Request
+                    </Button>
+                  ) : connectionStatus === 'pending_received' ? (
+                    <Button size="sm" variant="outline" className="min-h-10" onClick={handleCovenAction} disabled={covenActionLoading}>
+                      Accept Coven Request
+                    </Button>
+                  ) : !connectionStatus && canRequestCoven && (
+                    <Button size="sm" variant="outline" className="min-h-10" onClick={handleCovenAction} disabled={covenActionLoading}>
+                      <Users className="h-4 w-4" aria-hidden="true" /> Send Coven Request
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" className="min-h-10" onClick={() => navigate(`/messages?user=${profile.id}`)}>
+                    <MessageCircle className="h-4 w-4" aria-hidden="true" /> Message
+                  </Button>
+                </div>
+                <div aria-live="polite" className="text-sm text-muted-foreground">
+                  {connectionStatus === 'pending_sent' && 'Coven request sent.'}
+                  {connectionStatus === 'declined' && 'Coven request declined.'}
+                </div>
+                {followError && <p role="alert" className="text-sm text-destructive">{followError}</p>}
+                {covenError && <p role="alert" className="text-sm text-destructive">{covenError}</p>}
+              </>
             )}
             {!isOwn && !viewerId && (
               <div className="flex gap-2 mb-1">
-                <Button size="sm" className="flex-1 text-xs" onClick={() => navigate('/login')}>
+                <Button size="sm" className="flex-1 text-xs" onClick={() => navigate(`/login?redirect=${encodeURIComponent(`/u/${profile.username}`)}`)}>
                   {pageContent.signInCta}
                 </Button>
               </div>

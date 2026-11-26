@@ -17,6 +17,7 @@ interface PrivacyUpdate {
   discoverable?: boolean;
   searchIndexed?: boolean;
   hideOnlineStatus?: boolean;
+  shareFollowing?: boolean;
   messagePermission?: MessagePermission;
   birthdayVisibility?: VisibilityLevel;
   shareBirthdayInFeed?: boolean;
@@ -48,6 +49,10 @@ export default async function handler(req: Request, res: Response): Promise<void
   if (body.discoverable !== undefined) update.discoverable = Boolean(body.discoverable);
   if (body.searchIndexed !== undefined) update.searchIndexed = Boolean(body.searchIndexed);
   if (body.hideOnlineStatus !== undefined) update.hideOnlineStatus = Boolean(body.hideOnlineStatus);
+  if (body.shareFollowing !== undefined) {
+    if (typeof body.shareFollowing !== 'boolean') { res.status(400).json({ error: 'Invalid shareFollowing' }); return; }
+    update.shareFollowing = body.shareFollowing;
+  }
   if (body.messagePermission !== undefined) {
     if (!MESSAGE_VALUES.includes(body.messagePermission)) { res.status(400).json({ error: 'Invalid messagePermission' }); return; }
     update.messagePermission = body.messagePermission;

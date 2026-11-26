@@ -12,13 +12,13 @@ describe('community post audience', () => {
       db.exec(`
         create table community_posts(user_id text, audience text);
         create table community_blocks(blocker_id text, blocked_id text);
-        create table community_follows(follower_id text, following_id text);
+        create table user_follows(follower_id text, following_id text);
         create table coven_connections(requester_id text, receiver_id text, status text);
         insert into community_posts values ('reader','coven'),('ally','coven'),('other','public'),
           ('pending','coven'),('stranger','coven'),('blocked','public'),('blocker','public');
         insert into community_blocks values ('reader','blocked'),('blocker','reader');
         insert into coven_connections values ('ally','reader','accepted'),('reader','pending','pending');
-        insert into community_follows values ('reader','ally'),('reader','stranger');
+        insert into user_follows values ('reader','ally'),('reader','stranger');
       `);
       const order = viewer ? followsPostAuthor(viewer) : sql`0 + 0`;
       const query = new MySqlDialect().sqlToQuery(sql`select user_id from community_posts

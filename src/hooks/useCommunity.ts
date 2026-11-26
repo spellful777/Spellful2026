@@ -20,6 +20,7 @@ export interface CommunityPost {
   type: 'discussion' | 'question';
   title: string;
   preview?: string;
+  imageUrl?: string | null;
   tags: string | null;
   isPinned: boolean;
   isLocked: boolean;
@@ -39,13 +40,14 @@ export interface CommunityPost {
   bookmarked: boolean;
 }
 
-export type PostFilter = 'personalized' | 'chronological' | 'all' | 'latest' | 'popular' | 'trending' | 'unanswered' | 'following' | 'mine';
+export type PostFilter = 'personalized' | 'chronological' | 'all' | 'latest' | 'popular' | 'trending' | 'discover' | 'unanswered' | 'following' | 'mine';
 
 interface PostsResult {
   posts: CommunityPost[];
   total: number;
   page: number;
   pages: number;
+  newestId?: number;
 }
 
 export function useCommunityCategories() {
@@ -63,7 +65,7 @@ export function useCommunityCategories() {
   return { categories, loading };
 }
 
-export function useCommunityPosts(filter: PostFilter, category?: string, page = 1, enabled = true) {
+export function useCommunityPosts(filter: PostFilter, category?: string, page = 1, order?: 'newest', enabled = true) {
   const [result, setResult] = useState<PostsResult>({ posts: [], total: 0, page: 1, pages: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -78,6 +80,7 @@ export function useCommunityPosts(filter: PostFilter, category?: string, page = 
 
     const params = new URLSearchParams({ filter, page: String(page), limit: '20' });
     if (category) params.set('category', category);
+    if (order) params.set('order', order);
     const empty: PostsResult = { posts: [], total: 0, page, pages: 0 };
 
     fetch(`/api/community/posts?${params}`, { signal: controller.signal })
@@ -98,7 +101,7 @@ export function useCommunityPosts(filter: PostFilter, category?: string, page = 
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
-  }, [filter, category, page]);
+  }, [filter, category, page, order]);
 
   useEffect(() => {
     if (!enabled) return;

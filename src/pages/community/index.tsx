@@ -20,7 +20,7 @@ import { formatDistanceToNow } from 'date-fns';
 import FriendUpdatesFeed from '@/components/FriendUpdatesFeed';
 import SinceYouWereAwayBanner from '@/components/SinceYouWereAwayBanner';
 import CovenHearth from '@/components/CovenHearth';
-import { COMMUNITY_FEED, COMMUNITY_GROUPS } from '@/lib/community-navigation';
+import { COMMUNITY_FEED, COMMUNITY_GROUPS, COMMUNITY_UPDATES } from '@/lib/community-navigation';
 import CosmicPulse from "@/components/CosmicPulse";
 
 // ── Community stats strip ─────────────────────────────────────────────────────
@@ -122,12 +122,13 @@ const FILTERS: { value: PostFilter; label: string }[] = [
 ];
 
 // ── Post card ─────────────────────────────────────────────────────────────────
-function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'][number] }) {
+export function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'][number] }) {
   const tags = post.tags ? post.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
   const ago = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
 
   return (
     <article
+      data-feed-post-id={post.id}
       className="group relative rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 focus-within:border-primary"
     >
       {/* Top row */}
@@ -201,6 +202,16 @@ function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'
           )}
         </div>
       </div>
+
+      {post.imageUrl && /^https:\/\//i.test(post.imageUrl) && (
+        <img
+          src={post.imageUrl}
+          alt="Image attached to the post"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          className="mt-3 aspect-video w-full rounded-lg bg-muted object-contain"
+        />
+      )}
 
       {/* Stats row */}
       <div className="flex items-center gap-4 mt-2.5 pl-11 text-xs text-muted-foreground">
@@ -318,7 +329,7 @@ function TrendingSidebar({ onSelectTrending }: { onSelectTrending: () => void })
 
 const COMMUNITY_VIEWS = [
   { view: 'feed', label: 'Feed', to: COMMUNITY_FEED, icon: Heart },
-  { view: 'updates', label: 'Updates', to: '/community?view=updates', icon: Bell },
+  { view: 'updates', label: 'Updates', to: COMMUNITY_UPDATES, icon: Bell },
   { view: 'groups', label: 'Groups', to: COMMUNITY_GROUPS, icon: MessageSquare },
   { view: 'coven', label: 'My Coven', to: '/community?view=coven', icon: Users },
   { view: 'hearth', label: 'Hearth', to: '/community?view=hearth', icon: Sparkles },
@@ -334,6 +345,7 @@ export default function CommunityPage() {
   const [groupPage, setGroupPage] = useState(1);
   const [feedPage, setFeedPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [hasNewFeedPosts, setHasNewFeedPosts] = useState(false);
   const [catExpanded, setCatExpanded] = useState(false);
   const requestedView = new URLSearchParams(location.search).get('view');
   const view = COMMUNITY_VIEWS.find((item) => item.view === requestedView)?.view ?? 'feed';
@@ -344,9 +356,31 @@ export default function CommunityPage() {
   const page = isFeed ? feedPage : groupPage;
   const setPage = isFeed ? setFeedPage : setGroupPage;
   const { categories, loading: catsLoading } = useCommunityCategories();
-  const { posts, total, pages, loading: postsLoading, error: postsError, reload: reloadPosts } =
-    useCommunityPosts(postFilter, isFeed ? undefined : activeCategory, page, showPosts && !!session);
+  const { posts, total, pages, loading: postsLoading, error: postsError, reload: reloadPosts, newestId } =
+    useCommunityPosts(postFilter, isFeed ? undefined : activeCategory, page, isFeed ? 'newest' : undefined, showPosts && !!session);
   const unread = useCommunityNotifications();
+
+  useEffect(() => {
+    setHasNewFeedPosts(false);
+    if (!isFeed || !session?.user?.id || feedPage !== 1 || newestId === undefined || postsLoading || postsError) return;
+    const controller = new AbortController();
+    async function checkForPosts() {
+      if (document.hidden) return;
+      try {
+        const response = await fetch(`/api/community/posts?filter=following&afterId=${newestId}`, {
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        if (!response.ok) return;
+        const result = await response.json() as { hasNewPosts?: boolean };
+        if (result.hasNewPosts && !controller.signal.aborted) setHasNewFeedPosts(true);
+      } catch {
+        // Leave the current feed available if the background check fails.
+      }
+    }
+    const timer = setInterval(() => { void checkForPosts(); }, 45_000);
+    return () => { controller.abort(); clearInterval(timer); };
+  }, [isFeed, session?.user?.id, feedPage, newestId, postsLoading, postsError]);
 
   // Presence heartbeat — registers this user as online so the live count is accurate.
   // Fires immediately on mount and refreshes every 4 minutes (well within the 5-min window).
@@ -843,7 +877,10 @@ export default function CommunityPage() {
 
               {showPosts && session && (<>
               {isFeed ? (
-                <h2 className="mb-3 font-heading text-xl">Posts from people you follow</h2>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-heading text-xl">Posts from people you follow</h2>
+                  {hasNewFeedPosts && <Button size="sm" onClick={reloadPosts}>Show new posts</Button>}
+                </div>
               ) : (
               <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1 scrollbar-none">
                 {FILTERS.map(({ value, label }) => (

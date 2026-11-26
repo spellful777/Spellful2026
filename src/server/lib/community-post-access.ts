@@ -1,10 +1,10 @@
 import { and, eq, sql, type SQLWrapper } from 'drizzle-orm';
-import { communityBlocks, communityFollows, communityPosts, covenConnections } from '@/server/db/schema.js';
+import { communityBlocks, userFollows, communityPosts, covenConnections } from '@/server/db/schema.js';
 
 export function followsPostAuthor(viewer: string) {
-  return sql`exists (select 1 from ${communityFollows}
-    where ${communityFollows.followerId} = ${viewer}
-      and ${communityFollows.followingId} = ${communityPosts.userId})`;
+  return sql`exists (select 1 from ${userFollows}
+    where ${userFollows.followerId} = ${viewer}
+      and ${userFollows.followingId} = ${communityPosts.userId})`;
 }
 
 // The caller separately decides whether a moderated post can be viewed by its author.

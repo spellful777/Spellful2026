@@ -14,17 +14,17 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     const connectionId = parseInt(req.params.id, 10);
     if (isNaN(connectionId)) return res.status(400).json({ error: 'Invalid id' });
 
-    // Only allow deletion if the current user is a participant
-    await db.delete(covenConnections).where(
+    const pendingOnly = req.query.pending === '1';
+    const [result] = await db.delete(covenConnections).where(
       and(
         eq(covenConnections.id, connectionId),
-        or(
-          eq(covenConnections.requesterId, uid),
-          eq(covenConnections.receiverId, uid)
-        )
+        pendingOnly
+          ? and(eq(covenConnections.requesterId, uid), eq(covenConnections.status, 'pending'))
+          : or(eq(covenConnections.requesterId, uid), eq(covenConnections.receiverId, uid))
       )
     );
 
+    if (pendingOnly && !result.affectedRows) return res.status(409).json({ error: 'Request is no longer pending' });
     res.json({ ok: true });
   } catch (err) {
     console.error(JSON.stringify({ event: 'coven.delete.error', msg: String(err).slice(0, 120) }));

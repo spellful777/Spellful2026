@@ -1,3 +1,4 @@
+import HomeFeed from './home-feed';
 import { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -161,6 +162,11 @@ function BenefitRow({ icon: Icon, title, desc, accent }: {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
+  const { session } = useSession();
+  return session ? <HomeFeed /> : <PublicHomePage />;
+}
+
+function PublicHomePage() {
   const { session } = useSession();
   const heroRef = useRef<HTMLDivElement>(null);
   const liveMoon = useLiveMoon();
@@ -724,7 +730,7 @@ export default function HomePage() {
                     style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontFamily: 'var(--font-sans)', letterSpacing: '0.04em' }}
                   >
                     <Users size={14} />
-                    {session ? 'Open My Coven feed' : home.communityBanner.cta}
+                    {home.communityBanner.cta}
                   </Link>
                   <Link
                     to={COMMUNITY_GROUPS}

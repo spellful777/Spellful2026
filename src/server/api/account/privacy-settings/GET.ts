@@ -19,6 +19,7 @@ export default async function handler(req: Request, res: Response): Promise<void
       discoverable: user.discoverable,
       searchIndexed: user.searchIndexed,
       hideOnlineStatus: user.hideOnlineStatus,
+      shareFollowing: user.shareFollowing,
       messagePermission: user.messagePermission,
       birthdayVisibility: user.birthdayVisibility,
       shareBirthdayInFeed: user.shareBirthdayInFeed,

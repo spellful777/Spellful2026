@@ -1,13 +1,14 @@
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { user, covenConnections, communityFollows } from '@/server/db/schema.js';
-import { eq, and, or, count, sql } from 'drizzle-orm';
+import { user, covenConnections, communityBlocks, userFollows } from '@/server/db/schema.js';
+import { eq, and, or, count, desc, isNotNull, sql } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 import { isBlocked } from '@/server/lib/block-check.js';
 
 export default async function handler(req: Request<{ username: string }>, res: Response) {
   try {
     if (!db) return res.status(503).json({ error: 'Database unavailable' });
+    res.setHeader('Cache-Control', 'private, no-store');
     const { username } = req.params;
     const session = await getAuthSession(req);
     const viewerId = session?.user?.id ?? null;
@@ -43,6 +44,8 @@ export default async function handler(req: Request<{ username: string }>, res: R
         profileStatus: user.profileStatus,
         profileSections: user.profileSections,
         hideOnlineStatus: user.hideOnlineStatus,
+        shareFollowing: user.shareFollowing,
+        invitePermission: user.invitePermission,
         profileLayout: user.profileLayout,
         bioVisibility: user.bioVisibility,
         locationVisibility: user.locationVisibility,
@@ -66,7 +69,9 @@ export default async function handler(req: Request<{ username: string }>, res: R
         if (await isBlocked(viewerId, profile.id)) {
           return res.status(404).json({ error: 'Profile unavailable' });
         }
-      } catch { /* non-fatal */ }
+      } catch {
+        return res.status(503).json({ error: 'Profile temporarily unavailable' });
+      }
     }
 
     const visibility = profile.profileVisibility ?? 'private';
@@ -82,6 +87,46 @@ export default async function handler(req: Request<{ username: string }>, res: R
         ), eq(covenConnections.status, 'accepted'))
       ).limit(1);
       if (!conn) return res.status(403).json({ error: 'This profile is coven-only' });
+    }
+
+    const isOwn = profile.id === viewerId;
+    const canViewFollowing = isOwn || profile.shareFollowing;
+    if (req.query.following === '1') {
+      if (!canViewFollowing) return res.status(403).json({ error: 'Following list is private' });
+
+      const pageSize = 30;
+      const before = Number(req.query.before);
+      const entries = await db
+        .select({ followId: userFollows.id, username: user.username, name: user.name, image: user.image })
+        .from(userFollows)
+        .innerJoin(user, eq(user.id, userFollows.followingId))
+        .where(and(
+          eq(userFollows.followerId, profile.id),
+          isNotNull(user.username),
+          Number.isSafeInteger(before) && before > 0 ? sql`${userFollows.id} < ${before}` : undefined,
+          or(
+            eq(user.profileVisibility, 'public'),
+            viewerId ? eq(user.id, viewerId) : undefined,
+            viewerId ? and(eq(user.profileVisibility, 'coven'), sql`exists (
+              select 1 from ${covenConnections} where ${covenConnections.status} = 'accepted' and (
+                (${covenConnections.requesterId} = ${viewerId} and ${covenConnections.receiverId} = ${user.id}) or
+                (${covenConnections.receiverId} = ${viewerId} and ${covenConnections.requesterId} = ${user.id})
+              )
+            )`) : undefined,
+          ),
+          viewerId ? sql`not exists (
+            select 1 from ${communityBlocks} where
+              (${communityBlocks.blockerId} = ${viewerId} and ${communityBlocks.blockedId} = ${user.id}) or
+              (${communityBlocks.blockedId} = ${viewerId} and ${communityBlocks.blockerId} = ${user.id})
+          )` : undefined,
+        ))
+        .orderBy(desc(userFollows.id))
+        .limit(pageSize + 1);
+      const members = entries.slice(0, pageSize);
+      return res.json({
+        members: members.map(({ username, name, image }) => ({ username, name, image })),
+        next: entries.length > pageSize ? members[pageSize - 1].followId : null,
+      });
     }
 
     let connectionStatus: string | null = null;
@@ -106,7 +151,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
     }
 
     // Coven count (accepted connections)
-    const [[covenRow], [followerRow]] = await Promise.all([
+    const [[covenRow], [followerRow], [following]] = await Promise.all([
       db.select({ n: count() }).from(covenConnections).where(
         and(
           or(
@@ -116,14 +161,24 @@ export default async function handler(req: Request<{ username: string }>, res: R
           eq(covenConnections.status, 'accepted')
         )
       ),
-      db.select({ n: count() }).from(communityFollows).where(
-        eq(communityFollows.followingId, profile.id)
+      db.select({ n: count() }).from(userFollows).where(
+        eq(userFollows.followingId, profile.id)
       ),
+      viewerId && !isOwn
+        ? db.select({ id: userFollows.id }).from(userFollows).where(and(
+            eq(userFollows.followerId, viewerId),
+            eq(userFollows.followingId, profile.id),
+          )).limit(1)
+        : [],
     ]);
     const covenCount = Number(covenRow?.n ?? 0);
     const followerCount = Number(followerRow?.n ?? 0);
 
-    res.json({ profile, connectionStatus, connectionId, isOwn: profile.id === viewerId, covenCount, followerCount });
+    const { shareFollowing: _shareFollowing, invitePermission, ...publicProfile } = profile;
+    res.json({
+      profile: publicProfile, connectionStatus, connectionId, isOwn, covenCount, followerCount,
+      isFollowing: !!following, canViewFollowing, canRequestCoven: invitePermission !== 'nobody',
+    });
   } catch (err) {
     console.error(JSON.stringify({ event: 'profile.get.error', msg: String(err).slice(0, 400) }));
     res.status(500).json({ error: 'Failed to load profile' });

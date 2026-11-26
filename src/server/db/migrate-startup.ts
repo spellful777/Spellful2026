@@ -57,6 +57,7 @@ export async function runStartupMigration(): Promise<void> {
       { col: 'pronouns',            sql: "ALTER TABLE user ADD COLUMN pronouns VARCHAR(60) NOT NULL DEFAULT ''" },
       { col: 'interest_tags',       sql: 'ALTER TABLE user ADD COLUMN interest_tags JSON NULL DEFAULT NULL' },
       { col: 'social_links',        sql: 'ALTER TABLE user ADD COLUMN social_links JSON NULL DEFAULT NULL' },
+      { col: 'share_following',           sql: 'ALTER TABLE user ADD COLUMN share_following BOOLEAN NOT NULL DEFAULT FALSE' },
       { col: 'hide_online_status',        sql: 'ALTER TABLE user ADD COLUMN hide_online_status BOOLEAN DEFAULT FALSE' },
       { col: 'message_permission',         sql: "ALTER TABLE user ADD COLUMN message_permission VARCHAR(20) NOT NULL DEFAULT 'everyone'" },
       { col: 'invite_permission',          sql: "ALTER TABLE user ADD COLUMN invite_permission VARCHAR(20) NOT NULL DEFAULT 'everyone'" },
@@ -873,6 +874,31 @@ export async function runStartupMigration(): Promise<void> {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(JSON.stringify({ event: 'startup.migration.user_follows.error', msg: msg.slice(0, 120) }));
+    }
+
+    // Merge legacy follows once so restarting cannot restore an unfollowed account.
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS spellful_data_migrations (
+          name VARCHAR(100) PRIMARY KEY
+        ) ENGINE=InnoDB`);
+      const [legacyTable] = await conn.query<mysql.RowDataPacket[]>("SHOW TABLES LIKE 'community_follows'");
+      if (legacyTable.length) {
+        await conn.beginTransaction();
+        const [migration] = await conn.execute<mysql.ResultSetHeader>(
+          "INSERT IGNORE INTO spellful_data_migrations (name) VALUES ('merge_legacy_community_follows')"
+        );
+        if (migration.affectedRows) {
+          await conn.execute(`
+            INSERT IGNORE INTO user_follows (follower_id, following_id, created_at)
+            SELECT follower_id, following_id, created_at FROM community_follows
+          `);
+        }
+        await conn.commit();
+      }
+    } catch (e) {
+      await conn.rollback();
+      console.error(JSON.stringify({ event: 'startup.migration.merge_follows.error', msg: String(e).slice(0, 120) }));
     }
 
     // ── spellful_circles table ────────────────────────────────────────────────

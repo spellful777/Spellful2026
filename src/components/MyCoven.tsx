@@ -207,17 +207,32 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
   const [invitingId, setInvitingId] = useState<string | null>(null);
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      const r = await fetch('/api/coven', { credentials: 'include' });
+      const r = await fetch('/api/coven', { credentials: 'include', signal, cache: 'no-store' });
       if (!r.ok) return;
       const data = await r.json() as { connections: CovenMember[] };
-      setConnections(data.connections ?? []);
+      if (!signal?.aborted) {
+        const next = data.connections ?? [];
+        setConnections(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
+      }
     } catch { /* silent */ }
-    finally { setLoading(false); }
+    finally { if (!signal?.aborted) setLoading(false); }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (actionLoading !== null || invitingId !== null) return;
+    const controller = new AbortController();
+    const refresh = () => { if (!document.hidden) void load(controller.signal); };
+    void load(controller.signal);
+    const timer = setInterval(refresh, 15_000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [actionLoading, invitingId, load]);
 
   // Load suggestions once
   useEffect(() => {
@@ -285,7 +300,6 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
           body: JSON.stringify({ connectionId, action }),
         });
       }
-      await load();
     } finally {
       setActionLoading(null);
     }

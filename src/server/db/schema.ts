@@ -37,6 +37,7 @@ export const user = mysqlTable('user', {
   interestTags: json('interest_tags').$type<string[]>(),
   socialLinks: json('social_links').$type<Record<string, string>>(),
   welcomeSent: boolean('welcome_sent').default(false),
+  shareFollowing: boolean('share_following').notNull().default(false),
   hideOnlineStatus: boolean('hide_online_status').default(false),
   messagePermission: varchar('message_permission', { length: 20 }).default('coven'), // everyone | coven | nobody
   invitePermission: varchar('invite_permission', { length: 20 }).default('coven'),   // everyone | nobody
@@ -572,6 +573,13 @@ export const communityFollows = mysqlTable('community_follows', {
   followingId: varchar('following_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+export const userFollows = mysqlTable('user_follows', {
+  id: int('id').primaryKey().autoincrement(),
+  followerId: varchar('follower_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  followingId: varchar('following_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [uniqueIndex('uq_follow').on(table.followerId, table.followingId)]);
 
 export const communityBlocks = mysqlTable('community_blocks', {
   id: int('id').primaryKey().autoincrement(),
