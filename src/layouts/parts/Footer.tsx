@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
+import { Bell, Heart, MessageSquare } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
-import { COMMUNITY_FEED, COMMUNITY_GROUPS } from '@/lib/community-navigation';
+import { COMMUNITY_FEED, COMMUNITY_GROUPS, COMMUNITY_UPDATES } from '@/lib/community-navigation';
 import { getMoonPhase } from '@/lib/moon-phase-engine';
 
 // ─── Seeded star field (SSR-safe) ────────────────────────────────────────────
@@ -158,24 +159,30 @@ export default function Footer() {
         </p>
       </motion.div>
 
-      {/* 3. Community Button */}
-      <motion.div
-        className="relative z-10 flex justify-center pb-10"
-        initial={{ opacity: 0, y: 12 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.6, delay: 0.15, ease: 'easeOut' as const }}
-      >
-        <Link
-          to={COMMUNITY_FEED}
-          className="coven-action group inline-flex items-center gap-2 rounded-full px-8 py-3.5 text-sm font-semibold shadow-lg transition-colors"
-        >
-          Open My Coven
-          <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">
-            &#x2192;
-          </span>
-        </Link>
-      </motion.div>
+      <nav aria-labelledby="footer-coven-heading" className="coven-entry relative z-10 mx-5 mb-8 max-w-md rounded-2xl border p-4 text-center shadow-lg sm:mx-auto sm:p-5">
+        <h2 id="footer-coven-heading" className="font-heading text-2xl">My Coven</h2>
+        <ul className="mt-3 grid grid-cols-3 gap-2">
+          {[
+            { label: 'Feed', to: COMMUNITY_FEED, icon: Heart, primary: true },
+            { label: 'Updates', to: COMMUNITY_UPDATES, icon: Bell },
+            { label: 'Groups', to: COMMUNITY_GROUPS, icon: MessageSquare },
+          ].map(({ label, to, icon: Icon, primary }) => (
+            <li key={to}>
+              <Link
+                to={to}
+                className={`flex min-h-12 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-semibold transition-colors ${
+                  primary
+                    ? 'coven-action'
+                    : 'border border-border bg-background/25 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+                }`}
+              >
+                <Icon className="hidden size-4 shrink-0 min-[350px]:block" aria-hidden="true" />
+                {label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
       {/* Thin separator */}
       <div
@@ -207,8 +214,6 @@ export default function Footer() {
         <nav aria-label="Footer navigation" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           {[
             { label: 'Explore', href: '/spells' },
-            { label: 'My Coven', href: COMMUNITY_FEED },
-            { label: 'Groups', href: COMMUNITY_GROUPS },
             { label: 'My Grimoire', href: grimDest },
           ].map((l) => (
             <Link
