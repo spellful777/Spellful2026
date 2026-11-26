@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CommunityPostBody } from '@/components/CommunityPostBody';
-import { NUMEROLOGY_RESULT_LABELS, renderSharedReading, sharedReadingSchema } from '@/lib/shared-reading';
+import { renderSharedReading, selectSharedReadingItems, sharedReadingItems, sharedReadingSchema } from '@/lib/shared-reading';
 import { community_new } from 'virtual:content';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -258,14 +258,10 @@ export default function NewPostPage() {
   const location = useLocation();
   const initialReading = sharedReadingSchema.safeParse(location.state?.reading);
   const [reading, setReading] = useState(() => initialReading.success ? initialReading.data : null);
-  const readingItems = reading?.type === 'tarot'
-    ? reading.cards.map(card => ({ id: String(card.displayOrder), label: card.cardId.replaceAll('-', ' ') + (card.reversed ? ' (reversed)' : '') }))
-    : reading?.numbers.map(number => ({ id: number.kind, label: `${NUMEROLOGY_RESULT_LABELS[number.kind]} · ${number.value}` })) ?? [];
+  const readingItems = reading ? sharedReadingItems(reading) : [];
   const [selectedItems, setSelectedItems] = useState<string[]>(() => readingItems.map(item => item.id));
-  const sharedReading = reading?.type === 'tarot'
-    ? { ...reading, cards: reading.cards.filter(card => selectedItems.includes(String(card.displayOrder))) }
-    : reading ? { ...reading, numbers: reading.numbers.filter(number => selectedItems.includes(number.kind)) } : null;
-  const selectedPreview = (sharedReading?.type === 'tarot' ? sharedReading.cards.length : sharedReading?.numbers.length) && sharedReading ? renderSharedReading(sharedReading) : null;
+  const sharedReading = reading ? selectSharedReadingItems(reading, selectedItems) : null;
+  const selectedPreview = sharedReading && selectedItems.length ? renderSharedReading(sharedReading) : null;
 
   // Form state
   const [postType, setPostType] = useState<PostType>('discussion');

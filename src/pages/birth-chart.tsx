@@ -1,3 +1,5 @@
+import { Link } from 'react-router';
+import type { AstrologySharedReading } from '@/lib/shared-reading';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import MoonNightSky from '@/components/MoonNightSky';
 import TwinkleStars from '@/components/TwinkleStars';
@@ -790,6 +792,23 @@ export default function BirthChartPage() {
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                     Share My Chart
                   </button>
+                  {isAuthenticated && (
+                    <Link
+                      to="/community/new"
+                      state={{ reading: {
+                        type: 'astrology',
+                        placements: [
+                          { kind: 'sun', sign: chart.sun.sign },
+                          { kind: 'moon', sign: chart.moon.sign },
+                          { kind: 'rising', sign: chart.ascendant.sign },
+                        ],
+                        includeInterpretations: false,
+                      } satisfies AstrologySharedReading }}
+                      className="inline-flex items-center rounded-xl border border-primary px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-primary"
+                    >
+                      Share to Coven feed
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       setActiveTab('connection');

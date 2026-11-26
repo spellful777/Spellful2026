@@ -36,3 +36,12 @@ it('shares numerology results and excludes raw inputs', () => {
   expect(sharedReadingSchema.safeParse({ ...payload, birthdate: '2000-10-01' }).success).toBe(false);
   expect(sharedReadingSchema.safeParse({ ...payload, numbers: [{ kind: 'lifePath', value: 2000 }] }).success).toBe(false);
 });
+
+it('projects only selected Big Three signs and rejects detailed chart inputs', () => {
+  const payload = { type: 'astrology', placements: [{ kind: 'rising', sign: 'Cancer' }], includeInterpretations: true };
+  const reading = sharedReadingSchema.parse(payload);
+  expect(renderSharedReading(reading)).toContain('Rising · Cancer');
+  expect(renderSharedReading(reading)).toContain('<summary>About Cancer</summary>');
+  expect(sharedReadingSchema.safeParse({ ...payload, birthTime: '06:00' }).success).toBe(false);
+  expect(sharedReadingSchema.safeParse({ ...payload, placements: [{ kind: 'rising', sign: 'Cancer', degrees: 15 }] }).success).toBe(false);
+});
