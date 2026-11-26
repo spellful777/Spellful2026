@@ -647,7 +647,7 @@ export default function NewPostPage() {
                     variant={followUpPostId ? 'default' : 'outline'}
                     className={followUpPostId ? undefined : sparkActionClass}
                   >
-                    {followUpPostId ? <Sparkles className="size-4" /> : <SparkIcon className="size-5" />}
+                    {followUpPostId ? <Sparkles className="size-4" /> : <SparkIcon className="size-5" monochrome />}
                     {submitting ? community_new.submittingLabel : followUpPostId ? 'Post follow-up' : community_new.submitLabel}
                   </Button>
                   <Link to={destination}>
