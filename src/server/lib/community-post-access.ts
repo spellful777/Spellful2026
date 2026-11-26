@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, sql, type SQLWrapper } from 'drizzle-orm';
 import { communityBlocks, communityFollows, communityPosts, covenConnections } from '@/server/db/schema.js';
 
 export function followsPostAuthor(viewer: string) {
@@ -8,7 +8,7 @@ export function followsPostAuthor(viewer: string) {
 }
 
 // The caller separately decides whether a moderated post can be viewed by its author.
-export function postAudienceAllows(viewer?: string) {
+export function postAudienceAllows(viewer?: string | SQLWrapper) {
   const publicPost = sql`${communityPosts.audience} = 'public'`;
   if (!viewer) return publicPost;
 
@@ -25,6 +25,6 @@ export function postAudienceAllows(viewer?: string) {
            (${connection.receiverId} = ${viewer} and ${connection.requesterId} = ${author}))))))`;
 }
 
-export function visiblePostForMember(postId: number, viewer: string) {
+export function visiblePostForMember(postId: number, viewer: string | SQLWrapper) {
   return and(eq(communityPosts.id, postId), eq(communityPosts.isHidden, false), postAudienceAllows(viewer));
 }

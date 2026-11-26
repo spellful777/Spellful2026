@@ -1,3 +1,4 @@
+import { notifyCommunityMentions } from '@/server/lib/community-mention-notifications.js';
 import { visiblePostForMember } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
@@ -62,6 +63,10 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
       message: 'Someone replied to your post.',
     }).catch(() => {});
   }
+
+  await notifyCommunityMentions({ html: body, actorId: session.user.id, postId, replyId, alreadyNotified: post.userId }).catch(() => {
+    console.error('community.mention-notifications.failed');
+  });
 
   res.status(201).json({ id: replyId });
 }

@@ -1,21 +1,18 @@
 import { createElement, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { parseFragment, type DefaultTreeAdapterTypes } from 'parse5';
-import { normalizeUsername, validateUsernameFormat } from '@/lib/username-rules';
+import { normalizeUsername } from '@/lib/username-rules';
+import { allowsMentionsInTag, COMMUNITY_DISCARDED_TAGS, communityMentionsInText } from '@/lib/community-mentions';
 
 const ALLOWED = new Set([
   'p', 'br', 'strong', 'em', 'u', 's', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
   'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'hr', 'a', 'span', 'div',
 ]);
-const DISCARD = new Set(['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'template', 'noscript']);
-const MENTION = /(?<![\p{L}\p{N}_.@+%/-])@([A-Za-z0-9]{3,12})(?![\p{L}\p{N}_@-])/gu;
-
 function renderMentions(text: string): ReactNode {
   const parts: ReactNode[] = [];
   let start = 0;
-  for (const match of text.matchAll(MENTION)) {
+  for (const match of communityMentionsInText(text)) {
     const username = match[1];
-    if (validateUsernameFormat(username)) continue;
     parts.push(text.slice(start, match.index));
     parts.push(<Link key={match.index} to={`/u/${normalizeUsername(username)}`}>{match[0]}</Link>);
     start = match.index + match[0].length;
@@ -40,9 +37,9 @@ function renderNode(node: DefaultTreeAdapterTypes.ChildNode, key: number, linkMe
   }
   if (!('tagName' in node) || node.namespaceURI !== 'http://www.w3.org/1999/xhtml') return null;
   const tag = node.tagName;
-  if (DISCARD.has(tag)) return null;
+  if (COMMUNITY_DISCARDED_TAGS.has(tag)) return null;
   const children = node.childNodes.map((child, index) =>
-    renderNode(child, index, linkMentions && tag !== 'a' && tag !== 'code' && tag !== 'pre'));
+    renderNode(child, index, linkMentions && allowsMentionsInTag(tag)));
   if (!ALLOWED.has(tag)) return children;
   if (tag === 'br' || tag === 'hr') return createElement(tag, { key });
 

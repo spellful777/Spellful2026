@@ -1,3 +1,4 @@
+import { notifyCommunityMentions } from '@/server/lib/community-mention-notifications.js';
 /**
  * POST /api/community/posts — create a new post (auth required)
  */
@@ -53,6 +54,10 @@ export default async function handler(req: Request, res: Response) {
       closesAt: poll.closesAt ? new Date(poll.closesAt) : null,
     });
   }
+
+  await notifyCommunityMentions({ html: body, actorId: session.user.id, postId }).catch(() => {
+    console.error('community.mention-notifications.failed');
+  });
 
   res.status(201).json({ id: postId });
 }
