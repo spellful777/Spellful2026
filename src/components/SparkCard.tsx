@@ -1,3 +1,5 @@
+import { SparkReadingAttachment } from '@/components/SparkReadingAttachment';
+import { topicPath } from '@/lib/spark-topics';
 import { OriginalSparkCard, SparkMediaGallery } from '@/components/SparkMediaGallery';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { MoreHorizontal } from 'lucide-react';
@@ -52,7 +54,9 @@ export default function SparkCard({ post, canInteract = true, onFavorite, onSave
           <img src={post.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="mt-2 aspect-video w-full rounded-lg object-cover" />
         )}
       </Link>
+      {post.sparkTopic && <Link className="inline-flex min-h-8 items-center text-xs text-primary" to={topicPath(post.sparkTopic)}>{post.sparkTopic}</Link>}
       <SparkMediaGallery media={post.sparkMedia} />
+      {post.sparkReading && <SparkReadingAttachment reading={post.sparkReading} postId={post.id} />}
       {post.reshareOf && <p className="text-xs text-muted-foreground">Reshared by {name}</p>}
       {post.originalSparkId && <OriginalSparkCard spark={post.originalSpark} />}
       <SparkActions post={post} canInteract={canInteract} onFavorite={onFavorite} onSave={onSave} />

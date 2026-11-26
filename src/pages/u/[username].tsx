@@ -1,3 +1,4 @@
+import { findTopic, topicPath } from '@/lib/spark-topics';
 import { ProfileActivity, type ProfileTab } from '@/components/ProfileActivity';
 import { ACCENTS, COVER_PRESETS as STUDIO_COVERS } from '@/lib/profile-look';
 import type { ProfileFeature } from '@/lib/profile-feature';
@@ -951,7 +952,9 @@ export default function UserProfilePage() {
           {((profile.interestTags?.length ?? 0) > 0 || (profile.practiceLabels?.length ?? 0) > 0) && (
             <RealmSection title="✦ Magical Interests" icon={<Sparkles className="w-4 h-4" />} id="interests">
               <div className="flex flex-wrap gap-2">
-                {(profile.interestTags ?? []).map(tag => (
+                {(profile.interestTags ?? []).map(tag => findTopic(tag) ? (
+                  <Link key={tag} to={topicPath(tag)} className="rounded-full border border-primary/30 px-3 py-1.5 text-xs text-primary">{findTopic(tag)}</Link>
+                ) : (
                   <span key={tag} className="px-3 py-1 rounded-full text-xs border border-primary/30 bg-primary/10 text-primary font-medium">
                     ✦ {tag}
                   </span>

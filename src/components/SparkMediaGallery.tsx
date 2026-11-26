@@ -1,3 +1,4 @@
+import { SparkReadingAttachment } from '@/components/SparkReadingAttachment';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { Play } from 'lucide-react';
@@ -37,6 +38,7 @@ export function OriginalSparkCard({ spark }: { spark?: OriginalSpark | null }) {
       <span className="mt-1 block text-xs text-muted-foreground">View original Spark</span>
     </Link>
     <SparkMediaGallery media={spark.sparkMedia} />
+    {spark.sparkReading && <SparkReadingAttachment reading={spark.sparkReading} postId={spark.id} />}
     {spark.imageUrl && !spark.sparkMedia?.length && /^https:\/\//i.test(spark.imageUrl) &&
       <img src={spark.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="mt-2 aspect-video w-full rounded-lg object-cover" />}
   </div>;

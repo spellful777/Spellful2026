@@ -34,14 +34,14 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   }
 
   // Verify ownership
-  const [post] = await db.select({ id: communityPosts.id, type: communityPosts.type, media: communityPosts.sparkMedia, original: communityPosts.originalSparkId })
+  const [post] = await db.select({ id: communityPosts.id, type: communityPosts.type, media: communityPosts.sparkMedia, reading: communityPosts.sparkReading, original: communityPosts.originalSparkId })
     .from(communityPosts)
     .where(and(eq(communityPosts.id, postId), eq(communityPosts.userId, myId)))
     .limit(1);
   if (!post) return res.status(404).json({ error: 'Post not found or not yours' });
 
   if (post.type === 'spark') {
-    if (title === undefined || (!title.trim() && !post.media?.length && !post.original) || countSparkCharacters(title) > SPARK_LIMIT || body !== undefined || tags !== undefined) {
+    if (title === undefined || (!title.trim() && !post.media?.length && !post.reading && !post.original) || countSparkCharacters(title) > SPARK_LIMIT || body !== undefined || tags !== undefined) {
       return res.status(400).json({ error: `A Spark must have media, a reference, or text up to ${SPARK_LIMIT} characters` });
     }
     const text = title.trim();

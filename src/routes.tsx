@@ -1,3 +1,4 @@
+import ExploreTopic from './pages/explore/topic';
 import { RouteObject } from 'react-router';
 import HomePage from './pages/index';
 import ResourcesPage from './pages/resources';
@@ -103,6 +104,7 @@ import ExplorePage from './pages/explore/index';
 const NotFoundPage = ProdNotFoundPage;
 
 export const routes: RouteObject[] = [
+  { path: '/explore/topics/:topic', element: <ExploreTopic /> },
   {
     path: '/login',
     element: <LoginPage />,
@@ -300,7 +302,17 @@ export const routes: RouteObject[] = [
   { path: '/community/bookmarks', element: <CommunityBookmarksPage /> },
   { path: '/community/notifications', element: <CommunityNotificationsPage /> },
   { path: '/community/discover', element: <CommunityDiscoverPage /> },
-  { path: '/community/post/:id', element: <CommunityPostPage /> },
+  {
+    path: '/community/post/:id', element: <CommunityPostPage />,
+    loader: async ({ params }) => {
+      try {
+        const base = typeof window === 'undefined' ? 'http://localhost:3000' : '';
+        const response = await fetch(base + '/api/community/posts/' + encodeURIComponent(params.id ?? '') + '/reading-preview');
+        if (response.ok) return { readingPreview: (await response.json() as { type: 'natal' | 'tarot' }).type };
+      } catch { /* Non-reading Sparks use the standard preview. */ }
+      return { readingPreview: null };
+    },
+  },
   { path: '/community/:slug', element: <CommunityCategoryPage /> },
   { path: '/creators', element: <CreatorsPage /> },
   { path: '/organizations', element: <OrganizationsPage /> },

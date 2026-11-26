@@ -3,13 +3,12 @@ import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityPosts, communityReplies, communityLikes, communityReplyFavorites, user } from '@/server/db/schema.js';
-import { eq, and, asc, desc, inArray, notInArray } from 'drizzle-orm';
+import { eq, and, asc, desc, inArray, notInArray, sql } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request<{ id: string }>, res: Response) {
   const session = await getAuthSession(req);
-  if (!session?.user?.id) return res.status(401).json({ error: 'Sign in to view the community' });
-  const myId = session.user.id;
+  const myId = session?.user?.id;
   const postId = parseInt(req.params.id);
   if (isNaN(postId)) return res.status(400).json({ error: 'Invalid id' });
 
@@ -45,12 +44,12 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     authorName: user.name,
     authorImage: user.image,
     authorUsername: user.username,
-    authorLocation: user.location,
+    authorLocation: sql<string | null>`case when ${user.locationVisibility} = 'public' then ${user.location} else null end`,
   })
     .from(communityReplies)
     .innerJoin(communityPosts, eq(communityPosts.id, communityReplies.postId))
     .leftJoin(user, eq(communityReplies.userId, user.id))
-    .where(and(...conditions, eq(communityPosts.isHidden, false), postAudienceAllows(myId)))
+    .where(and(...conditions, eq(communityPosts.isHidden, false), postAudienceAllows(myId), myId ? undefined : eq(communityPosts.type, 'spark')))
     .orderBy(sort === 'liked' ? desc(communityReplies.likeCount) : asc(communityReplies.createdAt));
 
   // Liked state
@@ -66,7 +65,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     likedIds = new Set(likes.map((l) => l.targetId));
   }
 
-  const previews = await communityLikePreviews('reply', replies.map(reply => reply.id), myId);
+  const previews = myId ? await communityLikePreviews('reply', replies.map(reply => reply.id), myId) : new Map<number, string[]>();
   res.setHeader('Cache-Control', 'private, no-store');
   res.json(replies.map((r) => ({ ...r, likedBy: previews.get(r.id) ?? [], liked: likedIds.has(r.id), favorited: favoriteIds.has(r.id), isOwner: myId === r.userId })));
 }

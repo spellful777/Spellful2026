@@ -35,7 +35,7 @@ export async function profileActivity(
     id: communityPosts.id, title: communityPosts.title, type: communityPosts.type, createdAt: communityPosts.createdAt,
     audience: communityPosts.audience, userId: communityPosts.userId, authorName: user.name, authorUsername: user.username, authorImage: user.image,
     likeCount: communityPosts.likeCount, replyCount: communityPosts.replyCount, originalSparkId: communityPosts.originalSparkId, reshareOf: communityPosts.reshareOf,
-    sparkMedia: communityPosts.sparkMedia, imageUrl: communityPosts.imageUrl,
+    sparkMedia: communityPosts.sparkMedia, sparkTopic: communityPosts.sparkTopic, sparkReading: communityPosts.sparkReading, imageUrl: communityPosts.imageUrl,
   };
   const rows = await db.select(selection).from(communityPosts).innerJoin(user, eq(user.id, communityPosts.userId))
     .where(and(visible, eq(communityPosts.userId, profileId), before ? lt(communityPosts.id, before) : undefined,

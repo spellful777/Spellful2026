@@ -12,19 +12,20 @@ export async function notifyCommunityMentions({
   actorId: string;
   postId: number;
   replyId?: number;
-  alreadyNotified?: string;
+  alreadyNotified?: string | string[];
 }) {
   const names = communityMentionRecipients(html);
   if (!names.length) return;
 
   const excluded = await getBlockedUserIds(actorId);
   excluded.add(actorId);
-  if (alreadyNotified) excluded.add(alreadyNotified);
+  for (const id of typeof alreadyNotified === 'string' ? [alreadyNotified] : alreadyNotified ?? []) excluded.add(id);
   const recipients = await db.select({ id: user.id }).from(user)
     .innerJoin(communityPosts, visiblePostForMember(postId, user.id))
     .where(and(
       inArray(user.usernameNormalized, names),
       eq(user.mentionsAllowed, true),
+      replyId ? sql`coalesce(json_unquote(json_extract(${user.notificationPreferences}, '$.communityReplies')), 'true') <> 'false'` : undefined,
       notInArray(user.id, [...excluded]),
       sql`not exists (select 1 from ${communityMutes}
         where ${communityMutes.userId} = ${user.id} and ${communityMutes.postId} = ${postId})`,

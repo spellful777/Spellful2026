@@ -1,3 +1,4 @@
+import type { SparkReading } from '@/lib/spark-reading';
 import type { SparkMedia, OriginalSpark } from '@/lib/spark-media';
 /**
  * useCommunity — shared data hook for community pages.
@@ -22,6 +23,8 @@ export interface CommunityPost {
   title: string;
   preview?: string;
   audience?: string | null;
+  sparkTopic?: string | null;
+  sparkReading?: SparkReading | null;
   sparkMedia?: SparkMedia[] | null;
   reshareOf?: number | null;
   reshareCount?: number;

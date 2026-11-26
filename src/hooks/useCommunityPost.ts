@@ -1,3 +1,4 @@
+import type { SparkReading } from '@/lib/spark-reading';
 import type { SparkMedia, OriginalSpark } from '@/lib/spark-media';
 /**
  * Community post & reply types, plus data hooks for the thread page.
@@ -41,6 +42,8 @@ export interface CommunityPostDetail {
   type: 'discussion' | 'question' | 'spark';
   title: string;
   body: string;
+  sparkTopic?: string | null;
+  sparkReading?: SparkReading | null;
   sparkMedia?: SparkMedia[] | null;
   reshareOf?: number | null;
   reshareCount?: number;

@@ -1,3 +1,4 @@
+import { findTopic } from '@/lib/spark-topics';
 import { communityLikePreviews } from '@/server/lib/community-like-previews.js';
 import { sparkReshares } from '@/server/lib/spark-reshares.js';
 import { loadOriginalSparks } from '@/server/lib/original-sparks.js';
@@ -14,8 +15,10 @@ import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request, res: Response) {
   const session = await getAuthSession(req);
-  if (!session?.user?.id) return res.status(401).json({ error: 'Sign in to view the community' });
-  const myId = session.user.id;
+  const topic = findTopic(req.query.topic);
+  if (req.query.topic !== undefined && !topic) return res.status(404).json({ error: 'Topic not found' });
+  if (!session?.user?.id && !topic) return res.status(401).json({ error: 'Sign in to view the community' });
+  const myId = session?.user?.id;
 
   const filter = (req.query.filter as string) || 'latest';
   const categorySlug = req.query.category as string | undefined;
@@ -32,14 +35,15 @@ export default async function handler(req: Request, res: Response) {
   }
 
   const conditions = [eq(communityPosts.isHidden, false), postAudienceAllows(myId)];
+  if (topic) conditions.push(eq(communityPosts.sparkTopic, topic), eq(communityPosts.type, 'spark'));
   if (req.query.kind === 'spark') conditions.push(eq(communityPosts.type, 'spark'));
   if (req.query.kind === 'discussion') conditions.push(ne(communityPosts.type, 'spark'));
   if (categoryId) conditions.push(eq(communityPosts.categoryId, categoryId));
   if (filter === 'unanswered') conditions.push(eq(communityPosts.replyCount, 0));
   if (filter === 'mine' && myId) conditions.push(eq(communityPosts.userId, myId));
-  const follows = followsPostAuthor(myId);
+  const follows = myId ? followsPostAuthor(myId) : sql`false`;
   if (filter === 'following') conditions.push(follows);
-  if (filter === 'discover') {
+  if (filter === 'discover' && myId) {
     conditions.push(eq(communityPosts.audience, 'public'), ne(communityPosts.userId, myId), sql`not ${follows}`);
   }
 
@@ -85,7 +89,7 @@ export default async function handler(req: Request, res: Response) {
       tags: communityPosts.tags,
       audience: communityPosts.audience,
       imageUrl: communityPosts.imageUrl,
-      sparkMedia: communityPosts.sparkMedia,
+      sparkMedia: communityPosts.sparkMedia, sparkTopic: communityPosts.sparkTopic, sparkReading: communityPosts.sparkReading,
       originalSparkId: communityPosts.originalSparkId, reshareOf: communityPosts.reshareOf,
       isPinned: communityPosts.isPinned,
       isLocked: communityPosts.isLocked,
@@ -127,7 +131,7 @@ export default async function handler(req: Request, res: Response) {
 
   const originals = await loadOriginalSparks(posts.map(post => post.originalSparkId), myId);
   const reshares = await sparkReshares(posts.filter(post => post.type === 'spark').map(post => post.reshareOf ?? post.id), myId);
-  const previews = await communityLikePreviews('post', posts.filter(post => post.type !== 'spark').map(post => post.id), myId);
+  const previews = myId ? await communityLikePreviews('post', posts.filter(post => post.type !== 'spark').map(post => post.id), myId) : new Map<number, string[]>();
   res.setHeader('Cache-Control', 'private, no-store');
   const pages = Math.ceil(total / limit);
   res.json({

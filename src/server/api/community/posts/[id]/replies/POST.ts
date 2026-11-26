@@ -1,3 +1,4 @@
+import { notifyConversationReply } from '@/server/lib/community-conversation-notification.js';
 import { SPARK_COMMENT_LIMIT, commentGifUrl } from '@/lib/spark-comments';
 import { countSparkCharacters, sparkBodyHtml } from '@/lib/sparks';
 import { renderSharedReading, sharedReadingSchema } from '@/lib/shared-reading';
@@ -6,7 +7,7 @@ import { notifyCommunityMentions } from '@/server/lib/community-mention-notifica
 import { visiblePostForMember } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { communityReplies, communityPosts, communityNotifications } from '@/server/db/schema.js';
+import { communityReplies, communityPosts } from '@/server/db/schema.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
@@ -87,17 +88,9 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     return result.insertId;
   });
 
-  const recipient = parentAuthor ?? post.userId;
-  if (recipient !== session.user.id) {
-    await db.insert(communityNotifications).values({
-      userId: recipient,
-      type: 'reply',
-      actorId: session.user.id,
-      postId,
-      replyId,
-      message: 'Someone replied to your post.',
-    }).catch(() => {});
-  }
+  const recipients = await notifyConversationReply({
+    postId, replyId, actor: session.user.id, owner: post.userId, parent: parentAuthor,
+  }).catch(() => [] as string[]);
 
   if (followUp) {
     await notifyCommunityFollowUp(postId, replyId, session.user.id).catch(() => {
@@ -106,7 +99,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     return res.status(201).json({ id: replyId });
   }
 
-  await notifyCommunityMentions({ html: replyBody, actorId: session.user.id, postId, replyId, alreadyNotified: recipient }).catch(() => {
+  await notifyCommunityMentions({ html: replyBody, actorId: session.user.id, postId, replyId, alreadyNotified: recipients }).catch(() => {
     console.error('community.mention-notifications.failed');
   });
 

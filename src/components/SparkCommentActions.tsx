@@ -4,10 +4,11 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { sparkReplyPath } from '@/lib/spark-comments';
 import type { CommunityReply } from '@/hooks/useCommunityPost';
 
-export function SparkCommentActions({ reply, onReply, locked, audience, onUpdate }: {
+export function SparkCommentActions({ reply, onReply, locked, canInteract = true, audience, onUpdate }: {
   reply: CommunityReply;
   onReply: () => void;
   locked: boolean;
+  canInteract?: boolean;
   audience: string | null;
   onUpdate: (reply: CommunityReply) => void;
 }) {
@@ -37,10 +38,10 @@ export function SparkCommentActions({ reply, onReply, locked, audience, onUpdate
   return <>
     <div className="spark-comment-actions">
       <button type="button" onClick={onReply} disabled={locked} aria-label="Reply"><MessageCircle /></button>
-      <button type="button" onClick={() => change('liked')} disabled={pending} aria-pressed={reply.liked}
+      <button type="button" onClick={() => change('liked')} disabled={pending || !canInteract} aria-pressed={reply.liked}
         aria-label={`${reply.liked ? 'Unlike' : 'Like'} · ${reply.likeCount ?? 0} likes`}><Heart />{reply.likeCount ?? 0}</button>
       <button type="button" onClick={() => { setStatus(''); setShare(true); }} aria-label="Share reply"><Share /></button>
-      <button type="button" onClick={() => change('favorited')} disabled={pending} aria-pressed={Boolean(reply.favorited)}
+      <button type="button" onClick={() => change('favorited')} disabled={pending || !canInteract} aria-pressed={Boolean(reply.favorited)}
         aria-label={reply.favorited ? 'Remove reply from Favorites' : 'Add reply to Favorites'}><Star /></button>
     </div>
     {!!reply.likedBy?.length && <p className="text-xs text-muted-foreground">

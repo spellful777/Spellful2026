@@ -164,6 +164,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
     res.json({
       profile: {
         ...publicProfile, featuredAbout,
+        interestTags: !isOwn && profile.profileSections?.some(section => section.id === 'interests' && !section.enabled) ? null : profile.interestTags,
         bio: access.allows(profile.bioVisibility) ? profile.bio : null,
         location: access.allows(profile.locationVisibility) ? profile.location : null,
         sunSign: access.allows(profile.zodiacVisibility) ? profile.sunSign : null,

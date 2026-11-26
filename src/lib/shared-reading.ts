@@ -25,10 +25,11 @@ const cardsBySlug = new Map(TAROT_CARDS.map(card => [
 
 export function projectTarot(reading: SharedReading) {
   const spread = SPREADS.find(item => item.id === reading.spreadType);
-  const cards = reading.cards.map(selected => {
+  const cards = [...reading.cards].sort((a, b) => a.displayOrder - b.displayOrder).map(selected => {
     const card = cardsBySlug.get(selected.cardId);
     return card && {
       name: card.name,
+      image: card.image,
       reversed: selected.reversed,
       position: reading.includePositions ? spread?.positions[selected.displayOrder]?.label : undefined,
       interpretation: reading.includeInterpretations

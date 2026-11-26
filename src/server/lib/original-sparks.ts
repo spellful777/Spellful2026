@@ -12,7 +12,7 @@ export async function loadOriginalSparks(ids: (number | null)[], viewer?: string
     id: communityPosts.id,
     title: communityPosts.title,
     authorName: user.name,
-    sparkMedia: communityPosts.sparkMedia,
+    sparkMedia: communityPosts.sparkMedia, sparkTopic: communityPosts.sparkTopic, sparkReading: communityPosts.sparkReading,
     imageUrl: communityPosts.imageUrl,
   }).from(communityPosts).leftJoin(user, eq(communityPosts.userId, user.id))
     .where(and(inArray(communityPosts.id, wanted), eq(communityPosts.type, 'spark'),

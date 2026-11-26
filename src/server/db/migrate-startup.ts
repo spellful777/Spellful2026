@@ -1332,6 +1332,8 @@ export async function runStartupMigration(): Promise<void> {
     for (const statement of [
       'ALTER TABLE community_replies ADD COLUMN gif_url TEXT NULL',
       'ALTER TABLE community_posts ADD COLUMN spark_media JSON NULL',
+      'ALTER TABLE community_posts ADD COLUMN spark_topic VARCHAR(40) NULL',
+      'ALTER TABLE community_posts ADD COLUMN spark_reading JSON NULL',
       'ALTER TABLE community_posts ADD COLUMN original_spark_id INT NULL',
       'ALTER TABLE community_posts ADD COLUMN reshare_of INT NULL',
       'ALTER TABLE community_replies ADD COLUMN suppress_link_preview BOOLEAN NOT NULL DEFAULT FALSE',

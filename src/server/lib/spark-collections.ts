@@ -33,7 +33,7 @@ export async function sparkCollections(req: Request, res: Response) {
   const items = await db.selectDistinct({
     id: communityPosts.id, type: communityPosts.type, title: communityPosts.title, createdAt: communityPosts.createdAt,
     audience: communityPosts.audience, likeCount: communityPosts.likeCount, replyCount: communityPosts.replyCount,
-    sparkMedia: communityPosts.sparkMedia, imageUrl: communityPosts.imageUrl, originalSparkId: communityPosts.originalSparkId,
+    sparkMedia: communityPosts.sparkMedia, sparkTopic: communityPosts.sparkTopic, sparkReading: communityPosts.sparkReading, imageUrl: communityPosts.imageUrl, originalSparkId: communityPosts.originalSparkId,
     reshareOf: communityPosts.reshareOf, authorName: user.name, authorUsername: user.username, authorImage: user.image,
     liked: sql<boolean>`${communityLikes.id} is not null`, bookmarked: sql<boolean>`${communityBookmarks.id} is not null`,
     collectedAt: sort,

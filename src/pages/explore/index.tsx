@@ -1,3 +1,4 @@
+import { SPARK_TOPICS, topicPath } from '@/lib/spark-topics';
 /**
  * /explore — Unified Explore landing page.
  * Search first, then categories, recently visited, favorites, recommended topics.
@@ -260,6 +261,13 @@ export default function ExplorePage() {
       </Helmet>
 
       <main className="min-h-screen pb-24" style={{ background: 'hsl(var(--background))' }}>
+        <section className="mx-auto max-w-5xl px-4 py-4" aria-label="Community topics">
+          <h2 className="mb-2 font-heading text-lg">Community topics</h2>
+          <div className="flex flex-wrap gap-1.5">
+            {SPARK_TOPICS.map(topic => <Link key={topic} to={topicPath(topic)} className="inline-flex min-h-10 items-center rounded-full border border-border px-3 text-sm text-primary">{topic}</Link>)}
+          </div>
+        </section>
+
         {/* Header */}
         <div
           className="sticky top-0 z-10 px-4 pt-4 pb-3"

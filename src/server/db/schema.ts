@@ -1,3 +1,4 @@
+import type { SparkReading } from '@/lib/spark-reading';
 import type { ProfileFeature } from '@/lib/profile-feature';
 import type { SparkMedia } from '@/lib/spark-media';
 import { mysqlTable, bigint, int, tinyint, varchar, text, boolean, timestamp, json, index, uniqueIndex } from 'drizzle-orm/mysql-core';
@@ -529,6 +530,8 @@ export const communityPosts = mysqlTable('community_posts', {
   title: varchar('title', { length: 300 }).notNull(),
   body: text('body').notNull(),
   imageUrl: text('image_url'),
+  sparkTopic: varchar('spark_topic', { length: 40 }),
+  sparkReading: json('spark_reading').$type<SparkReading>(),
   sparkMedia: json('spark_media').$type<SparkMedia[]>(),
   reshareOf: int('reshare_of'),
   originalSparkId: int('original_spark_id'),

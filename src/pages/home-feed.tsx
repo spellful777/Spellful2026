@@ -1,3 +1,4 @@
+import { topicPath } from '@/lib/spark-topics';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -125,6 +126,10 @@ export default function HomeFeed({ username }: { username?: string | null }) {
         <Link to={HOME_EXPLORE} className="home-feed-link coven-press" aria-current={filter === 'discover' ? 'page' : undefined}>Explore</Link>
         <Link to={COMMUNITY_FEED} className="home-feed-link coven-press">Community</Link>
       </nav>
+      {filter === 'discover' && <nav aria-label="Explore topics" className="flex flex-wrap items-center gap-x-3 px-1 py-1 text-xs text-primary">
+        {['Astrology', 'Tarot', 'Moon Magic', 'Shadow Work'].map(topic => <Link className="inline-flex min-h-8 items-center" key={topic} to={topicPath(topic)}>{topic}</Link>)}
+        <Link className="inline-flex min-h-8 items-center underline" to="/explore">All topics</Link>
+      </nav>}
       {newPosts && <Button onClick={refresh} size="sm">New posts</Button>}
       <div ref={list} className="space-y-3" aria-busy={loading}>
         {error ? (

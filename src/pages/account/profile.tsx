@@ -1,3 +1,4 @@
+import { SPARK_TOPICS as INTEREST_SUGGESTIONS } from '@/lib/spark-topics';
 import { parseProfileFeature, type ProfileFeature } from '@/lib/profile-feature';
 import { ACCENTS, COVER_PRESETS } from '@/lib/profile-look';
 import React, { useState, useEffect, useRef } from 'react';
@@ -52,7 +53,6 @@ const DEFAULT_AVATARS = [
 
 const WITCH_PATHS = ['Eclectic','Green','Hedge','Kitchen','Sea','Solitary','Ceremonial','Dianic','Faery','Chaos','Cosmic','Shadow'];
 const ZODIAC_SIGNS = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
-const INTEREST_SUGGESTIONS = ['Tarot','Moon Magic','Herbalism','Crystals','Astrology','Divination','Spellwork','Meditation','Dream Work','Shadow Work','Runes','Numerology','Candle Magic','Ritual','Wicca','Paganism'];
 
 const PROFILE_THEMES = [
   { key: '', label: 'Spellful Default', desc: 'Classic dark mystical' },

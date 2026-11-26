@@ -1,3 +1,5 @@
+import { findTopic } from '@/lib/spark-topics';
+import { parseSparkReading } from '@/lib/spark-reading';
 import { isSparkMediaId } from '@/lib/spark-media';
 import { fitsSparkMedia, maxSparkPhotos } from '@/server/lib/spark-media.js';
 import { SPARK_LIMIT, countSparkCharacters, sparkBodyHtml } from '@/lib/sparks';
@@ -17,7 +19,7 @@ export default async function handler(req: Request, res: Response) {
   const session = await getAuthSession(req);
   if (!session?.user?.id) return res.status(401).json({ error: 'Sign in to post' });
 
-  const { categoryId, type = 'discussion', title, body = '', tags = '', imageUrl, poll, audience = 'public', quotedPostId, sharedReading, mediaIds = [] } = req.body as {
+  const { categoryId, type = 'discussion', title, body = '', tags = '', imageUrl, poll, audience = 'public', quotedPostId, sharedReading, sparkTopic, sparkReading, mediaIds = [] } = req.body as {
     categoryId?: number;
     type?: string;
     title?: string;
@@ -27,22 +29,30 @@ export default async function handler(req: Request, res: Response) {
     audience?: string;
     quotedPostId?: number;
     sharedReading?: unknown;
+    sparkTopic?: unknown;
+    sparkReading?: unknown;
     mediaIds?: unknown;
     poll?: { question: string; choices: string[]; closesAt?: string };
   };
 
   if (type === 'spark') {
+    const topic = findTopic(sparkTopic);
+    const reading = parseSparkReading(sparkReading);
+    if ((sparkTopic != null && !topic) || (sparkReading != null && !reading))
+      return res.status(400).json({ error: 'Choose a valid topic or share attachment.' });
     if (!Array.isArray(mediaIds) || mediaIds.length > maxSparkPhotos || !mediaIds.every(isSparkMediaId) ||
         new Set(mediaIds).size !== mediaIds.length || (mediaIds.length && imageUrl !== undefined)) {
       return res.status(400).json({ error: `Choose up to ${maxSparkPhotos} photos or one video.` });
     }
     if (typeof body !== 'string' || countSparkCharacters(body) > SPARK_LIMIT ||
-        (!body.trim() && !mediaIds.length)) {
+        (!body.trim() && !mediaIds.length && !reading)) {
       return res.status(400).json({ error: `Add text up to ${SPARK_LIMIT} characters or attach media.` });
     }
     if (title !== undefined || tags || poll || sharedReading !== undefined) {
       return res.status(400).json({ error: 'Use a discussion for titles, polls, or readings.' });
     }
+    if (reading && (mediaIds.length || imageUrl !== undefined || quotedPostId !== undefined))
+      return res.status(400).json({ error: 'A reading Spark can contain one reading attachment.' });
     let originalSparkId: number | null = null;
     if (quotedPostId !== undefined) {
       if (!Number.isSafeInteger(quotedPostId) || quotedPostId < 1) return res.sendStatus(400);
@@ -83,7 +93,7 @@ export default async function handler(req: Request, res: Response) {
       const byId = new Map(uploads.map(upload => [upload.id, upload]));
       const [created] = await tx.insert(communityPosts).values({
         userId: session.user.id, categoryId: category.id, type, title: text, body: sparkBodyHtml(text),
-        audience, imageUrl: imageUrl ?? null, originalSparkId,
+        audience, imageUrl: imageUrl ?? null, originalSparkId, sparkTopic: topic, sparkReading: reading,
         sparkMedia: mediaIds.length ? mediaIds.map(id => byId.get(id)!) : null,
       }).$returningId();
       if (uploads.length) await tx.update(sparkMediaUploads).set({ postId: created.id })

@@ -16,11 +16,12 @@ import { community_notifications } from 'virtual:content';
 
 interface CommunityNotification {
   id: number;
-  type: 'reply' | 'like' | 'mention' | 'follow_up' | 'answer' | 'follow' | 'system';
+  type: 'conversation' | 'direct_reply' | 'reply' | 'like' | 'mention' | 'follow_up' | 'answer' | 'follow' | 'system';
   postId: number | null;
   replyId: number | null;
   message: string | null;
   isRead: boolean;
+  muted?: boolean;
   createdAt: string;
   actorName: string | null;
   actorImage: string | null;
@@ -37,6 +38,8 @@ interface NotifResponse {
 function NotifIcon({ type }: { type: CommunityNotification['type'] }) {
   const cls = 'w-4 h-4 shrink-0';
   switch (type) {
+    case 'conversation':
+    case 'direct_reply':
     case 'follow_up':
     case 'reply':   return <MessageSquare className={`${cls} text-accent`} />;
     case 'like':    return <Heart className={`${cls} text-destructive`} />;
@@ -57,17 +60,18 @@ function NotifRow({
 }: {
   notif: CommunityNotification;
   mutedPostIds: Set<number>;
-  onRead: (id: number) => void;
+  onRead: (notification: CommunityNotification) => void;
   onToggleMute: (postId: number) => void;
 }) {
   const ago = formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true });
   const isMuted = notif.postId ? mutedPostIds.has(notif.postId) : false;
-  const typeLabel = notif.type === 'follow_up'
+  const typeLabel = notif.type === 'conversation' ? 'New replies' : notif.type === 'direct_reply' ? 'replied directly to you' : notif.type === 'follow_up'
     ? 'Follow-up'
     : community_notifications.types[notif.type] ?? community_notifications.types.system;
 
+  const destination = notif.postId ? `/community/post/${notif.postId}${notif.replyId ? `#reply-${notif.replyId}` : ''}` : null;
   const handleClick = () => {
-    if (!notif.isRead) onRead(notif.id);
+    if (!notif.isRead) onRead(notif);
   };
 
   return (
@@ -117,8 +121,9 @@ function NotifRow({
           <span className="text-muted-foreground">{typeLabel}</span>
         </p>
 
-        {notif.message && (
-          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notif.message}</p>
+        {notif.message && (destination
+          ? <Link className="mt-0.5 block text-sm text-foreground hover:underline" to={destination} onClick={handleClick}>{notif.message}</Link>
+          : <p className="mt-0.5 text-xs text-muted-foreground">{notif.message}</p>
         )}
 
         <div className="flex items-center gap-3 mt-1.5">
@@ -126,7 +131,7 @@ function NotifRow({
 
           {!notif.isRead && (
             <button
-              onClick={() => onRead(notif.id)}
+              onClick={() => onRead(notif)}
               className="text-[10px] text-primary hover:underline"
             >
               Mark read
@@ -181,6 +186,7 @@ export default function NotificationsPage() {
       const data = await res.json() as NotifResponse;
       setNotifications((prev) => append ? [...prev, ...data.notifications] : data.notifications);
       setUnread(data.unread);
+      setMutedPostIds(previous => new Set([...(append ? previous : []), ...data.notifications.flatMap(row => row.muted && row.postId ? [row.postId] : [])]));
       setHasMore(data.notifications.length === 30);
     }
     setLoading(false);
@@ -192,14 +198,15 @@ export default function NotificationsPage() {
     load(1);
   }, [isPending, session, navigate, load]);
 
-  const markRead = async (id: number) => {
-    await fetch('/api/community/notifications/read', {
+  const markRead = async (notif: CommunityNotification) => {
+    const response = await fetch('/api/community/notifications/read', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: [id] }),
+      body: JSON.stringify(notif.type === 'conversation' ? { conversationPostId: notif.postId, throughId: notif.id } : { ids: [notif.id] }),
     });
+    if (!response.ok) return;
     setNotifications((prev) =>
-      prev.map((n) => n.id === id ? { ...n, isRead: true } : n)
+      prev.map((n) => n.id === notif.id ? { ...n, isRead: true } : n)
     );
     setUnread((u) => Math.max(0, u - 1));
   };
@@ -220,7 +227,7 @@ export default function NotificationsPage() {
     const res = await fetch('/api/community/mute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postId }),
+      body: JSON.stringify({ postId, muted: !mutedPostIds.has(postId) }),
     });
     if (res.ok) {
       const data = await res.json() as { muted: boolean };

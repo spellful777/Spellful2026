@@ -1,3 +1,6 @@
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { SparkReadingAttachment } from '@/components/SparkReadingAttachment';
+import { topicPath } from '@/lib/spark-topics';
 import { CommentGifPicker } from '@/components/CommentGifPicker';
 import { SparkActions } from '@/components/SparkActions';
 import { CommentLinkPreview } from '@/components/CommentLinkPreview';
@@ -9,7 +12,7 @@ import { SPARK_COMMENT_LIMIT, COMMENT_GIF_SETTING } from '@/lib/spark-comments';
 import { SPARK_LIMIT, countSparkCharacters } from '@/lib/sparks';
 import SparkHeartButton from '@/components/SparkHeartButton';
 import { useState, useRef, useEffect } from 'react';
-import { Link, Navigate, useParams, useNavigate, useLocation } from 'react-router';
+import { Link, useParams, useNavigate, useLocation, useLoaderData } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -147,7 +150,7 @@ function ReplyCard({
   isPostAuthor: boolean;
   postType: 'discussion' | 'question' | 'spark';
   postId: number;
-  sparkContext?: { original: string; parent: string; audience: string | null; locked: boolean };
+  sparkContext?: { original: string; parent: string; audience: string | null; locked: boolean; canInteract: boolean };
   onUpdate: (reply: CommunityReply) => void;
   onAccept: (replyId: number) => void;
   onLike: (replyId: number) => void;
@@ -384,7 +387,7 @@ function ReplyCard({
         )}
 
         {/* Footer */}
-        {sparkContext ? <SparkCommentActions reply={reply} onReply={() => onReplyTo(reply)} locked={sparkContext.locked} audience={sparkContext.audience} onUpdate={onUpdate} /> : <div className="flex items-center gap-3 mt-3 pt-2 border-t border-border/50">
+        {sparkContext ? <SparkCommentActions reply={reply} onReply={() => onReplyTo(reply)} locked={sparkContext.locked} canInteract={sparkContext.canInteract} audience={sparkContext.audience} onUpdate={onUpdate} /> : <div className="flex items-center gap-3 mt-3 pt-2 border-t border-border/50">
           <button
             onClick={() => onLike(reply.id)}
             className={`flex items-center gap-1 text-xs transition-colors ${reply.liked ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
@@ -540,6 +543,7 @@ function ReplyComposer({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PostThreadPage() {
+  const loader = useLoaderData() as { readingPreview: 'natal' | 'tarot' | null } | undefined;
   const { id } = useParams<{ id: string }>();
   const { session, isPending } = useSession();
   const navigate = useNavigate();
@@ -549,9 +553,12 @@ export default function PostThreadPage() {
   const [sort, setSort] = useState<'chrono' | 'liked'>('chrono');
   const { replies, loading: repliesLoading, reload: reloadReplies, setReplies } = useReplies(postId, sort);
   const { hash, pathname } = useLocation();
+  const [missingReply, setMissingReply] = useState(false);
   useEffect(() => {
-    if (postLoading || repliesLoading || !/^#reply-\d+$/.test(hash)) return;
+    if (postLoading || repliesLoading) return;
+    if (!/^#reply-\d+$/.test(hash)) { setMissingReply(false); return; }
     const target = document.getElementById(hash.slice(1));
+    setMissingReply(!target);
     if (!target) return;
     target.focus({ preventScroll: true });
     target.scrollIntoView({ block: 'start' });
@@ -559,6 +566,8 @@ export default function PostThreadPage() {
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [showShareToast, setShowShareToast] = useState(false);
 
+  const [muting, setMuting] = useState(false);
+  const [muteStatus, setMuteStatus] = useState('');
   const [postReportOpen, setPostReportOpen] = useState(false);
   const [postEditMode, setPostEditMode] = useState(false);
   const [postEditTitle, setPostEditTitle] = useState('');
@@ -568,9 +577,7 @@ export default function PostThreadPage() {
   const [postConfirmDelete, setPostConfirmDelete] = useState(false);
   const [postDeleting, setPostDeleting] = useState(false);
 
-  if (!isPending && !session) {
-    return <Navigate to={`/login?redirect=${encodeURIComponent(pathname + hash)}`} replace />;
-  }
+  const signInPath = '/login?redirect=' + encodeURIComponent(pathname + hash);
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -599,6 +606,22 @@ export default function PostThreadPage() {
     } finally {
       setPostEditSaving(false);
     }
+  };
+
+  const toggleConversationMute = async () => {
+    if (!post || muting) return;
+    setMuting(true);
+    try {
+      const response = await fetch('/api/community/mute', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: post.id, muted: !post.muted }),
+      });
+      if (!response.ok) throw Error();
+      const { muted } = await response.json() as { muted: boolean };
+      setPost(current => current?.id === post.id ? { ...current, muted } : current);
+      setMuteStatus(muted ? 'Conversation muted.' : 'Conversation unmuted.');
+    } catch { setMuteStatus('Couldn’t change conversation notifications.'); }
+    finally { setMuting(false); }
   };
 
   const deletePost = async () => {
@@ -663,7 +686,8 @@ export default function PostThreadPage() {
             original: sparkAuthor,
             parent: parentId !== null && visibleReplies.has(parentId) ? handleName(visibleReplies.get(parentId)!) : sparkAuthor,
             audience: post.audience,
-            locked: post.isLocked,
+            locked: post.isLocked || !session,
+            canInteract: !!session,
           } : undefined}
           onUpdate={updateReply}
           onAccept={acceptAnswer}
@@ -681,13 +705,20 @@ export default function PostThreadPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const tags = post?.tags ? post.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
-  const pageTitle = post ? `${post.title} — Spellful Community` : 'Discussion — Spellful Community';
+  const readingType = loader?.readingPreview ?? post?.sparkReading?.type;
+  const readingTitle = readingType === 'natal' ? 'A shared natal chart on Spellful'
+    : readingType === 'tarot' ? 'A shared tarot spread on Spellful' : null;
+  const pageTitle = readingTitle ?? (post ? `${post.title || 'Spark'} — Spellful Community` : 'Discussion — Spellful Community');
 
   return (
     <>
       <Helmet>
         <title>{pageTitle}</title>
-        <meta name="description" content={post ? `${post.title} — community discussion on Spellful` : 'Community discussion'} />
+        <meta name="description" content={readingTitle || post?.sparkReading ? 'A reading shared on Spellful' : post ? `${post.title} — community discussion on Spellful` : 'Community discussion'} />
+        {(readingTitle || post?.sparkReading) && <>
+          <meta property="og:title" content={readingTitle ?? 'A shared reading on Spellful'} />
+          <meta property="og:description" content="View the reading the author chose to share on Spellful." />
+        </>}
         <meta name="robots" content="noindex" />
       </Helmet>
 
@@ -729,7 +760,7 @@ export default function PostThreadPage() {
               <Link to="/community"><Button variant="outline" size="sm" className="mt-4">{community_post.backToCommunityLabel}</Button></Link>
             </div>
           ) : post ? (
-            <article className={spark ? "spark-original" : "rounded-xl border border-border bg-card p-5 md:p-6"}>
+            <article className={spark ? "spark-original" : "relative rounded-xl border border-border bg-card p-5 md:p-6"}>
               {/* Badges row */}
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 {post.type === 'question' && (
@@ -779,6 +810,8 @@ export default function PostThreadPage() {
               </div>
 
               {/* Hero image */}
+              {spark && post.sparkTopic && <Link className="inline-flex min-h-8 items-center text-xs text-primary" to={topicPath(post.sparkTopic)}>{post.sparkTopic}</Link>}
+              {spark && post.sparkReading && <SparkReadingAttachment reading={post.sparkReading} postId={post.id} />}
               {spark && <SparkMediaGallery media={post.sparkMedia} />}
               {spark && post.originalSparkId && <OriginalSparkCard spark={post.originalSpark} />}
               {!post.sparkMedia?.length && post.imageUrl && (
@@ -810,9 +843,20 @@ export default function PostThreadPage() {
                 </div>
               )}
 
+              {session && <div className="absolute right-1 top-0 z-10">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild><button className="grid size-11 place-items-center" type="button" aria-label="Conversation options"><MoreHorizontal size={18} /></button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem disabled={muting} onSelect={() => void toggleConversationMute()}>
+                      {post.muted ? 'Unmute conversation' : 'Mute conversation'}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>}
+              {muteStatus && <p role="status" className="text-xs text-muted-foreground">{muteStatus}</p>}
               {/* Action bar */}
               <div className="spark-original-actions flex items-center gap-2 mt-5 pt-4 border-t border-border/50 flex-wrap">
-                {post.type === 'spark' ? <SparkActions post={post} /> : <SparkHeartButton regularLike postId={post.id} liked={post.liked} likeCount={post.likeCount} />}
+                {post.type === 'spark' ? <SparkActions post={post} canInteract={!!session} /> : <SparkHeartButton regularLike postId={post.id} liked={post.liked} likeCount={post.likeCount} />}
                 {post.type !== 'spark' && !!post.likedBy?.length && <p className="text-xs">Liked by {post.likedBy.join(', ')}{post.likeCount > post.likedBy.length ? ` and ${post.likeCount - post.likedBy.length} others` : ''}</p>}
 
                 {post.type !== 'spark' && (
@@ -968,7 +1012,7 @@ export default function PostThreadPage() {
                   </button>
                   <button
                     onClick={savePostEdit}
-                    disabled={postEditSaving || (!postEditTitle.trim() && !post.sparkMedia?.length && !post.originalSparkId) || (post.type === 'spark' && countSparkCharacters(postEditTitle) > SPARK_LIMIT)}
+                    disabled={postEditSaving || (!postEditTitle.trim() && !post.sparkMedia?.length && !post.sparkReading && !post.originalSparkId) || (post.type === 'spark' && countSparkCharacters(postEditTitle) > SPARK_LIMIT)}
                     className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                   >
                     {postEditSaving ? 'Saving…' : 'Save changes'}
@@ -988,6 +1032,7 @@ export default function PostThreadPage() {
             />
           )}
 
+          {post && missingReply && <p role="status" className="py-2 text-sm text-muted-foreground">That reply is unavailable. You can still read the conversation.</p>}
           {/* ── Replies ── */}
           {post && (
             <section>
@@ -1036,8 +1081,9 @@ export default function PostThreadPage() {
             </Link>
           )}
 
+          {post && !session && !isPending && <Link className="text-sm text-primary" to={signInPath}>Sign in to reply</Link>}
           {/* ── Composer ── */}
-          {post && (
+          {post && session && (
             <ReplyComposer
               sparkAuthor={sparkAuthor}
               canFollowUp={!spark && session?.user?.id === post.userId}

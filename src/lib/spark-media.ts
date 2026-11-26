@@ -1,3 +1,4 @@
+import type { SparkReading } from '@/lib/spark-reading';
 export type SparkMediaKind = 'photo' | 'video';
 export interface SparkMedia { id: string; kind: SparkMediaKind }
 export interface SparkMediaLimits {
@@ -16,6 +17,8 @@ export interface OriginalSpark {
   id: number;
   title: string;
   authorName: string | null;
+  sparkTopic?: string | null;
+  sparkReading?: SparkReading | null;
   sparkMedia: SparkMedia[] | null;
   imageUrl: string | null;
 }
