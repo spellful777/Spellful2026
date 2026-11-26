@@ -776,3 +776,20 @@ html.high-contrast {
   border-bottom-color: hsl(var(--primary));
   color: hsl(43 45% 91%);
 }
+
+.home-header-actions .spark-action {
+  border-color: hsl(42 49% 72%);
+  border-radius: 0.625rem;
+  background: linear-gradient(165deg, hsl(46 58% 87%), hsl(41 52% 74%));
+  padding-inline: 0.75rem;
+  box-shadow: inset 0 1px 0 hsl(46 76% 94% / 0.68), 0 2px 5px hsl(38 46% 52% / 0.14);
+}
+
+.home-header-actions .spark-action::before,
+.home-header-actions .spark-action::after {
+  visibility: hidden;
+}
+
+.home-header-actions .spark-action:is(:hover, :focus-visible) {
+  box-shadow: inset 0 1px 0 hsl(46 76% 94% / 0.68), 0 2px 7px hsl(38 50% 56% / 0.2);
+}

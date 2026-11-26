@@ -4,7 +4,6 @@ import { Link } from 'react-router';
 import { getMoonPhase, moonGlyph, type MoonPhaseName } from '@/lib/moon-phase-engine';
 import { useSocialSummary } from '@/hooks/useSocialSummary';
 import SparkItLink from '@/components/SparkItLink';
-import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { COMMUNITY_FEED, COMMUNITY_REQUESTS, COMMUNITY_FAVORITES, HOME_EXPLORE } from '@/lib/community-navigation';
 
@@ -41,18 +40,21 @@ export default function HomeSocialMenu({ username }: { username?: string | null 
         <Link to="/" aria-label="Spellful Home" className="home-brand relative inline-flex min-h-11 items-center rounded-sm focus-visible:outline focus-visible:outline-primary md:hidden">
           <img src="/airo-assets/images/logo/official-white" alt="" width={82} height={44} className="block h-11 w-auto" />
         </Link>
-        <div className="flex items-center gap-2">
-          <SparkItLink />
+        <div className="home-header-actions flex shrink-0 items-center gap-2.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label={pendingRequests > 0 ? `Social menu, ${pendingRequests} pending Coven requests` : 'Social menu'} className="home-social-surface relative h-11 w-11 shrink-0 rounded-full">
-                <User aria-hidden="true" />
+              <button
+                type="button"
+                aria-label={pendingRequests > 0 ? `Social menu, ${pendingRequests} pending Coven requests` : 'Social menu'}
+                className="relative inline-flex size-11 shrink-0 items-center justify-center rounded-md text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+              >
+                <User className="size-5" strokeWidth={1.75} aria-hidden="true" />
                 {pendingRequests > 0 && (
-                  <span aria-hidden="true" className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  <span aria-hidden="true" className="absolute right-0.5 top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-background">
                     {pendingRequests}
                   </span>
                 )}
-              </Button>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="home-social-menu w-52 [&_[role=menuitem]]:min-h-11 [&_[role=menuitem]:focus]:text-background">
               <DropdownMenuItem asChild><Link to={COMMUNITY_FEED}><MessageSquare aria-hidden="true" />Community</Link></DropdownMenuItem>
@@ -65,11 +67,11 @@ export default function HomeSocialMenu({ username }: { username?: string | null 
               <DropdownMenuItem asChild><Link to="/account/edit-profile"><Pencil aria-hidden="true" />{username ? 'Edit my profile' : 'Set up my profile'}</Link></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <SparkItLink />
         </div>
       </div>
 
       <HomeMoonLink />
-
     </header>
   );
 }
