@@ -159,31 +159,6 @@ export default function Footer() {
         </p>
       </motion.div>
 
-      <nav aria-labelledby="footer-coven-heading" className="coven-entry relative z-10 mx-5 mb-8 max-w-md rounded-2xl border p-4 text-center shadow-lg sm:mx-auto sm:p-5">
-        <h2 id="footer-coven-heading" className="font-heading text-2xl">My Coven</h2>
-        <ul className="mt-3 grid grid-cols-3 gap-2">
-          {[
-            { label: 'Feed', to: COMMUNITY_FEED, icon: Heart, primary: true },
-            { label: 'Updates', to: COMMUNITY_UPDATES, icon: Bell },
-            { label: 'Groups', to: COMMUNITY_GROUPS, icon: MessageSquare },
-          ].map(({ label, to, icon: Icon, primary }) => (
-            <li key={to}>
-              <Link
-                to={to}
-                className={`flex min-h-12 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-semibold transition-colors ${
-                  primary
-                    ? 'coven-action'
-                    : 'border border-border bg-background/25 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
-                }`}
-              >
-                <Icon className="hidden size-4 shrink-0 min-[350px]:block" aria-hidden="true" />
-                {label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
       {/* Thin separator */}
       <div
         className="relative z-10 mx-auto max-w-lg h-px mb-8"
@@ -210,6 +185,43 @@ export default function Footer() {
             }}
           />
         </Link>
+
+        <nav
+          aria-labelledby="footer-coven-heading"
+          className="relative flex shrink-0 flex-col items-center gap-0.5 sm:items-start"
+        >
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -inset-x-7 -inset-y-3"
+            style={{ background: 'radial-gradient(ellipse at 50% 32%, hsl(var(--footer-gold) / 0.13), transparent 72%)' }}
+          />
+          <h2
+            id="footer-coven-heading"
+            className="relative font-heading text-base"
+            style={{ color: 'hsl(var(--footer-gold))', textShadow: '0 0 12px hsl(var(--footer-gold) / 0.42)' }}
+          >
+            My Coven
+          </h2>
+          <ul className="relative flex flex-wrap items-center justify-center gap-x-3 sm:justify-start">
+            {[
+              { label: 'Feed', to: COMMUNITY_FEED, icon: Heart },
+              { label: 'Updates', to: COMMUNITY_UPDATES, icon: Bell },
+              { label: 'Groups', to: COMMUNITY_GROUPS, icon: MessageSquare },
+            ].map(({ label, to, icon: Icon }) => (
+              <li key={to}>
+                <Link
+                  to={to}
+                  className="coven-press inline-flex min-h-11 items-center gap-1.5 rounded-sm text-xs text-[hsl(var(--footer-lavender))] transition-colors hover:text-[hsl(var(--footer-gold))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <Icon className="size-3.5 shrink-0 text-[hsl(var(--footer-gold))]" aria-hidden="true" />
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <span aria-hidden="true" className="hidden h-10 w-px bg-[hsl(var(--footer-gold)/0.2)] sm:block" />
 
         <nav aria-label="Footer navigation" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           {[
