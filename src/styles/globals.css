@@ -611,6 +611,28 @@ html.high-contrast {
   filter: drop-shadow(0 0 7px hsl(var(--hero-gold) / 0.56)) drop-shadow(0 0 14px hsl(var(--hero-gold) / 0.32));
 }
 
+.home-feed,
+.home-social-menu {
+  --background: 258 27% 9%;
+  --card: 264 26% 17%;
+  --muted: 261 24% 13%;
+  --muted-foreground: 268 17% 75%;
+  --border: 268 22% 29%;
+  --popover: 264 28% 14%;
+  --accent: 271 30% 75%;
+  --primary: 41 50% 73%;
+  --primary-foreground: 269 33% 16%;
+  --hero-gold: var(--primary);
+}
+
+.home-feed .coven-entry {
+  --muted-foreground: 274 23% 86%;
+  border-color: hsl(270 22% 39%);
+  background:
+    radial-gradient(ellipse at 94% 0%, hsl(276 36% 40% / 0.35), transparent 72%),
+    linear-gradient(130deg, hsl(263 29% 19%), hsl(270 32% 26%));
+}
+
 .home-social-surface,
 .home-feed-link {
   border: 1px solid hsl(var(--border));
@@ -644,7 +666,7 @@ html.high-contrast {
 .home-feed-link[aria-current='page'] {
   border-color: hsl(var(--primary) / 0.62);
   background: linear-gradient(180deg, hsl(var(--primary) / 0.19), hsl(var(--card)));
-  color: hsl(43 73% 80%);
+  color: hsl(42 50% 84%);
   box-shadow: inset 0 1px 0 hsl(var(--primary) / 0.22), 0 3px 8px hsl(248 50% 4% / 0.42);
 }
 
@@ -672,18 +694,18 @@ html.high-contrast {
 
 .spark-action {
   position: relative;
-  border: 1px solid hsl(42 79% 66%);
-  background: linear-gradient(165deg, hsl(47 94% 83%), hsl(41 78% 58%));
-  color: hsl(274 53% 16%);
+  border: 1px solid hsl(42 51% 69%);
+  background: linear-gradient(165deg, hsl(46 65% 87%), hsl(39 51% 69%));
+  color: hsl(269 33% 16%);
   font-weight: 700;
-  box-shadow: inset 0 1px 0 hsl(48 100% 95% / 0.82), 0 3px 9px hsl(38 89% 46% / 0.24);
+  box-shadow: inset 0 1px 0 hsl(46 82% 95% / 0.82), 0 3px 9px hsl(39 51% 55% / 0.24);
 }
 
 .spark-action:hover,
 .spark-action:focus-visible {
-  border-color: hsl(46 91% 82%);
-  color: hsl(274 53% 16%);
-  box-shadow: inset 0 1px 0 hsl(48 100% 95% / 0.9), 0 0 14px hsl(42 87% 58% / 0.38);
+  border-color: hsl(45 64% 83%);
+  color: hsl(269 33% 16%);
+  box-shadow: inset 0 1px 0 hsl(46 82% 95% / 0.9), 0 0 14px hsl(41 50% 73% / 0.38);
 }
 
 .spark-action::before,

@@ -69,7 +69,7 @@ export default function HomeFeed({ username }: { username?: string | null }) {
   const visiblePosts = !error && (!loading || anchor.current) ? posts : [];
 
   return (
-    <main className="mx-auto max-w-3xl space-y-3 px-4 pb-24 pt-4">
+    <main className="home-feed mx-auto max-w-3xl space-y-3 px-4 pb-24 pt-4">
       <Helmet><title>Home feed | Spellful</title><meta name="robots" content="noindex" /></Helmet>
       <HomeSocialMenu username={username} />
       <nav aria-label="Home feed" className="grid grid-cols-3 gap-2">
