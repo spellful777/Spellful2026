@@ -1,6 +1,6 @@
 import { uploadedMediaUrl } from '@/lib/native-api';
-import { motion } from 'motion/react';
-import { useNavigate } from 'react-router';
+import { Link } from 'react-router';
+import { useState } from 'react';
 
 interface ActiveUser {
   id: string;
@@ -12,21 +12,23 @@ interface ActiveUser {
 interface Props {
   users: ActiveUser[];
   presence: Record<string, { online: boolean }>;
-  onStartConversation: (user: ActiveUser) => void;
 }
 
-function AvatarBubble({ user, online, onClick }: { user: ActiveUser; online: boolean; onClick: () => void }) {
-  const initials = (user.name ?? user.username ?? '?')
-    .split(' ')
+function AvatarBubble({ user, online }: { user: ActiveUser; online: boolean }) {
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const label = user.name?.trim() || user.username || 'Spellful member';
+  const image = user.image !== failedImage ? user.image : null;
+  const initials = label
+    .split(/\s+/)
     .map(w => w[0])
     .slice(0, 2)
     .join('')
     .toUpperCase();
 
   return (
-    <motion.button
-      whileTap={{ scale: 0.92 }}
-      onClick={onClick}
+    <Link
+      to={`/u/${encodeURIComponent(user.username || `~${user.id}`)}`}
+      aria-label={`View ${label}’s profile`}
       className="flex flex-col items-center gap-1 flex-shrink-0"
       style={{ width: 56 }}>
       <span className="relative">
@@ -35,14 +37,15 @@ function AvatarBubble({ user, online, onClick }: { user: ActiveUser; online: boo
           style={{
             width: 44,
             height: 44,
-            background: user.image ? 'transparent' : 'hsl(var(--primary) / 0.18)',
+            background: image ? 'transparent' : 'hsl(var(--primary) / 0.18)',
             color: 'hsl(var(--primary))',
             border: '2px solid hsl(var(--primary) / 0.35)',
           }}>
-          {user.image ? (
+          {image ? (
             <img
-              src={uploadedMediaUrl(user.image)}
-              alt={user.name ?? user.username ?? ''}
+              src={uploadedMediaUrl(image)}
+              onError={() => setFailedImage(image)}
+              alt=""
               className="w-full h-full object-cover"
             />
           ) : (
@@ -62,54 +65,23 @@ function AvatarBubble({ user, online, onClick }: { user: ActiveUser; online: boo
       <span
         className="text-xs truncate w-full text-center leading-tight"
         style={{ color: 'hsl(var(--muted-foreground))', maxWidth: 52 }}>
-        {user.name?.split(' ')[0] ?? user.username ?? '?'}
+        {user.name?.split(/\s+/)[0] ?? user.username ?? '?'}
       </span>
-    </motion.button>
+    </Link>
   );
 }
 
-export default function ActiveNowStrip({ users, presence, onStartConversation }: Props) {
-  const navigate = useNavigate();
-
+export default function ActiveNowStrip({ users, presence }: Props) {
   if (users.length === 0) return null;
 
   return (
-    <div
-      className="px-4 py-2"
-      style={{ borderBottom: '1px solid hsl(var(--border) / 0.5)' }}>
-      <p className="text-xs font-medium mb-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
-        Friends
-      </p>
-      <div className="flex gap-3 overflow-x-auto scrollbar-none pb-1">
-        {users.slice(0, 12).map(u => (
-          <AvatarBubble
-            key={u.id}
-            user={u}
-            online={presence[u.id]?.online ?? false}
-            onClick={() => onStartConversation(u)}
-          />
+    <section className="border-b border-border/50 px-4 py-2" aria-label="Friends">
+      <p className="mb-2 text-xs font-medium text-muted-foreground">Friends</p>
+      <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-1 scrollbar-none">
+        {users.map(user => (
+          <AvatarBubble key={user.id} user={user} online={presence[user.id]?.online ?? false} />
         ))}
-        {users.length > 12 && (
-          <motion.button
-            whileTap={{ scale: 0.92 }}
-            onClick={() => navigate('/community/discover')}
-            className="flex flex-col items-center gap-1 flex-shrink-0"
-            style={{ width: 56 }}>
-            <span
-              className="flex items-center justify-center rounded-full text-xs font-semibold"
-              style={{
-                width: 44,
-                height: 44,
-                background: 'hsl(var(--muted))',
-                color: 'hsl(var(--muted-foreground))',
-                border: '2px solid hsl(var(--border))',
-              }}>
-              +{users.length - 12}
-            </span>
-            <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>More</span>
-          </motion.button>
-        )}
       </div>
-    </div>
+    </section>
   );
 }

@@ -1,8 +1,9 @@
+import { inboxFlag } from '@/lib/inbox-flag';
 import { parseInboxGroups, type GroupSummary } from '@/lib/inbox-groups';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { uploadedMediaUrl } from '@/lib/native-api';
-import { useSearchParams, useNavigate } from 'react-router';
+import { Link, useSearchParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSession } from '@/lib/auth/auth-client';
@@ -1480,7 +1481,19 @@ export default function MessagesPage() {
         const data = await res.json() as { conversations: ConversationSummary[]; hasMore?: boolean } | ConversationSummary[];
         const page = Array.isArray(data) ? data : data.conversations;
         if (!Array.isArray(page)) throw new Error('Invalid conversation list');
-        convList.push(...page);
+        for (const conversation of page) {
+          if (!conversation || !Number.isSafeInteger(Number(conversation.id)) || Number(conversation.id) <= 0) continue;
+          convList.push({
+            ...conversation,
+            id: Number(conversation.id),
+            unreadCount: Number(conversation.unreadCount) || 0,
+            isArchived: inboxFlag(conversation.isArchived),
+            isPinned: inboxFlag(conversation.isPinned),
+            isMuted: inboxFlag(conversation.isMuted),
+            isStarred: inboxFlag(conversation.isStarred),
+            isHidden: inboxFlag(conversation.isHidden),
+          });
+        }
         if (Array.isArray(data) || !data.hasMore) break;
       }
       if (generation !== inboxLoadGeneration.current) return;
@@ -2238,6 +2251,7 @@ export default function MessagesPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const filteredConversations = conversations.filter(conv => {
+    if (conv.isHidden) return false;
     const matchesSearch = !inboxSearch || (
       (conv.otherUser?.name ?? '').toLowerCase().includes(inboxSearch.toLowerCase()) ||
       (conv.otherUser?.username ?? '').toLowerCase().includes(inboxSearch.toLowerCase())
@@ -2393,6 +2407,7 @@ export default function MessagesPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'hsl(var(--muted-foreground))' }} />
               <input
+                id="mobile-inbox-search"
                 type="search"
                 value={inboxSearch}
                 onChange={e => setInboxSearch(e.target.value)}
@@ -2436,6 +2451,8 @@ export default function MessagesPage() {
               </button>
             ))}
           </div>
+
+          {inboxFilter === 'all' && <ActiveNowStrip users={friends} presence={batchPresence} />}
 
           {/* ── Mobile requests panel ── */}
           {inboxFilter === 'requests' && (
@@ -2606,55 +2623,6 @@ export default function MessagesPage() {
                   Try again
                 </button>
               </div>
-            ) : inboxFilter === 'all' && !inboxSearch && !loadingGroups && !groupsLoadError && inboxRows.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-5 px-8 pt-12 pb-8 text-center">
-                {/* Celestial illustration */}
-                <div className="relative w-28 h-28 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full opacity-20"
-                    style={{ background: 'radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)' }} />
-                  <svg viewBox="0 0 80 80" className="w-20 h-20" aria-hidden="true">
-                    <circle cx="40" cy="40" r="18" fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" opacity="0.6" />
-                    <circle cx="40" cy="40" r="10" fill="hsl(var(--primary))" opacity="0.3" />
-                    <circle cx="40" cy="40" r="5" fill="hsl(var(--primary))" opacity="0.7" />
-                    {[0,45,90,135,180,225,270,315].map((deg, i) => {
-                      const rad = (deg * Math.PI) / 180;
-                      const x = 40 + 28 * Math.cos(rad);
-                      const y = 40 + 28 * Math.sin(rad);
-                      return <circle key={i} cx={x} cy={y} r="1.5" fill="hsl(var(--accent))" opacity="0.8" />;
-                    })}
-                    <path d="M40 10 L42 18 L40 16 L38 18 Z" fill="hsl(var(--primary))" opacity="0.5" />
-                    <path d="M70 40 L62 42 L64 40 L62 38 Z" fill="hsl(var(--accent))" opacity="0.5" />
-                  </svg>
-                </div>
-                <div className="space-y-2">
-                  <p className="font-serif text-xl" style={{ color: 'hsl(var(--foreground))' }}>
-                    Every connection begins with a little magic.
-                  </p>
-                  <p className="text-sm leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Your messages are private and encrypted. Start a conversation with a fellow member.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 w-full max-w-xs">
-                  <button
-                    onClick={() => { setShowCompose(true); setComposeQuery(''); setComposeResults([]); }}
-                    className="w-full py-2.5 rounded-full text-sm font-medium transition-opacity active:opacity-70"
-                    style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
-                    Start a Conversation
-                  </button>
-                  <button
-                    onClick={() => navigate('/community/discover')}
-                    className="w-full py-2.5 rounded-full text-sm font-medium transition-opacity active:opacity-70"
-                    style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }}>
-                    Discover Members
-                  </button>
-                  <button
-                    onClick={() => navigate('/account/privacy')}
-                    className="text-xs mt-1 transition-opacity hover:opacity-70"
-                    style={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Manage privacy settings
-                  </button>
-                </div>
-              </div>
             ) : isOffline ? (
               <div className="flex flex-col items-center justify-center gap-4 px-8 pt-16 text-center">
                 <div className="w-16 h-16 rounded-full flex items-center justify-center"
@@ -2675,7 +2643,7 @@ export default function MessagesPage() {
                   Check connection
                 </button>
               </div>
-            ) : inboxRows.length === 0 ? (
+            ) : inboxRows.length === 0 && inboxFilter === 'all' && !inboxSearch ? null : inboxRows.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-14 px-8 text-center gap-3">
                 {inboxSearch ? (
                   <>
@@ -2733,7 +2701,7 @@ export default function MessagesPage() {
                     transition={{ delay: idx * 0.04 }}
                     onClick={() => conv.otherUser && void openConversation(conv.id, conv.otherUser)}
                     onContextMenu={(e) => { e.preventDefault(); setConvMenuId(convMenuId === conv.id ? null : conv.id); }}
-                    className="w-full flex items-center gap-3.5 px-4 py-2.5 text-left active:opacity-60 transition-opacity">
+                    className="w-full flex items-center gap-3.5 py-2.5 pl-4 pr-14 text-left active:opacity-60 transition-opacity">
                     <span className="relative flex-shrink-0">
                       <Avatar user={conv.otherUser} size={42} />
                       {conv.otherUser && (
@@ -2781,15 +2749,14 @@ export default function MessagesPage() {
                         </span>
                       </div>
                     </div>
-                    {/* Context menu trigger — visible on hover */}
+                    </motion.button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); setConvMenuId(convMenuId === conv.id ? null : conv.id); }}
-                      className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ color: 'hsl(var(--muted-foreground))' }}
-                      aria-label="Conversation options">
+                      onClick={() => setConvMenuId(convMenuId === conv.id ? null : conv.id)}
+                      className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground"
+                      aria-label="Conversation options"
+                      aria-expanded={convMenuId === conv.id}>
                       <MoreVertical className="w-4 h-4" />
                     </button>
-                  </motion.button>
                   {/* Conversation context menu */}
                   {convMenuId === conv.id && (
                     <>
@@ -2843,14 +2810,26 @@ export default function MessagesPage() {
                 </React.Fragment>
               ))
             )}
-          {/* ── Active Now strip ── */}
-          {inboxFilter === 'all' && (
-            <ActiveNowStrip
-              users={friends}
-              presence={batchPresence}
-              onStartConversation={u => void startConversationWith(u)}
-            />
-          )}
+            {inboxFilter === 'all' && !loadingConvs && !loadingGroups && !convLoadError && !isOffline && (
+              <footer className="mx-4 my-4 rounded-2xl border border-border bg-card px-4 py-4">
+                <p className="mb-3 font-serif text-base text-foreground">Every connection begins with a little magic</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      setShowCompose(true);
+                      setComposeQuery('');
+                      setComposeResults([]);
+                      document.getElementById('mobile-inbox-search')?.scrollIntoView({ block: 'start' });
+                    }}
+                    className="min-h-10 rounded-full bg-primary px-3 text-xs font-semibold text-primary-foreground">
+                    Start a Conversation
+                  </button>
+                  <Link to="/community/discover" className="inline-flex min-h-10 items-center rounded-full border border-border px-3 text-xs font-semibold text-foreground">
+                    Discover Members
+                  </Link>
+                </div>
+              </footer>
+            )}
 
             {/* ── Groups action bar ── */}
             {inboxFilter === 'groups' && (

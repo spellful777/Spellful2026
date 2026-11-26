@@ -1,3 +1,4 @@
+import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import { profileActivity } from '@/server/lib/profile-activity.js';
 import { profileAudience } from '@/server/lib/profile-audience.js';
 import type { Request, Response } from 'express';
@@ -17,6 +18,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
     // Resolve by normalized username — fall back to LOWER(username) for rows
     // where username_normalized hasn't been backfilled yet.
     const normalized = username.toLowerCase();
+    const memberId = username.startsWith('~') ? username.slice(1) : null;
     const [profile] = await db
       .select({
         id: user.id,
@@ -56,7 +58,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
       })
       .from(user)
       .where(
-        or(
+        memberId ? eq(user.id, memberId) : or(
           eq(user.usernameNormalized, normalized),
           sql`(username_normalized IS NULL AND LOWER(username) = ${normalized})`,
         )
@@ -161,7 +163,16 @@ export default async function handler(req: Request<{ username: string }>, res: R
       if (!spark || !access.allows(spark.audience)) featuredAbout = null;
     }
     const { shareFollowing: _shareFollowing, invitePermission, ...publicProfile } = profile;
+    const latestPosts = await db.select({
+      id: communityPosts.id, title: communityPosts.title, createdAt: communityPosts.createdAt,
+    }).from(communityPosts).where(and(
+      eq(communityPosts.userId, profile.id), eq(communityPosts.isHidden, false),
+      access.preview && access.coven
+        ? or(eq(communityPosts.audience, 'public'), eq(communityPosts.audience, 'coven'))
+        : postAudienceAllows(access.preview ? undefined : viewerId ?? undefined),
+    )).orderBy(desc(communityPosts.createdAt), desc(communityPosts.id)).limit(4);
     res.json({
+      latestPosts,
       profile: {
         ...publicProfile, featuredAbout,
         interestTags: !isOwn && profile.profileSections?.some(section => section.id === 'interests' && !section.enabled) ? null : profile.interestTags,
