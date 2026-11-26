@@ -1,3 +1,4 @@
+import { generateDailyHoroscope } from '@/lib/horoscope-engine';
 import { findTopic } from '@/lib/spark-topics';
 import { parseSparkReading } from '@/lib/spark-reading';
 import { isSparkMediaId } from '@/lib/spark-media';
@@ -40,6 +41,11 @@ export default async function handler(req: Request, res: Response) {
     const reading = parseSparkReading(sparkReading);
     if ((sparkTopic != null && !topic) || (sparkReading != null && !reading))
       return res.status(400).json({ error: 'Choose a valid topic or share attachment.' });
+    if (reading?.type === 'horoscope') {
+      const canonical = generateDailyHoroscope(reading.sign, reading.date);
+      if (canonical.headline !== reading.headline || canonical.body !== reading.body)
+        return res.status(400).json({ error: 'This forecast has changed. Reopen the share from Home.' });
+    }
     if (!Array.isArray(mediaIds) || mediaIds.length > maxSparkPhotos || !mediaIds.every(isSparkMediaId) ||
         new Set(mediaIds).size !== mediaIds.length || (mediaIds.length && imageUrl !== undefined)) {
       return res.status(400).json({ error: `Choose up to ${maxSparkPhotos} photos or one video.` });

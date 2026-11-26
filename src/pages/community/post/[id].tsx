@@ -1,3 +1,4 @@
+import type { SharedHoroscope } from '@/lib/spark-reading';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SparkReadingAttachment } from '@/components/SparkReadingAttachment';
 import { topicPath } from '@/lib/spark-topics';
@@ -543,7 +544,7 @@ function ReplyComposer({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PostThreadPage() {
-  const loader = useLoaderData() as { readingPreview: 'natal' | 'tarot' | null } | undefined;
+  const loader = useLoaderData() as { readingPreview: { type: 'natal' | 'tarot' } | SharedHoroscope | null } | undefined;
   const { id } = useParams<{ id: string }>();
   const { session, isPending } = useSession();
   const navigate = useNavigate();
@@ -705,8 +706,10 @@ export default function PostThreadPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const tags = post?.tags ? post.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
-  const readingType = loader?.readingPreview ?? post?.sparkReading?.type;
-  const readingTitle = readingType === 'natal' ? 'A shared natal chart on Spellful'
+  const horoscope = loader?.readingPreview?.type === 'horoscope' ? loader.readingPreview : null;
+  const readingType = loader?.readingPreview?.type ?? post?.sparkReading?.type;
+  const readingTitle = horoscope ? `${horoscope.sign} · ${horoscope.date} · ${horoscope.headline}`
+    : readingType === 'horoscope' ? 'A shared horoscope on Spellful' : readingType === 'natal' ? 'A shared natal chart on Spellful'
     : readingType === 'tarot' ? 'A shared tarot spread on Spellful' : null;
   const pageTitle = readingTitle ?? (post ? `${post.title || 'Spark'} — Spellful Community` : 'Discussion — Spellful Community');
 
@@ -717,7 +720,7 @@ export default function PostThreadPage() {
         <meta name="description" content={readingTitle || post?.sparkReading ? 'A reading shared on Spellful' : post ? `${post.title} — community discussion on Spellful` : 'Community discussion'} />
         {(readingTitle || post?.sparkReading) && <>
           <meta property="og:title" content={readingTitle ?? 'A shared reading on Spellful'} />
-          <meta property="og:description" content="View the reading the author chose to share on Spellful." />
+          <meta property="og:description" content={horoscope?.body ?? "View the reading the author chose to share on Spellful."} />
         </>}
         <meta name="robots" content="noindex" />
       </Helmet>

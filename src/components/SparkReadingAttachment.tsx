@@ -2,6 +2,15 @@ import { projectTarot } from '@/lib/shared-reading';
 import { natalWheelSvg, type SparkReading } from '@/lib/spark-reading';
 
 export function SparkReadingAttachment({ reading, postId }: { reading: SparkReading; postId?: number }) {
+  if (reading.type === 'horoscope') {
+    return <figure className="my-2 min-w-0 rounded-lg border border-border bg-background/60 p-3" aria-label="Shared horoscope">
+      <figcaption className="text-xs text-muted-foreground">
+        {reading.sign} · <time dateTime={reading.date}>{reading.date}</time>
+      </figcaption>
+      <p className="my-1 break-words font-heading text-lg text-foreground">{reading.headline}</p>
+      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{reading.body}</p>
+    </figure>;
+  }
   if (reading.type === 'natal') {
     const imageUrl = postId ? '/api/community/posts/' + postId + '/chart.svg'
       : 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(natalWheelSvg(reading));

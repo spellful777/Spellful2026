@@ -13,5 +13,5 @@ export async function sparkShareMeta(req: Request<{ id: string }>, res: Response
       eq(communityPosts.audience, 'public'))).limit(1);
   const reading = parseSparkReading(post?.reading);
   if (!reading) return res.sendStatus(404);
-  return res.json({ type: reading.type });
+  return res.json(reading.type === 'horoscope' ? reading : { type: reading.type });
 }

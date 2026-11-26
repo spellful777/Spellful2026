@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router';
 import HomeFeed from './home-feed';
 import { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router';
@@ -152,10 +153,13 @@ function BenefitRow({ icon: Icon, title, desc, accent }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const { session } = useSession();
+  const [params] = useSearchParams();
   if (!session) return <PublicHomePage />;
   const { user } = session;
   const username = 'username' in user && typeof user.username === 'string' ? user.username : undefined;
-  return <HomeFeed key={user.id} username={username} />;
+  return params.get('feed') === 'following' || params.get('feed') === 'explore'
+    ? <HomeFeed key={user.id} username={username} />
+    : <CommandCenter key={user.id} />;
 }
 
 function PublicHomePage() {

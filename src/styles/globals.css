@@ -1156,3 +1156,4 @@ body:has(.spark-draft) nav[aria-label="Breadcrumb"] { display: none; }
 .spark-actions button:disabled { opacity: .5; }
 .spark-actions :is(a,button):focus-visible { outline: 2px solid hsl(var(--primary)); border-radius: 6px; }
 .spark-comment-branch-compact { margin-left: -4px; --branch-width: 4px; }
+details[open] .cosmic-weather-preview { display: none; }

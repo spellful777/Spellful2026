@@ -1,3 +1,5 @@
+import { COMMUNITY_REQUESTS } from '@/lib/community-navigation';
+import { useSocialSummary } from '@/hooks/useSocialSummary';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -171,6 +173,7 @@ function NotifRow({
 export default function NotificationsPage() {
   const { session, isPending } = useSession();
   const navigate = useNavigate();
+  const pendingRequests = useSocialSummary()?.pendingRequests ?? 0;
   const [notifications, setNotifications] = useState<CommunityNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -257,6 +260,9 @@ export default function NotificationsPage() {
         {/* Header */}
         <div className="border-b border-border bg-[hsl(var(--card-deep))]">
           <div className="max-w-2xl mx-auto px-4 py-6">
+            <Link to={COMMUNITY_REQUESTS} className="mb-3 flex min-h-11 items-center justify-between rounded-lg border border-border px-3 text-sm">
+              Coven requests {pendingRequests > 0 && <span className="text-primary">{pendingRequests} pending</span>}
+            </Link>
             <Link
               to="/community"
               className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4"

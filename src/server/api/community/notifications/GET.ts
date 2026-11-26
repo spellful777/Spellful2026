@@ -21,6 +21,18 @@ export default async function handler(req: Request, res: Response) {
     sql`(${event.replyId} is null or exists (select 1 from ${communityReplies}
       where ${communityReplies.id} = ${event.replyId} and ${communityReplies.postId} = ${event.postId}
         and ${communityReplies.isHidden} = false))`);
+  if (req.query.summary === '1') {
+    const [result] = await db.select({ unreadReplies: countDistinct(event.replyId) }).from(event)
+      .leftJoin(communityPosts, eq(event.postId, communityPosts.id))
+      .where(and(visible, eq(event.isRead, false), inArray(event.type, ['reply', 'direct_reply']),
+        sql`not exists (select 1 from ${communityMutes}
+          where ${communityMutes.userId} = ${viewer} and ${communityMutes.postId} = ${event.postId})`,
+        sql`not exists (select 1 from ${user} where ${user.id} = ${viewer}
+          and json_unquote(json_extract(${user.notificationPreferences}, '$.communityReplies')) = 'false')`));
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.json({ unreadReplies: result?.unreadReplies ?? 0 });
+  }
+
   const inConversation = sql`
     ${event.type} = 'reply' and coalesce(${event.isRead}, false) = false
     and ${communityPosts.type} = 'spark' and ${communityPosts.userId} = ${viewer}

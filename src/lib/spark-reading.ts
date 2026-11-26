@@ -10,9 +10,27 @@ const natal = z.object({
   planets: z.array(angle).length(10),
 }).strict();
 
-export type SparkReading = z.infer<typeof natal> | z.infer<typeof sharedReadingSchema>;
+const horoscope = z.object({
+  type: z.literal('horoscope'),
+  sign: z.enum(['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces']),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
+    const parsed = new Date(value + 'T00:00:00Z');
+    return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+  }),
+  headline: z.string().min(1).max(280),
+  body: z.string().min(1).max(4000),
+}).strict();
+export type SharedHoroscope = z.infer<typeof horoscope>;
+
+export function horoscopeSnapshot(forecast: Omit<SharedHoroscope, 'type'>): SharedHoroscope {
+  return { type: 'horoscope', sign: forecast.sign, date: forecast.date, headline: forecast.headline, body: forecast.body };
+}
+
+export type SparkReading = z.infer<typeof natal> | z.infer<typeof sharedReadingSchema> | SharedHoroscope;
 
 export function parseSparkReading(value: unknown): SparkReading | null {
+  const daily = horoscope.safeParse(value);
+  if (daily.success) return daily.data;
   const chart = natal.safeParse(value);
   if (chart.success) return chart.data;
   const tarot = sharedReadingSchema.safeParse(value);

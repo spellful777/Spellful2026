@@ -131,7 +131,8 @@ export default function SparkComposer() {
             <SparkReadingAttachment reading={reading} />
             <p className="text-xs text-muted-foreground">{reading.type === 'natal'
               ? 'Shares the wheel without your birth details.'
-              : 'Shares the spread and any selected card meanings. Your question and private notes stay out.'}</p>
+              : reading.type === 'tarot' ? 'Shares the spread and any selected card meanings. Your question and private notes stay out.'
+              : 'Shares the sign, forecast date, headline, and horoscope paragraph.'}</p>
           </> : <p role="status" className="text-sm">This reading draft is unavailable. Open Spark from the completed reading again.</p>
           : quotedPostId ? originalLoading ? <p>Loading original Spark…</p> : <OriginalSparkCard spark={original?.audience === 'public' ? {
             id: original.id, title: original.title, authorName: original.authorName, imageUrl: original.imageUrl,

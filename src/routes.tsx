@@ -308,7 +308,7 @@ export const routes: RouteObject[] = [
       try {
         const base = typeof window === 'undefined' ? 'http://localhost:3000' : '';
         const response = await fetch(base + '/api/community/posts/' + encodeURIComponent(params.id ?? '') + '/reading-preview');
-        if (response.ok) return { readingPreview: (await response.json() as { type: 'natal' | 'tarot' }).type };
+        if (response.ok) return { readingPreview: await response.json() };
       } catch { /* Non-reading Sparks use the standard preview. */ }
       return { readingPreview: null };
     },

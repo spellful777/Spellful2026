@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Button } from '@/components/ui/button';
 import { useCommunityPosts } from '@/hooks/useCommunity';
-import { COMMUNITY_FEED, HOME_EXPLORE } from '@/lib/community-navigation';
+import { COMMUNITY_FEED, HOME_EXPLORE, HOME_FEED } from '@/lib/community-navigation';
 import SparkItLink from '@/components/SparkItLink';
 import HomeSocialMenu from '@/components/HomeSocialMenu';
 import HomeCovenCard from '@/components/HomeCovenCard';
@@ -22,6 +22,13 @@ export default function HomeFeed({ username }: { username?: string | null }) {
   const headerSpark = useRef<HTMLAnchorElement>(null);
   const floatingSparkLink = useRef<HTMLAnchorElement>(null);
   const [floatingSpark, setFloatingSpark] = useState(false);
+  const [keyboard, setKeyboard] = useState(false);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const update = () => setKeyboard(Boolean(viewport && window.innerHeight - viewport.height > 100));
+    viewport?.addEventListener('resize', update);
+    return () => viewport?.removeEventListener('resize', update);
+  }, []);
   const [scrolling, setScrolling] = useState(false);
   const [navHeight, setNavHeight] = useState(0);
   const { posts, loading, error, reload, pages, newestId } = useCommunityPosts(filter, undefined, page, 'newest', true, 'spark');
@@ -122,7 +129,7 @@ export default function HomeFeed({ username }: { username?: string | null }) {
       <Helmet><title>Home feed | Spellful</title><meta name="robots" content="noindex" /></Helmet>
       <HomeSocialMenu username={username} sparkRef={headerSpark} floatingSpark={floatingSpark} />
       <nav aria-label="Home feed" className="home-feed-tabs sticky top-0 z-30 grid grid-cols-3 md:top-20">
-        <Link to="/" className="home-feed-link coven-press" aria-current={filter === 'following' ? 'page' : undefined}>Following</Link>
+        <Link to={HOME_FEED} className="home-feed-link coven-press" aria-current={filter === 'following' ? 'page' : undefined}>Following</Link>
         <Link to={HOME_EXPLORE} className="home-feed-link coven-press" aria-current={filter === 'discover' ? 'page' : undefined}>Explore</Link>
         <Link to={COMMUNITY_FEED} className="home-feed-link coven-press">Community</Link>
       </nav>
@@ -156,7 +163,7 @@ export default function HomeFeed({ username }: { username?: string | null }) {
           <Button variant="outline" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next</Button>
         </nav>
       )}
-      {floatingSpark && (
+      {floatingSpark && !keyboard && (
         <div
           data-scrolling={scrolling || undefined}
           className="home-floating-spark fixed bottom-[calc(var(--home-mobile-nav-height)+0.75rem)] right-4 z-[45] md:hidden"

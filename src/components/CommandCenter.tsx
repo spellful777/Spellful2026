@@ -12,7 +12,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { Menu, User } from 'lucide-react';
+import { Menu, User, Bell, Mail, Stars, Moon, BookOpen, Orbit, PenLine, CircleDot, ChevronRight, Sparkles } from 'lucide-react';
+import { HOME_FEED } from '@/lib/community-navigation';
+import { useSocialSummary } from '@/hooks/useSocialSummary';
 import { useSession } from '@/lib/auth/auth-client';
 import type { DailyHoroscope } from '@/lib/horoscope-engine';
 import { getUpcomingEvents, formatEventDate, formatEventDay } from '@/lib/astro-feed';
@@ -46,13 +48,12 @@ const SIGN_SYMBOLS: Record<string, string> = {
 
 // ─── Inner Universe grid items ────────────────────────────────────────────────
 const UNIVERSE_ITEMS = [
-  { id: 'tarot',    href: '/tarot',         glyph: '🃏', label: 'Tarot' },
-  { id: 'rituals',  href: '/moon-ritual',   glyph: '🌙', label: 'Rituals' },
-  { id: 'grimoire', href: '/grimoire',      glyph: '📖', label: 'Grimoire' },
-  { id: 'astro',    href: '/astrology',     glyph: '⭐', label: 'Astrology' },
-  { id: 'journal',  href: '/dream-journal', glyph: '💭', label: 'Journal' },
-  { id: 'birth-chart', href: '/birth-chart', glyph: '🌌', label: 'Birth Chart' },
-  { id: 'messages', href: '/messages',      glyph: '✉️', label: 'Inbox' },
+  { href: '/tarot', icon: Stars, label: 'Tarot' },
+  { href: '/moon-ritual', icon: Moon, label: 'Rituals' },
+  { href: '/grimoire', icon: BookOpen, label: 'Grimoire' },
+  { href: '/astrology', icon: Orbit, label: 'Astrology' },
+  { href: '/dream-journal', icon: PenLine, label: 'Journal' },
+  { href: '/birth-chart', icon: CircleDot, label: 'Birth Chart' },
 ];
 
 // ─── Compact card wrapper ─────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ function MoonCard({ moon }: { moon: MoonProps }) {
 }
 
 // ─── Your Daily Guidance card — full inline layout, no extra click ────────────
-function DailyGuidanceCard() {
+function useDailyGuidance() {
   const [horoscope, setHoroscope] = useState<DailyHoroscope | null>(null);
   const [noBirthDate, setNoBirthDate] = useState(false);
 
@@ -176,6 +177,11 @@ function DailyGuidanceCard() {
 
   useEffect(() => { void fetchHoroscope(); }, [fetchHoroscope]);
 
+  return { horoscope, noBirthDate };
+}
+
+function DailyGuidanceCard({ horoscope, noBirthDate }: ReturnType<typeof useDailyGuidance>) {
+  const [expanded, setExpanded] = useState(false);
   // ── No birth date ──
   if (noBirthDate) {
     return (
@@ -225,8 +231,8 @@ function DailyGuidanceCard() {
   }
 
   const signSymbol = SIGN_SYMBOLS[horoscope.sign] ?? '✦';
-  const today = new Date();
-  const dateLabel = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const dateLabel = new Date(horoscope.date + 'T12:00:00Z').toLocaleDateString('en-US',
+    { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
 
   return (
     <motion.div
@@ -286,7 +292,7 @@ function DailyGuidanceCard() {
 
       {/* Body paragraph */}
       <p
-        className="mb-5 leading-relaxed"
+        className={`mb-5 leading-relaxed ${expanded ? "" : "line-clamp-3 md:line-clamp-none"}`}
         style={{
           fontFamily: 'var(--font-heading)',
           fontSize: '1rem',
@@ -298,6 +304,11 @@ function DailyGuidanceCard() {
         {horoscope.body}
       </p>
 
+      <button type="button" className="md:hidden min-h-11 text-sm text-primary" aria-expanded={expanded}
+        aria-controls="full-home-forecast" onClick={() => setExpanded(value => !value)}>
+        {expanded ? 'Show less' : 'Read full forecast'}
+      </button>
+      <div id="full-home-forecast" className={expanded ? "" : "hidden md:block"}>
       {/* Planet note blockquote */}
       {horoscope.planetNote && (
         <blockquote
@@ -394,205 +405,83 @@ function DailyGuidanceCard() {
       >
         Updates at midnight · Returns tomorrow
       </p>
+      </div>
     </motion.div>
   );
 }
 
 // ─── Inner Universe grid ──────────────────────────────────────────────────────
-function InnerUniverseGrid() {
-  const [unread, setUnread] = useState(0);
-
-  const loadUnread = useCallback(async () => {
-    try {
-      const res = await fetch('/api/conversations');
-      if (!res.ok) return;
-      const raw = (await res.json()) as { conversations?: Array<{ unreadCount: number }> } | Array<{ unreadCount: number }>;
-      const data = Array.isArray(raw) ? raw : (raw.conversations ?? []);
-      setUnread(data.reduce((s, c) => s + c.unreadCount, 0));
-    } catch { /* badge stays 0 */ }
-  }, []);
-
+function HomeActivity() {
+  const summary = useSocialSummary();
+  const [replies, setReplies] = useState(0);
   useEffect(() => {
-    void loadUnread();
-    const id = setInterval(() => { void loadUnread(); }, 30_000);
-    return () => clearInterval(id);
-  }, [loadUnread]);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, delay: 0.22 }}
-    >
-      {/* Section header */}
-      <div className="flex items-center justify-between mb-3">
-        <p
-          className="text-sm"
-          style={{ fontFamily: 'var(--font-heading)', fontSize: '1.05rem', color: 'hsl(var(--foreground))' }}
-        >
-          Your Inner Universe
-        </p>
-        <Link
-          to="/dashboard"
-          className="text-xs transition-opacity hover:opacity-70"
-          style={{ color: 'hsl(var(--primary))', fontFamily: 'var(--font-sans)' }}
-        >
-          Explore All →
-        </Link>
-      </div>
-
-      {/* 3-column grid — 7 items, last tile full width */}
-      <div className="grid grid-cols-3 gap-2.5">
-        {UNIVERSE_ITEMS.map((item, i) => {
-          const isInbox = item.id === 'messages';
-          const isLast = i === UNIVERSE_ITEMS.length - 1 && UNIVERSE_ITEMS.length % 3 !== 0;
-          return (
-            <motion.div
-              key={item.id}
-              className={isLast ? 'col-span-3' : ''}
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              whileTap={{ scale: 0.93 }}
-              transition={{ duration: 0.35, delay: 0.22 + i * 0.05, ease: 'easeOut' as const }}
-            >
-              <Link
-                to={item.href}
-                className="relative flex flex-col items-center justify-center gap-2 py-4 px-2 rounded-2xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                style={{
-                  background: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  minHeight: '80px',
-                  width: '100%',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLAnchorElement).style.borderColor = 'hsl(var(--primary) / 0.4)';
-                  (e.currentTarget as HTMLAnchorElement).style.background = 'hsl(var(--primary) / 0.05)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLAnchorElement).style.borderColor = 'hsl(var(--border))';
-                  (e.currentTarget as HTMLAnchorElement).style.background = 'hsl(var(--card))';
-                }}
-                onTouchStart={(e) => {
-                  const el = e.currentTarget as HTMLAnchorElement;
-                  el.classList.remove('tile-magical-glow');
-                  // Force reflow so re-adding the class restarts the animation
-                  void el.offsetWidth;
-                  el.classList.add('tile-magical-glow');
-                  el.style.borderColor = 'hsl(var(--primary) / 0.6)';
-                  el.style.background = 'hsl(var(--primary) / 0.07)';
-                }}
-                onTouchEnd={(e) => {
-                  const el = e.currentTarget as HTMLAnchorElement;
-                  el.style.borderColor = 'hsl(var(--border))';
-                  el.style.background = 'hsl(var(--card))';
-                }}
-                aria-label={isInbox && unread > 0 ? `${item.label} — ${unread} unread` : item.label}
-              >
-                {isInbox && unread > 0 && (
-                  <span
-                    className="absolute top-2 right-2 text-xs font-semibold px-1.5 py-0.5 rounded-full leading-none"
-                    style={{
-                      background: 'hsl(var(--destructive) / 0.85)',
-                      color: 'hsl(var(--destructive-foreground))',
-                      fontFamily: 'var(--font-sans)',
-                      fontSize: '0.6rem',
-                    }}
-                    aria-hidden="true"
-                  >
-                    {unread}
-                  </span>
-                )}
-                <span className="text-2xl leading-none" aria-hidden="true">{item.glyph}</span>
-                <span
-                  className="text-center leading-tight"
-                  style={{
-                    fontFamily: 'var(--font-sans)',
-                    fontSize: '0.7rem',
-                    color: 'hsl(var(--foreground) / 0.85)',
-                    fontWeight: 400,
-                  }}
-                >
-                  {item.label}
-                </span>
-              </Link>
-            </motion.div>
-          );
-        })}
-      </div>
-    </motion.div>
-  );
+    const abort = new AbortController();
+    let pending = false;
+    async function refresh() {
+      if (document.hidden || pending) return;
+      pending = true;
+      try {
+        const result = await fetch('/api/community/notifications?summary=1', { signal: abort.signal, cache: 'no-store' });
+        if (!result.ok) return;
+        const data = await result.json() as { unreadReplies?: number };
+        if (!abort.signal.aborted) setReplies(data.unreadReplies ?? 0);
+      } catch { /* Keep the last confirmed count. */ }
+      finally { pending = false; }
+    }
+    void refresh();
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+    return () => { abort.abort(); window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, []);
+  const requests = summary?.pendingRequests ?? 0;
+  return <section aria-label="Updates and messages" className="flex gap-1 rounded-xl border border-border bg-card px-2">
+    <Link to="/community/notifications" className="flex min-h-12 min-w-0 flex-1 items-center gap-2 px-1">
+      <Bell className="size-4 shrink-0 text-primary" aria-hidden="true" />
+      <span className="min-w-0 flex-1"><strong className="block text-sm">Activity</strong>
+        {(replies > 0 || requests > 0) && <span className="block text-xs text-muted-foreground">
+          {[replies && `${replies} new ${replies === 1 ? 'reply' : 'replies'}`,
+            requests && `${requests} Coven ${requests === 1 ? 'request' : 'requests'}`].filter(Boolean).join(' · ')}
+        </span>}
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+    </Link>
+    <Link to="/messages" className="flex min-h-12 shrink-0 items-center gap-1.5 border-l border-border px-2 text-xs text-muted-foreground">
+      <Mail className="size-4" aria-hidden="true" /> Inbox
+    </Link>
+  </section>;
 }
 
-// ─── Cosmic Weather Strip — brief atmospheric blurb between grid and calendar ──
-// Rotating fallback phrases shown when no personalised horoscope is available
-const COSMIC_WEATHER_FALLBACKS = [
-  'The veil between worlds is thin tonight — trust what stirs beneath the surface.',
-  'Celestial currents are shifting. Stay open to what the stars are whispering.',
-  'A quiet magic moves through the cosmos. Let intuition be your compass today.',
-  'The universe is rearranging itself in your favour. Breathe and receive.',
-  'Ancient rhythms pulse through the sky. Your inner knowing is your greatest tool.',
-  'Something is completing its cycle. Release what no longer serves your path.',
-  'The cosmos invites stillness. In the pause, clarity finds you.',
-];
+function InnerUniverseGrid() {
+  return <section aria-labelledby="home-universe">
+    <div className="mb-1.5 flex items-center justify-between gap-2">
+      <h2 id="home-universe" className="font-heading text-lg">Your Inner Universe</h2>
+      <Link to="/dashboard" className="inline-flex min-h-10 shrink-0 items-center text-xs text-primary">Explore All →</Link>
+    </div>
+    <div className="grid grid-cols-3 gap-1.5">
+      {UNIVERSE_ITEMS.map(({ href, icon: Icon, label }) => <Link key={href} to={href}
+        className="coven-press flex min-h-12 min-w-0 items-center gap-1 rounded-xl border border-border bg-card px-1.5 text-xs hover:border-primary/50">
+        <Icon className="size-4 shrink-0 text-primary" strokeWidth={1.6} aria-hidden="true" />
+        <span>{label}</span>
+      </Link>)}
+    </div>
+  </section>;
+}
 
-function CosmicWeatherStrip() {
-  // Start with index 0 on both server and client to avoid SSR hydration mismatch.
-  // The useEffect immediately picks the correct day-based phrase and fetches live data.
-  const [weather, setWeather] = useState<string>(COSMIC_WEATHER_FALLBACKS[0]!);
-
-  useEffect(() => {
-    // Set the day-based fallback first (client-only, safe from hydration mismatch)
-    const fallbackIndex = new Date().getDate() % COSMIC_WEATHER_FALLBACKS.length;
-    // eslint-disable-next-line security/detect-object-injection
-    setWeather(COSMIC_WEATHER_FALLBACKS[fallbackIndex] ?? COSMIC_WEATHER_FALLBACKS[0]!);
-
-    // Then try to fetch a personalised reading
-    void (async () => {
-      try {
-        const res = await fetch('/api/horoscope/today');
-        if (!res.ok) return; // keep fallback
-        const data = await res.json() as DailyHoroscope;
-        if (data.planetNote) {
-          setWeather(data.planetNote);
-        } else if (data.body) {
-          const dotIdx = data.body.search(/[.!?]/);
-          const firstSentence = dotIdx > 0 ? data.body.slice(0, dotIdx + 1) : data.body.slice(0, 120);
-          setWeather(firstSentence);
-        }
-      } catch { /* keep fallback */ }
-    })();
-  }, []);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.24 }}
-      className="rounded-2xl px-5 py-4 flex items-start gap-3"
-      style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
-    >
-      <span className="text-lg shrink-0 mt-0.5" aria-hidden="true">🌌</span>
-      <div className="min-w-0">
-        <p
-          className="text-xs uppercase tracking-widest mb-1.5"
-          style={{ color: 'hsl(var(--primary))', fontFamily: 'var(--font-sans)', letterSpacing: '0.18em', fontSize: '0.62rem' }}
-        >
-          Cosmic Weather
-        </p>
-        <p
-          style={{
-            fontFamily: 'var(--font-heading)',
-            fontSize: '0.95rem',
-            fontStyle: 'italic',
-            color: 'hsl(var(--foreground) / 0.85)',
-            lineHeight: 1.6,
-          }}
-        >
-          {weather}
-        </p>
-      </div>
-    </motion.div>
-  );
+function CosmicWeatherStrip({ forecast }: { forecast: DailyHoroscope | null }) {
+  const distinct = (forecast as (DailyHoroscope & { cosmicInsight?: string }) | null)?.cosmicInsight?.trim();
+  const today = new Date();
+  const date = today.toISOString().slice(0, 10);
+  const event = getUpcomingEvents(today, 2).find(item => item.category !== 'moon' &&
+    item.date.toISOString().slice(0, 10) === date);
+  const insight = distinct || event?.detail;
+  const normalize = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+  if (!insight || !forecast || [forecast.planetNote, forecast.body].some(part => part && normalize(part).includes(normalize(insight)))) return null;
+  return <details className="rounded-xl border border-border bg-card p-3">
+    <summary className="cursor-pointer text-sm font-semibold text-primary">Cosmic Weather
+      <span className="cosmic-weather-preview mt-1 line-clamp-1 text-sm font-normal text-muted-foreground">{insight}</span>
+    </summary>
+    <p className="mt-1 text-sm text-muted-foreground">{insight}</p>
+  </details>;
 }
 
 // ─── Cosmic Calendar card ─────────────────────────────────────────────────────
@@ -771,6 +660,7 @@ function CosmicCalendarCard() {
 export default function CommandCenter() {
   const { session } = useSession();
   const navigate = useNavigate();
+  const guidance = useDailyGuidance();
 
   // Compute moon data internally — safe on SSR (static initial) and hydrates client-side
   const [moon, setMoon] = useState<{
@@ -840,8 +730,8 @@ export default function CommandCenter() {
         <button
           className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           style={{ color: 'hsl(var(--foreground) / 0.7)' }}
-          aria-label="Open menu"
-          onClick={() => { /* nav drawer hook point */ }}
+          aria-label="Open Spark feed"
+          onClick={() => navigate(HOME_FEED)}
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -928,9 +818,11 @@ export default function CommandCenter() {
       {/* ── Cards stack ── */}
       <div className="px-4 pb-8 flex flex-col gap-3">
         <MoonCard moon={moon} />
-        <DailyGuidanceCard />
+        <DailyGuidanceCard {...guidance} />
+        <HomeActivity />
         <InnerUniverseGrid />
-        <CosmicWeatherStrip />
+        <CosmicWeatherStrip forecast={guidance.horoscope} />
+        <Link to={HOME_FEED} className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm text-primary"><Sparkles className="size-4" /> Open Spark feed <ChevronRight className="ml-auto size-4" /></Link>
         <CosmicCalendarCard />
       </div>
     </section>

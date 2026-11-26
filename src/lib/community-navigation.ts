@@ -3,6 +3,7 @@ export const COMMUNITY_GROUPS = '/community?view=groups';
 export const COMMUNITY_UPDATES = '/community?view=updates';
 export const COMMUNITY_CONNECTIONS = '/community?view=coven';
 export const COMMUNITY_REQUESTS = '/community?view=coven&tab=requests';
+export const HOME_FEED = '/?feed=following';
 export const HOME_EXPLORE = '/?feed=explore';
 export const SPARK_COMPOSE = '/community/new?kind=spark';
 export const COMMUNITY_FAVORITES = '/community/bookmarks';
