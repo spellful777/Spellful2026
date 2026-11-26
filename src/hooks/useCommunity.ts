@@ -67,24 +67,33 @@ export function useCommunityPosts(filter: PostFilter, category?: string, page = 
   const [result, setResult] = useState<PostsResult>({ posts: [], total: 0, page: 1, pages: 0 });
   const [loading, setLoading] = useState(true);
 
+  const [error, setError] = useState(false);
   const pending = useRef<AbortController | null>(null);
   const load = useCallback(() => {
     pending.current?.abort();
     const controller = new AbortController();
     pending.current = controller;
     setLoading(true);
+    setError(false);
 
     const params = new URLSearchParams({ filter, page: String(page), limit: '20' });
     if (category) params.set('category', category);
     const empty: PostsResult = { posts: [], total: 0, page, pages: 0 };
 
     fetch(`/api/community/posts?${params}`, { signal: controller.signal })
-      .then((response) => response.ok ? response.json() : empty)
+      .then((response) => {
+        if (!response.ok) throw new Error('Unable to load Coven posts');
+        return response.json();
+      })
       .then((data: PostsResult) => {
-        if (!controller.signal.aborted) setResult(Array.isArray(data?.posts) ? data : empty);
+        if (!Array.isArray(data?.posts)) throw new Error('Invalid Coven response');
+        if (!controller.signal.aborted) setResult(data);
       })
       .catch(() => {
-        if (!controller.signal.aborted) setResult(empty);
+        if (!controller.signal.aborted) {
+          setResult(empty);
+          setError(true);
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -96,7 +105,7 @@ export function useCommunityPosts(filter: PostFilter, category?: string, page = 
     return () => pending.current?.abort();
   }, [load]);
 
-  return { ...result, loading, reload: load };
+  return { ...result, loading, error, reload: load };
 }
 
 export function useCommunityNotifications() {

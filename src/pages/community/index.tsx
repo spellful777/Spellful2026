@@ -124,99 +124,94 @@ function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'
   const ago = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: 'easeOut' as const }}
-      className="group"
+    <article
+      className="group relative rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 focus-within:border-primary"
     >
-      <Link
-        to={`/community/post/${post.id}`}
-        className="block rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-[hsl(var(--card-mid))] transition-colors p-4 gap-3"
-      >
-        {/* Top row */}
-        <div className="flex items-start gap-3">
-          {/* Avatar — links to profile */}
-          <Link
-            to={post.authorUsername ? `/u/${post.authorUsername}` : '#'}
-            onClick={(e) => e.stopPropagation()}
-            className="shrink-0 mt-0.5"
-          >
-            {post.authorImage ? (
-              <img loading="lazy" src={post.authorImage} alt={post.authorName ?? ''} className="w-8 h-8 rounded-full object-cover hover:ring-2 hover:ring-primary/50 transition-all" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground hover:ring-2 hover:ring-primary/50 transition-all">
-                {(post.authorName ?? '?')[0].toUpperCase()}
-              </div>
-            )}
-          </Link>
+      {/* Top row */}
+      <div className="flex items-start gap-3">
+        <div aria-hidden="true" className="shrink-0 mt-0.5">
+          {post.authorImage ? (
+            <img loading="lazy" src={post.authorImage} alt="" className="w-8 h-8 rounded-full object-cover hover:ring-2 hover:ring-primary/50 transition-all" />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground hover:ring-2 hover:ring-primary/50 transition-all">
+              {(post.authorName ?? '?')[0].toUpperCase()}
+            </div>
+          )}
+        </div>
 
-          <div className="flex-1 min-w-0">
-            {/* Meta row */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground mb-1">
+        <div className="flex-1 min-w-0">
+          {/* Meta row */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground mb-1">
+            {post.authorUsername ? (
               <Link
-                to={post.authorUsername ? `/u/${post.authorUsername}` : '#'}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-foreground/70 hover:text-primary transition-colors"
-              >{post.authorName ?? 'Unknown'}</Link>
-              <span>·</span>
-              <span>{ago}</span>
-              {post.categoryName && (
-                <>
-                  <span>·</span>
-                  <span className="text-accent">{post.categoryName}</span>
-                </>
-              )}
-              {post.isPinned && <Pin className="w-3 h-3 text-primary" />}
-              {post.isLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
-            </div>
-
-            {/* Title */}
-            <div className="flex items-start gap-2">
-              {post.type === 'question' && (
-                <HelpCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-              )}
-              <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
-                {post.title}
-              </h3>
-              {post.acceptedReplyId && (
-                <Badge variant="outline" className="shrink-0 text-[10px] border-[hsl(var(--success))] text-[hsl(var(--success))] px-1.5 py-0">
-                  Solved
-                </Badge>
-              )}
-            </div>
-
-            {post.preview && (
-              <p className="mt-1 line-clamp-3 break-words text-sm text-muted-foreground">{post.preview}</p>
+                to={`/u/${post.authorUsername}`}
+                className="relative z-10 rounded font-medium text-foreground/70 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+              >
+                {post.authorName ?? post.authorUsername}
+              </Link>
+            ) : <span>{post.authorName ?? 'Unknown'}</span>}
+            <span>·</span>
+            <span>{ago}</span>
+            {post.categoryName && (
+              <>
+                <span>·</span>
+                <span className="text-accent">{post.categoryName}</span>
+              </>
             )}
+            {post.isPinned && <Pin className="w-3 h-3 text-primary" />}
+            {post.isLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
+          </div>
 
-            {/* Tags */}
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {tags.slice(0, 4).map((tag) => (
-                  <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
+          {/* Title */}
+          <div className="flex items-start gap-2">
+            {post.type === 'question' && (
+              <HelpCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+            )}
+            <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+              <Link
+                to={`/community/post/${post.id}`}
+                className="after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-primary"
+              >
+                {post.title}
+              </Link>
+            </h3>
+            {post.acceptedReplyId && (
+              <Badge variant="outline" className="shrink-0 text-[10px] border-[hsl(var(--success))] text-[hsl(var(--success))] px-1.5 py-0">
+                Solved
+              </Badge>
             )}
           </div>
-        </div>
 
-        {/* Stats row */}
-        <div className="flex items-center gap-4 mt-2.5 pl-11 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <ThumbsUp className="w-3 h-3" /> {post.likeCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <MessageSquare className="w-3 h-3" /> {post.replyCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Eye className="w-3 h-3" /> {post.viewCount}
-          </span>
+          {post.preview && (
+            <p className="mt-1 line-clamp-3 break-words text-sm text-muted-foreground">{post.preview}</p>
+          )}
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {tags.slice(0, 4).map((tag) => (
+                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
-      </Link>
-    </motion.div>
+      </div>
+
+      {/* Stats row */}
+      <div className="flex items-center gap-4 mt-2.5 pl-11 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <ThumbsUp className="w-3 h-3" /> {post.likeCount}
+        </span>
+        <span className="flex items-center gap-1">
+          <MessageSquare className="w-3 h-3" /> {post.replyCount}
+        </span>
+        <span className="flex items-center gap-1">
+          <Eye className="w-3 h-3" /> {post.viewCount}
+        </span>
+      </div>
+    </article>
   );
 }
 
@@ -304,7 +299,7 @@ export default function CommunityPage() {
   const [view, setView] = useState<'feed' | 'coven' | 'friends' | 'hearth'>('feed');
 
   const { categories, loading: catsLoading } = useCommunityCategories();
-  const { posts, total, pages, loading: postsLoading } = useCommunityPosts(filter, activeCategory, page);
+  const { posts, total, pages, loading: postsLoading, error: postsError, reload: reloadPosts } = useCommunityPosts(filter, activeCategory, page);
   const unread = useCommunityNotifications();
 
   // Presence heartbeat — registers this user as online so the live count is accurate.
@@ -869,6 +864,11 @@ export default function CommunityPage() {
               {postsLoading ? (
                 <div className="space-y-3">
                   {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+                </div>
+              ) : postsError ? (
+                <div className="rounded-xl border border-border bg-card p-6 text-center">
+                  <p role="status" className="text-sm text-muted-foreground">Coven posts couldn’t load.</p>
+                  <Button className="mt-3" size="sm" variant="outline" onClick={reloadPosts}>Try again</Button>
                 </div>
               ) : posts.length === 0 ? (
                 <div className="rounded-xl border border-border bg-card p-10 text-center">
