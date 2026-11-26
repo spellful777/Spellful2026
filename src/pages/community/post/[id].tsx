@@ -936,6 +936,15 @@ export default function PostThreadPage() {
             </section>
           )}
 
+          {post && !post.isLocked && session?.user?.id === post.userId && (
+            <Link
+              to={`/tarot?followUp=${post.id}`}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-primary hover:border-primary"
+            >
+              <Sparkles className="h-4 w-4" /> Draw tarot for a follow-up
+            </Link>
+          )}
+
           {/* ── Composer ── */}
           {post && (
             <ReplyComposer

@@ -12,7 +12,7 @@
 import { useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, Copy, Check, ExternalLink, Download, Share2 } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { useSession } from '@/lib/auth/auth-client';
 import type { SharedReading } from '@/lib/shared-reading';
 import { shareContent } from '@/lib/share-studio';
@@ -478,6 +478,9 @@ async function generateTarotStory(
 
 export default function ShareTarotModal({ payload, onClose }: Props) {
   const { session } = useSession();
+  const [params] = useSearchParams();
+  const thread = Number(params.get('followUp'));
+  const followUpPostId = Number.isSafeInteger(thread) && thread > 0 ? thread : undefined;
   const reading: SharedReading = {
     type: 'tarot',
     spreadType: payload.spreadType,
@@ -653,11 +656,11 @@ export default function ShareTarotModal({ payload, onClose }: Props) {
 
             {session && (
               <Link
-                to="/community/new"
+                to={followUpPostId ? `/community/new?followUp=${followUpPostId}` : "/community/new"}
                 state={{ reading }}
                 className="block rounded-lg border border-primary px-4 py-2 text-center text-sm font-semibold text-primary focus-visible:outline focus-visible:outline-primary"
               >
-                Share to Coven feed
+                {followUpPostId ? "Attach to follow-up" : "Share to Coven feed"}
               </Link>
             )}
 
