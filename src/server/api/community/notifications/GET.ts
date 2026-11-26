@@ -15,7 +15,12 @@ export default async function handler(req: Request, res: Response) {
   const offset = (page - 1) * limit;
 
   const viewer = session.user.id;
-  const visible = and(eq(communityNotifications.userId, viewer), sql`(
+  const groupVisible = sql`not exists (
+    select 1 from ${communityPosts} where ${communityPosts.id} = ${communityNotifications.postId}
+      and ${communityPosts.circleId} is not null
+      and (${communityPosts.isHidden} = true or not ${postAudienceAllows(viewer)})
+  )`;
+  const visible = and(eq(communityNotifications.userId, viewer), groupVisible, sql`(
     ${communityNotifications.type} not in ('mention', 'follow_up') or (
       exists (select 1 from ${communityPosts}
         where ${communityPosts.id} = ${communityNotifications.postId}

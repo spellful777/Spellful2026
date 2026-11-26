@@ -529,6 +529,7 @@ export const communityPosts = mysqlTable('community_posts', {
   isLocked: boolean('is_locked').default(false),
   isHidden: boolean('is_hidden').default(false),
   acceptedReplyId: int('accepted_reply_id'),
+  circleId: int('circle_id'),
   audience: varchar('audience', { length: 20 }).default('public'), // public | coven
   likeCount: int('like_count').default(0),
   replyCount: int('reply_count').default(0),

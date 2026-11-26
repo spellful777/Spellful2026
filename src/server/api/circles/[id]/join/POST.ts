@@ -12,38 +12,38 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   if (!session?.user?.id) return res.status(401).json({ error: 'Unauthorized' });
   const myId = session.user.id;
 
-  const circleId = parseInt(req.params.id);
-  if (isNaN(circleId)) return res.status(400).json({ error: 'Invalid circle id' });
+  const circleId = Number(req.params.id);
+  if (!Number.isSafeInteger(circleId) || circleId < 1) return res.status(400).json({ error: 'Invalid circle id' });
 
   if (!db) return res.status(503).json({ error: 'Database unavailable' });
 
   try {
-    // Check if already a member
-    const existing = await db.execute(sql`
-      SELECT id, status FROM circle_memberships WHERE circle_id = ${circleId} AND user_id = ${myId} LIMIT 1
-    `) as unknown as [Array<{ id: number; status: string }>, unknown];
+    const outcome = await db.transaction(async tx => {
+      const [circleRows] = await tx.execute(sql`
+        select membership_type from spellful_circles where id = ${circleId} limit 1 for update
+      `);
+      const circle = (circleRows as unknown as { membership_type: string }[])[0];
+      if (!circle) return { status: 404, error: 'Circle unavailable' };
 
-    const isMember = (existing[0] as Array<{ id: number; status: string }>).length > 0;
-
-    if (isMember) {
-      // Leave
-      await db.execute(sql`
-        DELETE FROM circle_memberships WHERE circle_id = ${circleId} AND user_id = ${myId}
+      const [memberRows] = await tx.execute(sql`
+        select status from circle_memberships where circle_id = ${circleId} and user_id = ${myId} limit 1
       `);
-      await db.execute(sql`
-        UPDATE spellful_circles SET member_count = GREATEST(0, member_count - 1) WHERE id = ${circleId}
+      const member = (memberRows as unknown as { status: string }[])[0];
+      if (member?.status === 'active') {
+        await tx.execute(sql`delete from circle_memberships where circle_id = ${circleId} and user_id = ${myId}`);
+        await tx.execute(sql`update spellful_circles set member_count = greatest(0, member_count - 1) where id = ${circleId}`);
+        return { status: 200, joined: false };
+      }
+      if (member || circle.membership_type !== 'open') {
+        return { status: 403, error: 'An invitation is required for this Circle' };
+      }
+      await tx.execute(sql`
+        insert into circle_memberships (circle_id, user_id, role, status) values (${circleId}, ${myId}, 'member', 'active')
       `);
-      res.json({ joined: false });
-    } else {
-      // Join
-      await db.execute(sql`
-        INSERT IGNORE INTO circle_memberships (circle_id, user_id, role, status) VALUES (${circleId}, ${myId}, 'member', 'active')
-      `);
-      await db.execute(sql`
-        UPDATE spellful_circles SET member_count = member_count + 1 WHERE id = ${circleId}
-      `);
-      res.json({ joined: true });
-    }
+      await tx.execute(sql`update spellful_circles set member_count = member_count + 1 where id = ${circleId}`);
+      return { status: 200, joined: true };
+    });
+    return res.status(outcome.status).json(outcome.error ? { error: outcome.error } : { joined: outcome.joined });
   } catch {
     res.status(503).json({ error: 'Circles feature not yet available' });
   }

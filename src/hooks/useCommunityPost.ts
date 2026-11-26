@@ -42,6 +42,7 @@ export interface CommunityPostDetail {
   isLocked: boolean;
   isHidden: boolean;
   audience: string | null;
+  circleId?: number | null;
   acceptedReplyId: number | null;
   likeCount: number;
   replyCount: number;

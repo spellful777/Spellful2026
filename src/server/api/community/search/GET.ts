@@ -1,4 +1,4 @@
-import { postAudienceAllows } from '@/server/lib/community-post-access.js';
+import { activeCircleMember, postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityPosts, communityCategories, user } from '@/server/db/schema.js';
@@ -19,10 +19,16 @@ export default async function handler(req: Request, res: Response) {
 
   if (!q && !tag) return res.json({ posts: [], total: 0, hasMore: false });
 
+  const circleId = typeof req.query.circle === 'string' && req.query.circle ? Number(req.query.circle) : undefined;
+  if (circleId !== undefined && (!Number.isSafeInteger(circleId) || circleId < 1)) {
+    return res.status(400).json({ error: 'Invalid Circle' });
+  }
+
   const conditions: (SQL | undefined)[] = [
     eq(communityPosts.isHidden, false),
     postAudienceAllows(myId),
   ];
+  if (circleId !== undefined) conditions.push(eq(communityPosts.circleId, circleId), activeCircleMember(circleId, myId));
   if (q) {
     conditions.push(or(like(communityPosts.title, `%${q}%`), like(communityPosts.body, `%${q}%`), like(communityPosts.tags, `%${q}%`)));
   }

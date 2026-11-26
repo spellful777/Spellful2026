@@ -787,7 +787,7 @@ export default function PostThreadPage() {
                 )}
                 {followError && <p role="status" className="w-full text-sm text-destructive">{followError}</p>}
 
-                {post.audience === 'public' && !post.isHidden && (
+                {post.audience === 'public' && !post.circleId && !post.isHidden && (
                   <Link
                     to={`/community/new?quote=${post.id}`}
                     className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground"

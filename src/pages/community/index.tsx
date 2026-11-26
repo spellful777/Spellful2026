@@ -155,6 +155,11 @@ export function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>[
             ) : <span>{post.authorName ?? 'Unknown'}</span>}
             <span>·</span>
             <span>{ago}</span>
+            {post.circleId && post.circleName && (
+              <Link to={`/circles/${post.circleId}`} className="relative z-10 rounded text-primary underline">
+                From {post.circleName}
+              </Link>
+            )}
             {post.categoryName && (
               <>
                 <span>·</span>

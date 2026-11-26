@@ -1,3 +1,4 @@
+import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityCategories, communityPosts } from '@/server/db/schema.js';
@@ -24,7 +25,7 @@ export default async function handler(req: Request, res: Response) {
   const counts = await db
     .select({ categoryId: communityPosts.categoryId, total: count() })
     .from(communityPosts)
-    .where(and(eq(communityPosts.isHidden, false)))
+    .where(and(eq(communityPosts.isHidden, false), postAudienceAllows(session.user.id)))
     .groupBy(communityPosts.categoryId);
 
   const countMap = new Map(counts.map((c) => [c.categoryId, c.total]));

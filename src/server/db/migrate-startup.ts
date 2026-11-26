@@ -376,6 +376,8 @@ export async function runStartupMigration(): Promise<void> {
     // ── community_posts: audience + edited_at columns ────────────────────────
     for (const colDef of [
       `ALTER TABLE community_posts ADD COLUMN audience VARCHAR(20) NOT NULL DEFAULT 'public'`,
+      `ALTER TABLE community_posts ADD COLUMN circle_id INT NULL`,
+      `ALTER TABLE community_posts ADD INDEX idx_community_posts_circle (circle_id, created_at)`,
       `ALTER TABLE community_posts ADD COLUMN edited_at TIMESTAMP NULL DEFAULT NULL`,
     ]) {
       try {

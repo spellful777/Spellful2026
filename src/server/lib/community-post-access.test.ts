@@ -10,12 +10,15 @@ describe('community post audience', () => {
     const db = new DatabaseSync(':memory:');
     try {
       db.exec(`
-        create table community_posts(user_id text, audience text);
+        create table community_posts(user_id text, audience text, circle_id int);
+        create table circle_memberships(circle_id int, user_id text, status text);
+        insert into circle_memberships values (7,'reader','active'),(8,'reader','pending');
         create table community_blocks(blocker_id text, blocked_id text);
         create table user_follows(follower_id text, following_id text);
         create table coven_connections(requester_id text, receiver_id text, status text);
-        insert into community_posts values ('reader','coven'),('ally','coven'),('other','public'),
-          ('pending','coven'),('stranger','coven'),('blocked','public'),('blocker','public');
+        insert into community_posts values ('reader','coven',null),('ally','coven',null),('other','public',null),
+          ('pending','coven',null),('stranger','coven',null),('blocked','public',null),('blocker','public',null),
+          ('circlemate','public',7),('invitation','public',8),('outsider','public',9);
         insert into community_blocks values ('reader','blocked'),('blocker','reader');
         insert into coven_connections values ('ally','reader','accepted'),('reader','pending','pending');
         insert into user_follows values ('reader','ally'),('reader','stranger');
@@ -29,7 +32,7 @@ describe('community post audience', () => {
     }
   }
   it('prioritizes followed authors after enforcing blocks and accepted membership', () => {
-    expect(posts('reader')).toEqual(['ally', 'other', 'reader']);
+    expect(posts('reader')).toEqual(['ally', 'circlemate', 'other', 'reader']);
   });
   it('only returns public posts for an anonymous viewer', () => {
     expect(posts()).toEqual(['blocked', 'blocker', 'other']);

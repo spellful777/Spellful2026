@@ -6,15 +6,15 @@ import { notifyCommunityMentions } from '@/server/lib/community-mention-notifica
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityPosts, communityCategories, communityPolls } from '@/server/db/schema.js';
-import { and, eq } from 'drizzle-orm';
-import { visiblePostForMember } from '@/server/lib/community-post-access.js';
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import { activeCircleMember, visiblePostForMember } from '@/server/lib/community-post-access.js';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request, res: Response) {
   const session = await getAuthSession(req);
   if (!session?.user?.id) return res.status(401).json({ error: 'Sign in to post' });
 
-  const { categoryId, type = 'discussion', title, body = '', tags = '', imageUrl, poll, audience = 'public', quotedPostId, sharedReading } = req.body as {
+  const { categoryId, type = 'discussion', title, body = '', tags = '', imageUrl, poll, audience = 'public', quotedPostId, sharedReading, circleId } = req.body as {
     categoryId?: number;
     type?: string;
     title?: string;
@@ -24,6 +24,7 @@ export default async function handler(req: Request, res: Response) {
     audience?: string;
     quotedPostId?: number;
     sharedReading?: unknown;
+    circleId?: number;
     poll?: { question: string; choices: string[]; closesAt?: string };
   };
 
@@ -39,6 +40,15 @@ export default async function handler(req: Request, res: Response) {
     return res.status(400).json({ error: 'Invalid audience' });
   }
 
+  if (circleId !== undefined) {
+    if (!Number.isSafeInteger(circleId) || circleId < 1 || audience !== 'public') {
+      return res.status(400).json({ error: 'Invalid Circle destination' });
+    }
+    const [circle] = await db.execute(sql`select id from spellful_circles where id = ${circleId}
+      and ${activeCircleMember(circleId, session.user.id)} limit 1`);
+    if (!Array.isArray(circle) || !circle.length) return res.status(404).json({ error: 'Circle unavailable' });
+  }
+
   let postBody = body.trim();
   if (sharedReading !== undefined) {
     const parsed = sharedReadingSchema.safeParse(sharedReading);
@@ -51,7 +61,7 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'Invalid original post' });
     }
     const [source] = await db.select({ id: communityPosts.id }).from(communityPosts)
-      .where(and(visiblePostForMember(quotedPostId, session.user.id), eq(communityPosts.audience, 'public'))).limit(1);
+      .where(and(visiblePostForMember(quotedPostId, session.user.id), eq(communityPosts.audience, 'public'), isNull(communityPosts.circleId))).limit(1);
     if (!source) return res.status(404).json({ error: 'Original post unavailable' });
     postBody += `<p><a href="/community/post/${source.id}">View original Coven post</a></p>`;
   }
@@ -67,6 +77,7 @@ export default async function handler(req: Request, res: Response) {
     title: title.trim().slice(0, 300),
     body: postBody,
     audience,
+    circleId,
     tags: tags.slice(0, 500),
     imageUrl: imageUrl ?? null,
   });

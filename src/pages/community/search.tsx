@@ -12,6 +12,7 @@ export default function CommunitySearchPage() {
   const [params, setParams] = useSearchParams();
   const query = (params.get('q') ?? '').trim();
   const tag = (params.get('tag') ?? '').trim();
+  const circle = params.get('circle') ?? '';
   const page = Math.max(1, Number.parseInt(params.get('page') ?? '', 10) || 1);
   const [result, setResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState('');
@@ -22,7 +23,7 @@ export default function CommunitySearchPage() {
     setError('');
     if (!query && !tag) return;
     const controller = new AbortController();
-    const search = new URLSearchParams({ q: query, tag, page: String(page) });
+    const search = new URLSearchParams({ q: query, tag, circle, page: String(page) });
     fetch(`/api/community/search?${search}`, { signal: controller.signal })
       .then(async (response) => {
         if (response.status === 401) throw new Error('Sign in to search Coven.');
@@ -32,7 +33,7 @@ export default function CommunitySearchPage() {
       .then(data => { if (!controller.signal.aborted) setResult(data); })
       .catch((failure: Error) => { if (!controller.signal.aborted) setError(failure.message); });
     return () => controller.abort();
-  }, [query, tag, page, attempt]);
+  }, [query, tag, circle, page, attempt]);
 
   function changePage(next: number) {
     const nextParams = new URLSearchParams(params);
@@ -42,12 +43,15 @@ export default function CommunitySearchPage() {
 
   return (
     <main className="mx-auto max-w-3xl space-y-5 px-4 py-8">
-      <Link to="/community" className="text-sm text-primary underline">Back to Coven</Link>
+      <Link to={circle ? `/circles/${encodeURIComponent(circle)}` : "/community"} className="text-sm text-primary underline">{circle ? "Back to Circle" : "Back to Coven"}</Link>
       <h1 className="text-2xl font-semibold">Search Coven</h1>
       <form className="flex flex-wrap items-end gap-2" onSubmit={event => {
         event.preventDefault();
         const value = String(new FormData(event.currentTarget).get('query') ?? '').trim();
-        setParams(value ? { q: value } : {});
+        const next = new URLSearchParams();
+        if (value) next.set('q', value);
+        if (circle) next.set('circle', circle);
+        setParams(next);
       }}>
         <label className="grow text-sm">
           Search posts

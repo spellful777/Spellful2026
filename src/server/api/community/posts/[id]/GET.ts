@@ -23,6 +23,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     isLocked: communityPosts.isLocked,
     isHidden: communityPosts.isHidden,
     audience: communityPosts.audience,
+    circleId: communityPosts.circleId,
     acceptedReplyId: communityPosts.acceptedReplyId,
     likeCount: communityPosts.likeCount,
     replyCount: communityPosts.replyCount,

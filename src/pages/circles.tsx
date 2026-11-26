@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { useState, useEffect } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion } from 'motion/react';
@@ -151,6 +152,12 @@ export default function CirclesPage() {
                     <p className="text-sm leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
                       {circle.description}
                     </p>
+
+                    {isMember && (
+                      <Link to={`/circles/${circle.id}`} className="rounded-xl border border-primary px-4 py-2 text-center text-sm font-semibold text-primary hover:bg-primary/10">
+                        View discussions
+                      </Link>
+                    )}
 
                     <button
                       onClick={() => void handleJoin(circle.id)}

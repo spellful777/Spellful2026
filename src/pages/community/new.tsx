@@ -1,3 +1,4 @@
+import { useSpellfulCircles } from '@/hooks/useSpellfulCircles';
 import { useState, useRef } from 'react';
 import { Link, useNavigate, useSearchParams, useLocation } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -246,6 +247,11 @@ export default function NewPostPage() {
   const { session, isPending } = useSession();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const requestedCircle = Number(params.get('circle'));
+  const [circleId, setCircleId] = useState<number | null>(() => Number.isSafeInteger(requestedCircle) && requestedCircle > 0 ? requestedCircle : null);
+  const { circles, loading: circlesLoading } = useSpellfulCircles();
+  const memberCircles = circles.filter(circle => circle.my_status === 'active');
+  const selectedCircle = memberCircles.find(circle => circle.id === circleId);
   const quote = Number(params.get('quote'));
   const quotedPostId = Number.isSafeInteger(quote) && quote > 0 ? quote : undefined;
   const followUp = Number(params.get('followUp'));
@@ -293,6 +299,7 @@ export default function NewPostPage() {
       return '';
     }
     if (reading && !selectedPreview) return 'Select at least one result to share.';
+    if (circleId && !selectedCircle) return 'Join this Circle before posting a discussion.';
     if (!categoryId) return community_new.errors.categoryRequired;
     if (!title.trim()) return community_new.errors.titleRequired;
     if (title.trim().length < 5) return community_new.errors.titleTooShort;
@@ -321,7 +328,8 @@ export default function NewPostPage() {
       title: title.trim(),
       body: body.trim(),
       tags,
-      audience,
+      audience: circleId ? 'public' : audience,
+      circleId: circleId ?? undefined,
       quotedPostId,
       sharedReading: sharedReading ?? undefined,
       imageUrl: imageUrl.trim() || undefined,
@@ -440,7 +448,7 @@ export default function NewPostPage() {
                 {reading && (
                   <fieldset className="space-y-3 rounded-xl border border-border bg-card p-4">
                     <legend className="px-1 font-semibold">Share a {reading.type} reading</legend>
-                    {!followUpPostId && <p className="text-sm">Destination: Coven feed · {audience === 'coven' ? 'Your Coven' : 'Spellful members'}{selectedCategory ? ` · ${selectedCategory.name}` : ''}</p>}
+                    {!followUpPostId && <p className="text-sm">Destination: {selectedCircle ? `${selectedCircle.name} · Circle members` : `Coven feed · ${audience === 'coven' ? 'Your Coven' : 'Spellful members'}`}{selectedCategory ? ` · ${selectedCategory.name}` : ''}</p>}
                     <p className="text-sm text-muted-foreground">Choose what to include. Your original reading question, name, birth details, and private notes stay private. Add your own caption or question in the post body.</p>
                     <div className="space-y-1">
                       {readingItems.map(item => (
@@ -558,6 +566,21 @@ export default function NewPostPage() {
                   <p className="text-[10px] text-muted-foreground mt-1">{community_new.tagsHint}</p>
                 </div>
 
+                <label className="block text-sm">
+                  Post to
+                  <select
+                    className="mt-1 block w-full rounded-lg border border-border bg-muted p-2"
+                    value={circleId ?? ''}
+                    disabled={circlesLoading}
+                    onChange={event => setCircleId(event.target.value ? Number(event.target.value) : null)}
+                  >
+                    <option value="">Coven feed</option>
+                    {circleId && !selectedCircle && <option value={circleId}>Circle unavailable</option>}
+                    {memberCircles.map(circle => <option key={circle.id} value={circle.id}>{circle.name} · members only</option>)}
+                  </select>
+                </label>
+
+                {!circleId && <>
                 {/* ── Audience ── */}
                 <div>
                   <label className="block text-xs font-semibold text-foreground/70 mb-1.5">
@@ -584,6 +607,8 @@ export default function NewPostPage() {
                     ))}
                   </div>
                 </div>
+
+                </>}
 
                 {/* ── Image URL ── */}
                 <div>

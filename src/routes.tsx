@@ -41,6 +41,7 @@ import CommandCenterPage from './pages/admin/command-center';
 import CreatorApplicationPage from './pages/creator-application';
 import CreatorsPage from './pages/creators';
 import OrganizationsPage from './pages/organizations';
+import CircleDiscussionsPage from './pages/circle-discussions';
 import CirclesPage from './pages/circles';
 import UnsubscribePage from './pages/unsubscribe';
 import EmailPreferencesPage from './pages/email-preferences';
@@ -305,6 +306,7 @@ export const routes: RouteObject[] = [
   { path: '/creators', element: <CreatorsPage /> },
   { path: '/organizations', element: <OrganizationsPage /> },
   { path: '/circles', element: <CirclesPage /> },
+  { path: '/circles/:id', element: <CircleDiscussionsPage /> },
   { path: '/astronomical-accuracy', element: <AstronomicalAccuracyPage /> },
   { path: '/tarot/cards/:slug', element: <TarotCardDetailPage /> },
   { path: '/tarot/share/:publicId', element: <TarotSharePage />, loader: tarotShareLoader },

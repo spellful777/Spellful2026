@@ -21,6 +21,8 @@ export interface CommunityPost {
   title: string;
   preview?: string;
   imageUrl?: string | null;
+  circleId?: number | null;
+  circleName?: string | null;
   tags: string | null;
   isPinned: boolean;
   isLocked: boolean;
@@ -40,7 +42,7 @@ export interface CommunityPost {
   bookmarked: boolean;
 }
 
-export type PostFilter = 'personalized' | 'chronological' | 'all' | 'latest' | 'popular' | 'trending' | 'discover' | 'unanswered' | 'following' | 'mine';
+export type PostFilter = 'personalized' | 'chronological' | 'all' | 'latest' | 'popular' | 'trending' | 'discover' | 'active' | 'unanswered' | 'following' | 'mine';
 
 interface PostsResult {
   posts: CommunityPost[];
@@ -65,7 +67,7 @@ export function useCommunityCategories() {
   return { categories, loading };
 }
 
-export function useCommunityPosts(filter: PostFilter, category?: string, page = 1, order?: 'newest') {
+export function useCommunityPosts(filter: PostFilter, category?: string, page = 1, order?: 'newest', circleId?: number) {
   const [result, setResult] = useState<PostsResult>({ posts: [], total: 0, page: 1, pages: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -81,6 +83,7 @@ export function useCommunityPosts(filter: PostFilter, category?: string, page = 
     const params = new URLSearchParams({ filter, page: String(page), limit: '20' });
     if (category) params.set('category', category);
     if (order) params.set('order', order);
+    if (circleId) params.set('circle', String(circleId));
     const empty: PostsResult = { posts: [], total: 0, page, pages: 0 };
 
     fetch(`/api/community/posts?${params}`, { signal: controller.signal })
@@ -101,7 +104,7 @@ export function useCommunityPosts(filter: PostFilter, category?: string, page = 
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
-  }, [filter, category, page, order]);
+  }, [filter, category, page, order, circleId]);
 
   useEffect(() => {
     load();

@@ -1,4 +1,4 @@
-import { followsPostAuthor, postAudienceAllows } from '@/server/lib/community-post-access.js';
+import { activeCircleMember, followsPostAuthor, postAudienceAllows } from '@/server/lib/community-post-access.js';
 /**
  * GET /api/community/posts
  * Query params: filter (all|latest|chronological|personalized|popular|trending|unanswered|following|mine), category, page, limit
@@ -20,6 +20,16 @@ export default async function handler(req: Request, res: Response) {
   const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 20));
   const offset = (page - 1) * limit;
 
+  const circleId = typeof req.query.circle === 'string' ? Number(req.query.circle) : undefined;
+  if (circleId !== undefined && (!Number.isSafeInteger(circleId) || circleId < 1)) {
+    return res.status(400).json({ error: 'Invalid Circle' });
+  }
+  if (circleId !== undefined) {
+    const [circle] = await db.execute(sql`select id from spellful_circles where id = ${circleId}
+      and ${activeCircleMember(circleId, myId)} limit 1`);
+    if (!Array.isArray(circle) || !circle.length) return res.status(404).json({ error: 'Circle unavailable' });
+  }
+
   // Resolve category id
   let categoryId: number | undefined;
   if (categorySlug) {
@@ -29,6 +39,7 @@ export default async function handler(req: Request, res: Response) {
   }
 
   const conditions = [eq(communityPosts.isHidden, false), postAudienceAllows(myId)];
+  if (circleId !== undefined) conditions.push(eq(communityPosts.circleId, circleId));
   if (categoryId) conditions.push(eq(communityPosts.categoryId, categoryId));
   if (filter === 'unanswered') conditions.push(eq(communityPosts.replyCount, 0));
   if (filter === 'mine' && myId) conditions.push(eq(communityPosts.userId, myId));
@@ -64,6 +75,8 @@ export default async function handler(req: Request, res: Response) {
   if (filter === 'personalized') orderBy = [desc(follows), ...recent];
   if (filter === 'popular') orderBy = [desc(communityPosts.likeCount), desc(communityPosts.replyCount), ...recent];
 
+  if (filter === 'active' && circleId !== undefined) orderBy = [desc(communityPosts.updatedAt), ...recent];
+
   if (filter === 'trending') {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const engagement = sql`coalesce(${communityPosts.likeCount}, 0) + 2 * coalesce(${communityPosts.replyCount}, 0)`;
@@ -79,6 +92,8 @@ export default async function handler(req: Request, res: Response) {
       preview: sql<string>`left(${communityPosts.body}, 280)`,
       tags: communityPosts.tags,
       imageUrl: communityPosts.imageUrl,
+      circleId: communityPosts.circleId,
+      circleName: sql<string | null>`(select name from spellful_circles where id = ${communityPosts.circleId})`,
       isPinned: communityPosts.isPinned,
       isLocked: communityPosts.isLocked,
       likeCount: communityPosts.likeCount,
