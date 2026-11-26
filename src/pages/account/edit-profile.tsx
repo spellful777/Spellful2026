@@ -9,7 +9,7 @@ import { useSession } from '@/lib/auth/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Camera, ChevronLeft, Check, X, Upload, Loader2 } from 'lucide-react';
+import { Camera, ChevronLeft, Check, X, Upload, Loader2, Shield } from 'lucide-react';
 import { account as pg } from 'virtual:content';
 
 // ── Avatar picker bottom sheet ────────────────────────────────────────────────
@@ -309,6 +309,13 @@ export default function EditProfilePage() {
         </div>
 
         <h1 className="font-serif text-2xl font-semibold text-foreground mb-5">Edit Profile</h1>
+
+        <Button asChild variant="outline" className="mb-5">
+          <Link to="/account/privacy">
+            <Shield className="h-4 w-4" aria-hidden="true" />
+            Privacy settings
+          </Link>
+        </Button>
 
         {loading ? (
           <div className="flex justify-center py-12">
