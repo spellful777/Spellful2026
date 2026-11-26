@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { communityBlocks, communityFollows, communityPosts, covenConnections } from '@/server/db/schema.js';
 
 export function followsPostAuthor(viewer: string) {
@@ -23,4 +23,8 @@ export function postAudienceAllows(viewer?: string) {
         where ${connection.status} = 'accepted' and
           ((${connection.requesterId} = ${viewer} and ${connection.receiverId} = ${author}) or
            (${connection.receiverId} = ${viewer} and ${connection.requesterId} = ${author}))))))`;
+}
+
+export function visiblePostForMember(postId: number, viewer: string) {
+  return and(eq(communityPosts.id, postId), eq(communityPosts.isHidden, false), postAudienceAllows(viewer));
 }
