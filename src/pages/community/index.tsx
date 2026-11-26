@@ -331,7 +331,7 @@ const COMMUNITY_VIEWS = [
   { view: 'feed', label: 'Feed', to: COMMUNITY_FEED, icon: Heart },
   { view: 'updates', label: 'Updates', to: COMMUNITY_UPDATES, icon: Bell },
   { view: 'groups', label: 'Groups', to: COMMUNITY_GROUPS, icon: MessageSquare },
-  { view: 'coven', label: 'My Coven', to: '/community?view=coven', icon: Users },
+  { view: 'coven', label: 'Coven', to: '/community?view=coven', icon: Users },
   { view: 'hearth', label: 'Hearth', to: '/community?view=hearth', icon: Sparkles },
 ] as const;
 
@@ -862,7 +862,7 @@ export default function CommunityPage() {
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Feed */}
             <div className="flex-1 min-w-0">
-              {/* My Coven view */}
+              {/* Coven view */}
               {view === 'coven' && session?.user?.id && (
                 <MyCoven currentUserId={session.user.id} />
               )}

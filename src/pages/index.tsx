@@ -654,7 +654,7 @@ function PublicHomePage() {
                 {[
                   { icon: Sparkles, title: 'My Sanctuary', desc: 'A customizable private daily dashboard — moon phase, birth chart, tarot of the day, and your personal cosmic weather.', accent: '--primary' },
                   { icon: BookOpen, title: 'Living Grimoire', desc: 'Save tarot readings, moon rituals, dream journal entries, and spell discoveries. Your private Book of Shadows, always with you.', accent: '--grimoire-tarot' },
-                  { icon: Users, title: 'My Coven', desc: 'Connect with witches, pagans, and seekers. Share readings, ask questions, and grow your practice in a warm community.', accent: '--accent' },
+                  { icon: Users, title: 'Coven', desc: 'Connect with witches, pagans, and seekers. Share readings, ask questions, and grow your practice in a warm community.', accent: '--accent' },
                   { icon: Star, title: 'Personal Journey', desc: 'Track your learning progress through the Spellful Academy, save favorites, and personalize every tool to your path.', accent: '--grimoire-herb' },
                 ].map((benefit, i) => (
                   <motion.div

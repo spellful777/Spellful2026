@@ -1,5 +1,5 @@
 /**
- * MyCoven — My Coven dashboard tab
+ * MyCoven — Coven dashboard tab
  * Shows: All Coven Members, Online Members, Pending Invitations, Sent Invitations
  */
 import { useState, useEffect, useCallback } from 'react';
@@ -344,7 +344,7 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-serif font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-            My Coven
+            Coven
           </h2>
           <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
             {accepted.length} {accepted.length === 1 ? 'member' : 'members'}

@@ -68,10 +68,10 @@ const NAV: NavItem[] = [
       { label: 'Reminders', href: '/reminders', authRequired: true, icon: 'reminders' },
     ],
   },
-  // ── 4. My Coven (auth-gated) ──────────────────────────────────────────────
+  // ── 4. Coven (auth-gated) ──────────────────────────────────────────────
   {
-    label: 'My Coven',
-    mobileLabel: 'My Coven',
+    label: 'Coven',
+    mobileLabel: 'Coven',
     authOnly: true,
     children: [
       { label: 'Feed', href: COMMUNITY_FEED, authRequired: true, icon: 'discussions' },
@@ -126,7 +126,7 @@ function useCommunityUnread(loggedIn: boolean) {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isActive(item: NavItem, pathname: string): boolean {
-  if (item.label === 'My Coven') {
+  if (item.label === 'Coven') {
     const path = pathname.split('?')[0];
     if (path === COMMUNITY_FEED || path.startsWith('/community/')) return true;
   }
@@ -179,7 +179,7 @@ const DROPDOWN_SECTIONS: Record<string, SectionConfig[]> = {
     { label: 'Personal', hrefs: ['/dashboard', '/sanctuary'] },
     { label: 'Tools', hrefs: ['/grimoire', '/reminders'] },
   ],
-  'My Coven': [
+  'Coven': [
     { label: 'Community', hrefs: [COMMUNITY_FEED, COMMUNITY_GROUPS, '/community/new'] },
     { label: 'Inbox', hrefs: ['/messages', '/community/bookmarks', '/community/notifications'] },
   ],
@@ -263,7 +263,7 @@ function DesktopDropdown({ item, pathname, session, unread = 0 }: DropdownProps)
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'hsl(var(--primary))'; }}
           onMouseLeave={(e) => { if (!active && !open) (e.currentTarget as HTMLButtonElement).style.color = 'hsl(var(--foreground) / 0.7)'; }}
         >
-          {(item.label === 'My Coven' || item.label === 'Community') && (
+          {(item.label === 'Coven' || item.label === 'Community') && (
             <span className="relative inline-flex items-center">
               <Users size={13} strokeWidth={1.5} />
               {unread > 0 && (
@@ -301,7 +301,7 @@ function DesktopDropdown({ item, pathname, session, unread = 0 }: DropdownProps)
             {isSectioned && (
               <div className="px-4 pt-3 pb-2 flex items-center gap-2" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
                 {item.label === 'My Sanctuary' && <Star size={12} strokeWidth={1.5} style={{ color: 'hsl(var(--primary))' }} />}
-                {item.label === 'My Coven' && <Users size={12} strokeWidth={1.5} style={{ color: 'hsl(var(--primary))' }} />}
+                {item.label === 'Coven' && <Users size={12} strokeWidth={1.5} style={{ color: 'hsl(var(--primary))' }} />}
                 <span className="text-[10px] uppercase tracking-widest" style={{ color: 'hsl(var(--primary))', fontFamily: 'var(--font-sans)', letterSpacing: '0.18em' }}>
                   {item.label}
                 </span>
@@ -441,7 +441,7 @@ export default function Header() {
               item={item}
               pathname={navigationPath}
               session={session}
-              unread={(item.label === 'My Coven' || item.label === 'Community') ? unread : 0}
+              unread={(item.label === 'Coven' || item.label === 'Community') ? unread : 0}
             />
           ))}
 
@@ -665,7 +665,7 @@ export default function Header() {
                         }}
                       >
                         <span className="flex items-center gap-2">
-                          {(item.label === 'My Coven' || item.label === 'Community') && (
+                          {(item.label === 'Coven' || item.label === 'Community') && (
                             <span className="relative flex items-center">
                               <Users size={14} />
                               {unread > 0 && (

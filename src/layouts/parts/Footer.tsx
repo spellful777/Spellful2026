@@ -106,7 +106,7 @@ export default function Footer() {
             to={COMMUNITY_FEED}
             className="coven-press inline-flex min-h-11 items-center gap-2 rounded-sm text-[hsl(var(--footer-ivory))] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            My Coven
+            Coven
             <ArrowRight className="size-4 shrink-0 text-[hsl(var(--footer-gold))]" aria-hidden="true" />
           </Link>
         </h2>

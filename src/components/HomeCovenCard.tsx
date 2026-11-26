@@ -27,7 +27,7 @@ export default function HomeCovenCard({ description = 'Catch up with your circle
       >
         <div className="min-w-0">
           <h2 id="home-coven-heading" className="font-heading text-xl font-bold leading-tight text-white group-hover:underline group-hover:underline-offset-4">
-            My Coven
+            Coven
           </h2>
           <p className="mt-0.5 text-sm leading-snug text-white/75">{description}</p>
         </div>
