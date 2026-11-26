@@ -527,59 +527,59 @@ html.high-contrast {
   .cosmic-star { animation: none !important; }
 }
 
-/* My Coven shares Spellful's gold actions and uses teal surfaces for social navigation. */
+/* My Coven shares Spellful's gold actions and uses burgundy surfaces for social navigation. */
 :root {
-  --coven-teal: 163 66% 74%;
-  --coven-teal-ink: 177 53% 11%;
-  --coven-teal-border: 172 34% 35%;
+  --coven-rose: 345 72% 82%;
+  --coven-rose-ink: 344 52% 14%;
+  --coven-rose-border: 343 39% 41%;
 }
 
 .coven-community {
-  --background: 181 43% 10%;
-  --card: 179 36% 17%;
-  --muted: 181 32% 15%;
-  --muted-foreground: 166 17% 74%;
-  --border: 177 24% 31%;
-  --accent: var(--coven-teal);
-  --card-deep: 182 43% 11%;
-  --hero-midnight: 183 52% 9%;
-  --hero-plum: 177 39% 22%;
-  --hero-surface: 181 39% 13%;
-  --hero-lavender: 167 30% 65%;
-  --hero-lavender-soft: 164 30% 83%;
+  --background: 343 43% 12%;
+  --card: 343 38% 20%;
+  --muted: 343 32% 17%;
+  --muted-foreground: 348 24% 78%;
+  --border: 344 26% 34%;
+  --accent: var(--coven-rose);
+  --card-deep: 343 44% 13%;
+  --hero-midnight: 343 51% 10%;
+  --hero-plum: 343 47% 24%;
+  --hero-surface: 343 40% 15%;
+  --hero-lavender: 347 38% 70%;
+  --hero-lavender-soft: 347 37% 86%;
   background-color: hsl(var(--background));
 }
 
 .coven-hero {
   background:
-    radial-gradient(ellipse at 50% 0%, hsl(169 49% 32% / 0.46), transparent 73%),
+    radial-gradient(ellipse at 50% 0%, hsl(343 60% 35% / 0.46), transparent 73%),
     linear-gradient(160deg, hsl(var(--hero-midnight)), hsl(var(--hero-plum)) 57%, hsl(var(--hero-midnight)));
 }
 
 .coven-entry {
-  --border: var(--coven-teal-border);
-  --muted-foreground: 163 24% 83%;
-  border-color: hsl(var(--coven-teal-border));
+  --border: var(--coven-rose-border);
+  --muted-foreground: 348 36% 86%;
+  border-color: hsl(var(--coven-rose-border));
   background:
-    radial-gradient(ellipse at 92% 0%, hsl(167 48% 31% / 0.56), transparent 72%),
-    linear-gradient(130deg, hsl(181 49% 13%), hsl(179 40% 20%));
-  color: hsl(162 43% 97%);
+    radial-gradient(ellipse at 92% 0%, hsl(342 55% 35% / 0.56), transparent 72%),
+    linear-gradient(130deg, hsl(342 48% 16%), hsl(346 48% 24%));
+  color: hsl(348 48% 97%);
 }
 
 .coven-action {
-  background-color: hsl(var(--coven-teal));
-  border: 1px solid hsl(var(--coven-teal));
-  color: hsl(var(--coven-teal-ink));
+  background-color: hsl(var(--coven-rose));
+  border: 1px solid hsl(var(--coven-rose));
+  color: hsl(var(--coven-rose-ink));
 }
 
 .coven-action:hover {
-  background-color: hsl(160 65% 84%);
-  color: hsl(var(--coven-teal-ink));
+  background-color: hsl(345 77% 89%);
+  color: hsl(var(--coven-rose-ink));
 }
 
 .coven-action:focus-visible,
 .coven-nav-link:focus-visible {
-  outline: 2px solid hsl(var(--coven-teal));
+  outline: 2px solid hsl(var(--coven-rose));
   outline-offset: 3px;
 }
 
@@ -590,13 +590,13 @@ html.high-contrast {
 }
 
 .coven-nav-link:hover {
-  border-color: hsl(var(--coven-teal));
+  border-color: hsl(var(--coven-rose));
   color: hsl(var(--foreground));
 }
 
 .coven-nav-link[aria-current='page'] {
-  border-color: hsl(var(--coven-teal));
-  background-color: hsl(var(--coven-teal));
-  color: hsl(var(--coven-teal-ink));
+  border-color: hsl(var(--coven-rose));
+  background-color: hsl(var(--coven-rose));
+  color: hsl(var(--coven-rose-ink));
   font-weight: 600;
 }
