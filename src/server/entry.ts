@@ -389,6 +389,11 @@ export function toLogError(err: unknown): Record<string, unknown> {
 	if (typeof fields.code === "string" || typeof fields.code === "number") {
 		shaped.code = fields.code;
 	}
+	const cause = err instanceof Error ? err.cause : undefined;
+	if (cause instanceof Error && "code" in cause && typeof cause.code === "string" &&
+		/^(?:ER_[A-Z0-9_]+|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|PROTOCOL_CONNECTION_LOST)$/.test(cause.code)) {
+		shaped.causeCode = cause.code;
+	}
 	if (typeof fields.status === "number") {
 		shaped.status = fields.status;
 	}
