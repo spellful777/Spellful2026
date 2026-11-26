@@ -41,6 +41,7 @@ export interface CommunityPostDetail {
   isPinned: boolean;
   isLocked: boolean;
   isHidden: boolean;
+  audience: string | null;
   acceptedReplyId: number | null;
   likeCount: number;
   replyCount: number;

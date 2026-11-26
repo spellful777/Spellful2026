@@ -5,20 +5,23 @@ import { notifyCommunityMentions } from '@/server/lib/community-mention-notifica
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityPosts, communityCategories, communityPolls } from '@/server/db/schema.js';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import { visiblePostForMember } from '@/server/lib/community-post-access.js';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request, res: Response) {
   const session = await getAuthSession(req);
   if (!session?.user?.id) return res.status(401).json({ error: 'Sign in to post' });
 
-  const { categoryId, type = 'discussion', title, body, tags = '', imageUrl, poll } = req.body as {
+  const { categoryId, type = 'discussion', title, body, tags = '', imageUrl, poll, audience = 'public', quotedPostId } = req.body as {
     categoryId?: number;
     type?: string;
     title?: string;
     body?: string;
     tags?: string;
     imageUrl?: string;
+    audience?: string;
+    quotedPostId?: number;
     poll?: { question: string; choices: string[]; closesAt?: string };
   };
 
@@ -27,6 +30,21 @@ export default async function handler(req: Request, res: Response) {
   }
   if (!['discussion', 'question'].includes(type)) {
     return res.status(400).json({ error: 'Invalid post type' });
+  }
+
+  if (audience !== 'public' && audience !== 'coven') {
+    return res.status(400).json({ error: 'Invalid audience' });
+  }
+
+  let postBody = body.trim();
+  if (quotedPostId !== undefined) {
+    if (!Number.isSafeInteger(quotedPostId) || quotedPostId < 1) {
+      return res.status(400).json({ error: 'Invalid original post' });
+    }
+    const [source] = await db.select({ id: communityPosts.id }).from(communityPosts)
+      .where(and(visiblePostForMember(quotedPostId, session.user.id), eq(communityPosts.audience, 'public'))).limit(1);
+    if (!source) return res.status(404).json({ error: 'Original post unavailable' });
+    postBody += `<p><a href="/community/post/${source.id}">View original Coven post</a></p>`;
   }
 
   // Verify category exists
@@ -38,7 +56,8 @@ export default async function handler(req: Request, res: Response) {
     categoryId,
     type,
     title: title.trim().slice(0, 300),
-    body: body.trim(),
+    body: postBody,
+    audience,
     tags: tags.slice(0, 500),
     imageUrl: imageUrl ?? null,
   });

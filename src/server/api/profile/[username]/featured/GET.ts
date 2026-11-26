@@ -7,6 +7,7 @@ import { db } from '@/server/db/client.js';
 import { user, profileFeatured, communityPosts } from '@/server/db/schema.js';
 import { eq, and, inArray } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
+import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import { isBlocked } from '@/server/lib/block-check.js';
 
 export default async function handler(req: Request<{ username: string }>, res: Response) {
@@ -40,8 +41,9 @@ export default async function handler(req: Request<{ username: string }>, res: R
     posts = await db
       .select({ id: communityPosts.id, title: communityPosts.title, createdAt: communityPosts.createdAt, audience: communityPosts.audience })
       .from(communityPosts)
-      .where(and(inArray(communityPosts.id, postIds), eq(communityPosts.isHidden, false)));
+      .where(and(inArray(communityPosts.id, postIds), eq(communityPosts.isHidden, false), postAudienceAllows(viewerId ?? undefined)));
   }
 
-  res.json({ featured, posts });
+  const visiblePostIds = new Set(posts.map(post => post.id));
+  res.json({ featured: featured.filter(item => item.itemType !== 'post' || visiblePostIds.has(item.itemId)), posts });
 }

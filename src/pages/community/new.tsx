@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -242,6 +242,9 @@ function PostPreview({
 export default function NewPostPage() {
   const { session, isPending } = useSession();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const quote = Number(params.get('quote'));
+  const quotedPostId = Number.isSafeInteger(quote) && quote > 0 ? quote : undefined;
   const { categories, loading: catsLoading } = useCommunityCategories();
 
   // Form state
@@ -260,7 +263,7 @@ export default function NewPostPage() {
   const formRef = useRef<HTMLFormElement>(null);
 
   if (!isPending && !session) {
-    navigate('/login?redirect=/community/new');
+    navigate(`/login?redirect=${encodeURIComponent(quotedPostId ? `/community/new?quote=${quotedPostId}` : '/community/new')}`);
     return null;
   }
 
@@ -294,6 +297,7 @@ export default function NewPostPage() {
       body: body.trim(),
       tags,
       audience,
+      quotedPostId,
       imageUrl: imageUrl.trim() || undefined,
     };
 
@@ -390,6 +394,12 @@ export default function NewPostPage() {
                 transition={{ duration: 0.18 }}
                 className="space-y-6"
               >
+                {quotedPostId && (
+                  <p className="rounded-xl border border-border bg-card p-3 text-sm">
+                    Your post will link to the <Link className="text-primary underline" to={`/community/post/${quotedPostId}`}>original Coven discussion</Link>.
+                  </p>
+                )}
+
                 {/* ── Post type ── */}
                 <fieldset>
                   <legend className="text-xs font-semibold text-foreground/70 mb-2">{community_new.typeSection.label}</legend>

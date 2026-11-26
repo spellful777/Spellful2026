@@ -720,6 +720,15 @@ export default function PostThreadPage() {
                   {post.bookmarked ? community_post.savedLabel : community_post.saveLabel}
                 </button>
 
+                {post.audience === 'public' && !post.isHidden && (
+                  <Link
+                    to={`/community/new?quote=${post.id}`}
+                    className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" /> Quote post
+                  </Link>
+                )}
+
                 <button
                   onClick={sharePost}
                   className="relative flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
