@@ -304,6 +304,7 @@ export const conversationUserState = mysqlTable('conversation_user_state', {
   isMuted: boolean('is_muted').default(false),
   isStarred: boolean('is_starred').default(false),
   isHidden: boolean('is_hidden').default(false), // delete-for-me: hides from inbox
+  clearedThroughMessageId: int('cleared_through_message_id').notNull().default(0),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 

@@ -1395,6 +1395,7 @@ export async function runStartupMigration(): Promise<void> {
           is_starred    TINYINT(1) NOT NULL DEFAULT 0,
           is_hidden     TINYINT(1) NOT NULL DEFAULT 0,
           updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          cleared_through_message_id INT NOT NULL DEFAULT 0,
           UNIQUE KEY uq_cus_user_conv (user_id, conversation_id),
           CONSTRAINT fk_cus_user FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
           CONSTRAINT fk_cus_conv FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
@@ -1403,6 +1404,12 @@ export async function runStartupMigration(): Promise<void> {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(JSON.stringify({ event: 'startup.migration.conversation_user_state.error', msg: msg.slice(0, 120) }));
+    }
+
+    try {
+      await conn.execute('ALTER TABLE conversation_user_state ADD COLUMN cleared_through_message_id INT NOT NULL DEFAULT 0');
+    } catch (error) {
+      if ((error as { code?: string }).code !== 'ER_DUP_FIELDNAME') throw error;
     }
 
     // ── community_notifications table ─────────────────────────────────────────

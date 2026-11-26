@@ -103,11 +103,13 @@ export default async function handler(req: Request, res: Response) {
         SELECT m.*
         FROM messages m
         INNER JOIN (
-          SELECT conversation_id, MAX(id) AS max_id
-          FROM messages
-          WHERE conversation_id IN (${sql.join(paginated.map((c) => sql`${c.id}`), sql`, `)})
+          SELECT msg.conversation_id, MAX(msg.id) AS max_id
+          FROM messages msg
+          LEFT JOIN conversation_user_state state ON state.conversation_id = msg.conversation_id AND state.user_id = ${myId}
+          WHERE msg.id > COALESCE(state.cleared_through_message_id, 0)
+            AND msg.conversation_id IN (${sql.join(paginated.map((c) => sql`${c.id}`), sql`, `)})
             AND status = 'sent'
-          GROUP BY conversation_id
+          GROUP BY msg.conversation_id
         ) latest ON m.id = latest.max_id
       `)) as unknown as [Array<{
         id: number;
@@ -127,13 +129,15 @@ export default async function handler(req: Request, res: Response) {
   // Batch: unread counts per conversation
   const unreadRows = paginated.length
     ? (await db.execute(sql`
-        SELECT conversation_id, COUNT(*) AS cnt
-        FROM messages
-        WHERE conversation_id IN (${sql.join(paginated.map((c) => sql`${c.id}`), sql`, `)})
+        SELECT msg.conversation_id, COUNT(*) AS cnt
+        FROM messages msg
+        LEFT JOIN conversation_user_state state ON state.conversation_id = msg.conversation_id AND state.user_id = ${myId}
+        WHERE msg.id > COALESCE(state.cleared_through_message_id, 0)
+          AND msg.conversation_id IN (${sql.join(paginated.map((c) => sql`${c.id}`), sql`, `)})
           AND sender_id != ${myId}
           AND read_at IS NULL
           AND status = 'sent'
-        GROUP BY conversation_id
+        GROUP BY msg.conversation_id
       `)) as unknown as [Array<{ conversation_id: number; cnt: number }>, unknown]
     : [[], undefined];
   const unreadByConvId = new Map(
@@ -174,7 +178,7 @@ export default async function handler(req: Request, res: Response) {
     .filter((conv) => {
       // Filter out conversations the user has hidden (delete-for-me)
       const state = stateByConvId.get(conv.id);
-      return !state?.isHidden;
+      return !state?.isHidden || Boolean(state.clearedThroughMessageId && lastMsgByConvId.has(conv.id));
     })
     .map((conv) => {
     const otherId = conv.participant1Id === myId ? conv.participant2Id : conv.participant1Id;

@@ -108,8 +108,8 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   if (msgStatus === 'sent') {
     await db.execute(sql`
       UPDATE conversations c
-      LEFT JOIN conversation_user_state s ON s.conversation_id = c.id AND s.user_id = ${myId}
-      SET c.updated_at = NOW(), s.is_hidden = 0, s.is_archived = 0
+      LEFT JOIN conversation_user_state s ON s.conversation_id = c.id AND (s.user_id = ${myId} OR s.user_id = ${recipientId}) AND s.cleared_through_message_id < ${insertId}
+      SET c.updated_at = NOW(), s.is_hidden = 0, s.is_archived = IF(s.user_id = ${myId}, 0, s.is_archived)
       WHERE c.id = ${convId}
     `);
   }

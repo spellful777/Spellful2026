@@ -895,7 +895,7 @@ function DesktopThread({
                 <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>Private conversation</span>
                 <button
                   onClick={() => {
-                    if (window.confirm('Delete this conversation? This cannot be undone.')) {
+                    if (window.confirm('Delete this conversation for you? The other person keeps their history.')) {
                       void deleteConversation();
                     }
                   }}
@@ -2072,17 +2072,27 @@ export default function MessagesPage() {
     setOpenMenuId(null);
   }
 
-  async function deleteConversation() {
-    if (!activeConvId) return;
-    const res = await fetch(`/api/conversations/${activeConvId}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    if (res.ok) {
-      setConversations(prev => prev.filter(c => c.id !== activeConvId));
-      setActiveConvId(null);
-      setMessages([]);
-      setMobileView('list');
+  async function deleteConversation(convId = activeConvId) {
+    if (!convId) return;
+    try {
+      const res = await fetch(`/api/conversations/${convId}/state`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clearHistory: true }),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Could not delete conversation');
+      ++inboxLoadGeneration.current;
+      setConversations(prev => prev.filter(c => c.id !== convId));
+      if (activeConvIdRef.current === convId) {
+        activeConvIdRef.current = null;
+        setActiveConvId(null);
+        setMessages([]);
+        setMobileView('list');
+      }
+      void loadConversations();
+    } catch {
+      window.alert('Could not delete this conversation for you. Please try again.');
     }
   }
 
@@ -2207,7 +2217,7 @@ export default function MessagesPage() {
           <img
             src="/airo-assets/images/logo/horizontal"
             alt="Spellful"
-            className="mx-auto mt-4 h-10 w-auto object-contain"
+            className="ml-5 mt-4 h-10 w-auto object-contain"
             style={{ filter: 'drop-shadow(0 0 12px hsl(var(--primary) / 0.25))' }}
           />
           {/* List header */}
@@ -2713,7 +2723,12 @@ export default function MessagesPage() {
                             🚫 Block member
                           </button>
                         )}
-                        <button onClick={() => void convStateAction(conv.id, { isHidden: true })}
+                        <button onClick={() => {
+                          setConvMenuId(null);
+                          if (window.confirm('Delete this conversation for you? The other person keeps their history.')) {
+                            void deleteConversation(conv.id);
+                          }
+                        }}
                           className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs hover:opacity-80 text-left"
                           style={{ color: 'hsl(var(--destructive))' }}>
                           🗑 Delete for me
@@ -2995,7 +3010,7 @@ export default function MessagesPage() {
                   <Lock className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'hsl(var(--success))' }} />
                   <button
                     onClick={() => {
-                      if (window.confirm('Delete this conversation? This cannot be undone.')) {
+                      if (window.confirm('Delete this conversation for you? The other person keeps their history.')) {
                         void deleteConversation();
                       }
                     }}
