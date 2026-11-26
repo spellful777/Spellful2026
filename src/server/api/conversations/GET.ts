@@ -19,6 +19,7 @@ import { getBlockedUserIds } from '@/server/lib/block-check.js';
 export default async function handler(req: Request, res: Response) {
   const session = await getAuthSession(req);
   if (!session?.user?.id) return res.status(401).json({ error: 'Unauthorized' });
+  res.set('Cache-Control', 'private, no-store');
   const myId = session.user.id;
 
   const limit = Math.min(parseInt((req.query.limit as string) || '30'), 100);
@@ -32,7 +33,7 @@ export default async function handler(req: Request, res: Response) {
     .select()
     .from(conversations)
     .where(or(eq(conversations.participant1Id, myId), eq(conversations.participant2Id, myId)))
-    .orderBy(desc(conversations.updatedAt));
+    .orderBy(desc(conversations.updatedAt), desc(conversations.id));
 
   if (!convRows.length) return res.json({ conversations: [], hasMore: false });
 

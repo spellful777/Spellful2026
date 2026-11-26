@@ -1,3 +1,6 @@
+import { Capacitor } from '@capacitor/core';
+import { Directory, Filesystem } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 /**
  * HoroscopeShareMenu — compact share button for the daily horoscope widget.
  * Platforms: Threads, Bluesky, Facebook, X (pre-typed posts)
@@ -169,25 +172,20 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
 
 // ── Main story generator ──────────────────────────────────────────────────────
 
-function generateStoryCanvas(horoscope: DailyHoroscope): Promise<Blob> {
-  return new Promise((resolve) => {
-    const start = new Date(new Date().getFullYear(), 0, 0).getTime();
-    const dayOfYear = Math.floor((Date.now() - start) / 86400000);
-    const templateUrl = STORY_TEMPLATES[dayOfYear % STORY_TEMPLATES.length];
-
-    Promise.all([
-      loadImage(templateUrl),
-    ]).then(([bgImg]) => {
-      renderStory(resolve, horoscope, bgImg);
-    });
+async function generateStoryCanvas(horoscope: DailyHoroscope): Promise<Blob> {
+  const start = new Date(new Date().getFullYear(), 0, 0).getTime();
+  const dayOfYear = Math.floor((Date.now() - start) / 86400000);
+  const template = await loadImage(STORY_TEMPLATES[dayOfYear % STORY_TEMPLATES.length]);
+  const canvas = renderStory(horoscope, template);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob) resolve(blob);
+      else reject(new Error('Could not encode Story image'));
+    }, 'image/png');
   });
 }
 
-function renderStory(
-  resolve: (blob: Blob) => void,
-  horoscope: DailyHoroscope,
-  bgImg: HTMLImageElement | null,
-) {
+function renderStory(horoscope: DailyHoroscope, bgImg: HTMLImageElement | null) {
   const W = 1080;
   const H = 1920;
   const canvas = document.createElement('canvas');
@@ -443,10 +441,19 @@ function renderStory(
   // Pre-branded wallpapers (templates 6–14) carry the logo in their artwork;
   // unbranded templates (1–5) export clean so users may add their own caption.
 
-  canvas.toBlob((blob) => resolve(blob!), 'image/png');
+  return canvas;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
+
+function blobToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const parts: string[] = [];
+  for (let offset = 0; offset < bytes.length; offset += 8192) {
+    parts.push(String.fromCharCode(...bytes.subarray(offset, offset + 8192)));
+  }
+  return btoa(parts.join(''));
+}
 
 interface Props {
   horoscope: DailyHoroscope;
@@ -455,6 +462,7 @@ interface Props {
 export default function HoroscopeShareMenu({ horoscope }: Props) {
   const [open, setOpen] = useState(false);
   const [generatingStory, setGeneratingStory] = useState(false);
+  const [storyError, setStoryError] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
@@ -494,18 +502,31 @@ export default function HoroscopeShareMenu({ horoscope }: Props) {
   const shareThreads  = () => { trackShare('threads');   window.open(`https://www.threads.net/intent/post?text=${encodeURIComponent(postText + '\n' + url)}`, '_blank'); setOpen(false); };
 
   const downloadStory = async () => {
+    if (generatingStory) return;
     setGeneratingStory(true);
-    trackShare('story_download');
+    setStoryError(false);
     try {
       const blob = await generateStoryCanvas(horoscope);
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `spellful-${horoscope.sign.toLowerCase()}-story.png`;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      const filename = `spellful-${horoscope.sign.toLowerCase()}-story.png`;
+      if (Capacitor.getPlatform() === 'ios') {
+        const path = `${Date.now()}-${filename}`;
+        const { uri } = await Filesystem.writeFile({ path, data: blobToBase64(await blob.arrayBuffer()), directory: Directory.Cache });
+        await Share.share({ files: [uri] });
+      } else {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      }
+      trackShare('story_download');
+      setOpen(false);
+    } catch {
+      setStoryError(true);
     } finally {
       setGeneratingStory(false);
-      setOpen(false);
     }
   };
 
@@ -568,7 +589,7 @@ export default function HoroscopeShareMenu({ horoscope }: Props) {
               <button
                 key={item.label}
                 onClick={item.action}
-                disabled={generatingStory && item.label.includes('Instagram')}
+                disabled={generatingStory && item.isInstagram}
                 role="menuitem"
                 className="flex items-center gap-3 w-full px-4 py-2.5 text-sm transition-colors duration-150 disabled:opacity-50"
                 style={{
@@ -615,6 +636,7 @@ export default function HoroscopeShareMenu({ horoscope }: Props) {
           <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
         </svg>
       </button>
+      {storyError && <p role="alert" className="text-xs text-destructive">Could not share the Story image. Try again.</p>}
       {typeof document !== 'undefined' && createPortal(dropdown, document.body)}
     </>
   );

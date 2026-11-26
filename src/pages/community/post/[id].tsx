@@ -1,3 +1,4 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
 import { hasNativeShare, publicShareUrl, shareContent } from '@/lib/share-studio';
 import { useState, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router';
@@ -23,7 +24,7 @@ import { formatDistanceToNow } from 'date-fns';
 
 function Avatar({ name, image, size = 8 }: { name: string | null; image: string | null; size?: number }) {
   const s = `w-${size} h-${size}`;
-  if (image) return <img src={image} alt={name ?? ''} className={`${s} rounded-full object-cover shrink-0`} />;
+  if (image) return <img src={uploadedMediaUrl(image)} alt={name ?? ''} className={`${s} rounded-full object-cover shrink-0`} />;
   return (
     <div className={`${s} rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground shrink-0`}>
       {(name ?? '?')[0].toUpperCase()}

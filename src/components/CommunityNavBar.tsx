@@ -1,3 +1,4 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
 /**
  * CommunityNavBar — compact signed-in header for /community
  * Shown only when the user is authenticated; replaces the large hero for members.
@@ -174,7 +175,7 @@ export default function CommunityNavBar({
           {userImage ? (
             <Link to={profileHref} aria-label="Your profile">
               <img
-                src={userImage}
+                src={uploadedMediaUrl(userImage)}
                 alt={userName ?? 'Profile'}
                 className="w-8 h-8 rounded-full object-cover ring-1 ring-border hover:ring-primary/60 transition-all"
               />

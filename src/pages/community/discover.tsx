@@ -1,3 +1,4 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
 /**
  * /community/discover — Discover Members
  * Searchable member directory with follow, coven, and Instagram support.
@@ -290,7 +291,7 @@ export default function DiscoverPage() {
                     <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center"
                       style={{ background: 'hsl(var(--muted))' }}>
                       {m.image ? (
-                        <img src={m.image} alt={m.name ?? ''} className="w-full h-full object-cover" loading="lazy" />
+                        <img src={uploadedMediaUrl(m.image)} alt={m.name ?? ''} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <span className="text-lg font-semibold" style={{ color: accent }}>
                           {(m.name ?? m.username ?? '?')[0].toUpperCase()}

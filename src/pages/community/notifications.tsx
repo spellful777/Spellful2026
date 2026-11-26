@@ -1,3 +1,4 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -89,7 +90,7 @@ function NotifRow({
       {/* Actor avatar */}
       {notif.actorImage ? (
         <img
-          src={notif.actorImage}
+          src={uploadedMediaUrl(notif.actorImage)}
           alt={notif.actorName ?? ''}
           className="w-8 h-8 rounded-full object-cover shrink-0"
         />

@@ -1,3 +1,4 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -41,7 +42,7 @@ function PostRow({ post }: { post: ReturnType<typeof useCommunityPosts>['posts']
           className="shrink-0 mt-0.5"
         >
           {post.authorImage ? (
-            <img src={post.authorImage} alt={post.authorName ?? ''} className="w-8 h-8 rounded-full object-cover hover:ring-2 hover:ring-primary/50 transition-all" />
+            <img src={uploadedMediaUrl(post.authorImage)} alt={post.authorName ?? ''} className="w-8 h-8 rounded-full object-cover hover:ring-2 hover:ring-primary/50 transition-all" />
           ) : (
             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground hover:ring-2 hover:ring-primary/50 transition-all">
               {(post.authorName ?? '?')[0].toUpperCase()}

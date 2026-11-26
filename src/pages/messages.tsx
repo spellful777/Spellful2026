@@ -1395,7 +1395,9 @@ export default function MessagesPage() {
 
   // ── Load conversations ────────────────────────────────────────────────────
 
+  const inboxLoadGeneration = useRef(0);
   const loadConversations = useCallback(async (isInitialLoad = false) => {
+    const generation = ++inboxLoadGeneration.current;
     try {
       const convList: ConversationSummary[] = [];
       const limit = 100;
@@ -1408,6 +1410,7 @@ export default function MessagesPage() {
         convList.push(...page);
         if (Array.isArray(data) || !data.hasMore) break;
       }
+      if (generation !== inboxLoadGeneration.current) return;
       setIsOffline(false);
       setConversations([...new Map(convList.map(conversation => [conversation.id, conversation])).values()]);
       setConvLoadError(false);
@@ -1432,9 +1435,9 @@ export default function MessagesPage() {
         } catch { /* non-fatal — OnlineDot falls back to individual polling */ }
       }
     } catch {
-      if (isInitialLoad) setConvLoadError(true);
+      if (isInitialLoad && generation === inboxLoadGeneration.current) setConvLoadError(true);
     } finally {
-      setLoadingConvs(false);
+      if (generation === inboxLoadGeneration.current) setLoadingConvs(false);
     }
   }, []);
 
@@ -2201,6 +2204,12 @@ export default function MessagesPage() {
         <div className={`flex flex-col md:hidden ${mobileView === 'thread' ? 'hidden' : ''}`}
           style={{ minHeight: 'calc(100dvh - 4rem)' }}>
 
+          <img
+            src="/airo-assets/images/logo/horizontal"
+            alt="Spellful"
+            className="mx-auto mt-4 h-10 w-auto object-contain"
+            style={{ filter: 'drop-shadow(0 0 12px hsl(var(--primary) / 0.25))' }}
+          />
           {/* List header */}
           <div className="flex items-center justify-between px-5 pt-4 pb-3">
             <div>
