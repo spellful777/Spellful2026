@@ -9,7 +9,6 @@ import {
 import { useSession } from '@/lib/auth/auth-client';
 import { usePostDetail } from '@/hooks/useCommunityPost';
 import { useCommunityCategories } from '@/hooks/useCommunity';
-import { sparkBodyHtml } from '@/lib/sparks';
 import SparkComposer from '@/components/SparkComposer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -273,7 +272,7 @@ function DiscussionComposer() {
   const [postType, setPostType] = useState<PostType>('discussion');
   const [categoryId, setCategoryId] = useState<number | ''>('');
   const [title, setTitle] = useState(reading ? 'My tarot reading' : '');
-  const [body, setBody] = useState(() => typeof location.state?.discussionBody === 'string' ? `<p>${sparkBodyHtml(location.state.discussionBody)}</p>` : '');
+  const [body, setBody] = useState(() => typeof location.state?.discussionBody === 'string' ? location.state.discussionBody : '');
   const [tags, setTags] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [audience, setAudience] = useState<'public' | 'coven'>('public');
@@ -649,7 +648,6 @@ function DiscussionComposer() {
                   <Button
                     type="submit"
                     disabled={submitting || (followUpPostId !== null && !canPostFollowUp)}
-
                   >
                     <Sparkles className="size-4" />
                     {submitting ? community_new.submittingLabel : followUpPostId ? 'Post follow-up' : community_new.submitLabel}

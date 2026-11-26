@@ -128,7 +128,7 @@ function ReplyCard({
   reply: CommunityReply;
   isAccepted: boolean;
   isPostAuthor: boolean;
-  postType: 'discussion' | 'question';
+  postType: 'discussion' | 'question' | 'spark';
   postId: number;
   onAccept: (replyId: number) => void;
   onLike: (replyId: number) => void;
