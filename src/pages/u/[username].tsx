@@ -1,3 +1,4 @@
+import { ProfileFollowers } from '@/components/ProfileFollowers';
 import { MemberConnectionActions } from '@/components/MemberConnectionActions';
 /**
  * /u/:username — Immersive public member profile (Redesign v2)
@@ -83,6 +84,7 @@ type ProfileData = {
   isOwn: boolean;
   covenCount: number;
   followerCount: number;
+  canViewFollowers?: boolean;
 };
 
 type IdentityData = {
@@ -706,9 +708,11 @@ export default function UserProfilePage() {
             )}
 
             {/* Coven + follower count pills */}
-            {(covenCount > 0 || followerCount > 0) && (
+            {(profileData?.canViewFollowers || covenCount > 0 || followerCount > 0) && (
               <div className="flex items-center gap-3 text-muted-foreground text-xs mb-3 flex-wrap">
-                {followerCount > 0 && (
+                {profileData?.canViewFollowers && profile.username ? (
+                  <ProfileFollowers key={profile.id} username={profile.username} count={followerCount} />
+                ) : followerCount > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Heart className="w-3.5 h-3.5" />
                     <span><strong className="text-foreground">{followerCount}</strong> {followerCount === 1 ? 'follower' : 'followers'}</span>

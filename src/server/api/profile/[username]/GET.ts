@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { user, covenConnections, communityFollows } from '@/server/db/schema.js';
+import { user, covenConnections } from '@/server/db/schema.js';
 import { eq, and, or, count, sql } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 import { isBlocked } from '@/server/lib/block-check.js';
@@ -25,6 +25,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
         location: user.location,
         witchPath: user.witchPath,
         profileVisibility: user.profileVisibility,
+        shareFollowers: user.shareFollowers,
         sunSign: user.sunSign,
         moonSign: user.moonSign,
         risingSign: user.risingSign,
@@ -106,7 +107,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
     }
 
     // Coven count (accepted connections)
-    const [[covenRow], [followerRow]] = await Promise.all([
+    const [[covenRow], [followerRows]] = await Promise.all([
       db.select({ n: count() }).from(covenConnections).where(
         and(
           or(
@@ -116,14 +117,17 @@ export default async function handler(req: Request<{ username: string }>, res: R
           eq(covenConnections.status, 'accepted')
         )
       ),
-      db.select({ n: count() }).from(communityFollows).where(
-        eq(communityFollows.followingId, profile.id)
-      ),
+      db.execute(sql`select count(*) as n from user_follows where following_id = ${profile.id}`),
     ]);
     const covenCount = Number(covenRow?.n ?? 0);
-    const followerCount = Number(followerRow?.n ?? 0);
+    const followerCount = Number((followerRows as unknown as { n: number }[])[0]?.n ?? 0);
 
-    res.json({ profile, connectionStatus, connectionId, isOwn: profile.id === viewerId, covenCount, followerCount });
+    const { shareFollowers, ...publicProfile } = profile;
+    const isOwn = profile.id === viewerId;
+    res.json({
+      profile: publicProfile, connectionStatus, connectionId, isOwn, covenCount, followerCount,
+      canViewFollowers: !!viewerId && (isOwn || shareFollowers),
+    });
   } catch (err) {
     console.error(JSON.stringify({ event: 'profile.get.error', msg: String(err).slice(0, 400) }));
     res.status(500).json({ error: 'Failed to load profile' });

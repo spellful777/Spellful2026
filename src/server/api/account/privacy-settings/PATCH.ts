@@ -21,6 +21,7 @@ interface PrivacyUpdate {
   birthdayVisibility?: VisibilityLevel;
   shareBirthdayInFeed?: boolean;
   guestbookEnabled?: boolean;
+  shareFollowers?: boolean;
   mentionsAllowed?: boolean;
   notifPreviewPrivate?: boolean;
   bioVisibility?: VisibilityLevel;
@@ -58,6 +59,10 @@ export default async function handler(req: Request, res: Response): Promise<void
   }
   if (body.shareBirthdayInFeed !== undefined) update.shareBirthdayInFeed = Boolean(body.shareBirthdayInFeed);
   if (body.guestbookEnabled !== undefined) update.guestbookEnabled = Boolean(body.guestbookEnabled);
+  if (body.shareFollowers !== undefined) {
+    if (typeof body.shareFollowers !== 'boolean') { res.status(400).json({ error: 'Invalid shareFollowers' }); return; }
+    update.shareFollowers = body.shareFollowers;
+  }
   if (body.mentionsAllowed !== undefined) update.mentionsAllowed = Boolean(body.mentionsAllowed);
   if (body.notifPreviewPrivate !== undefined) update.notifPreviewPrivate = Boolean(body.notifPreviewPrivate);
   if (body.bioVisibility !== undefined) {

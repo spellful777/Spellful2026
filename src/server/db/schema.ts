@@ -60,6 +60,7 @@ export const user = mysqlTable('user', {
   discoverable: boolean('discoverable').default(true),                         // appear in member discovery / suggestions
   searchIndexed: boolean('search_indexed').default(true),                      // appear in on-site search results
   guestbookEnabled: boolean('guestbook_enabled').default(true),                // allow others to leave guestbook messages
+  shareFollowers: boolean('share_followers').notNull().default(false),
   mentionsAllowed: boolean('mentions_allowed').default(true),                  // allow others to @mention this user
   notifPreviewPrivate: boolean('notif_preview_private').default(false),        // hide message content from lock-screen notifications
   birthdayVisibility: varchar('birthday_visibility', { length: 20 }).default('coven'), // public | coven | private

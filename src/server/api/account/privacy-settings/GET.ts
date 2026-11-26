@@ -23,6 +23,7 @@ export default async function handler(req: Request, res: Response): Promise<void
       birthdayVisibility: user.birthdayVisibility,
       shareBirthdayInFeed: user.shareBirthdayInFeed,
       guestbookEnabled: user.guestbookEnabled,
+      shareFollowers: user.shareFollowers,
       mentionsAllowed: user.mentionsAllowed,
       notifPreviewPrivate: user.notifPreviewPrivate,
       bioVisibility: user.bioVisibility,

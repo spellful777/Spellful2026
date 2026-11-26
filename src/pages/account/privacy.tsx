@@ -24,6 +24,7 @@ interface PrivacySettings {
   birthdayVisibility: 'public' | 'coven' | 'private';
   shareBirthdayInFeed: boolean;
   guestbookEnabled: boolean;
+  shareFollowers: boolean;
   mentionsAllowed: boolean;
   notifPreviewPrivate: boolean;
   bioVisibility: 'public' | 'coven' | 'private';
@@ -182,6 +183,14 @@ export default function PrivacySanctuaryPage() {
                 <div>
                   <Label className="text-xs text-muted-foreground mb-2 block">{pg.sections.profileVisibility.socialLinksLabel}</Label>
                   <VisibilitySelector id="social-links-visibility" value={settings.socialLinksVisibility} onChange={(v) => update('socialLinksVisibility', v)} />
+                </div>
+                <Separator className="bg-border" />
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label htmlFor="share-followers">Show my followers</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">Signed-in members who can view your profile can open your follower list.</p>
+                  </div>
+                  <Switch id="share-followers" checked={settings.shareFollowers ?? false} onCheckedChange={value => update('shareFollowers', value)} />
                 </div>
                 <div className="pt-1">
                   <Link to={`/u/${username}?preview=guest`} className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">

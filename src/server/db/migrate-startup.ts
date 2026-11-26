@@ -84,6 +84,7 @@ export async function runStartupMigration(): Promise<void> {
       { col: 'discoverable',          sql: 'ALTER TABLE user ADD COLUMN discoverable BOOLEAN NOT NULL DEFAULT TRUE' },
       { col: 'search_indexed',        sql: 'ALTER TABLE user ADD COLUMN search_indexed BOOLEAN NOT NULL DEFAULT TRUE' },
       { col: 'guestbook_enabled',     sql: 'ALTER TABLE user ADD COLUMN guestbook_enabled BOOLEAN NOT NULL DEFAULT TRUE' },
+      { col: 'share_followers', sql: 'ALTER TABLE user ADD COLUMN share_followers BOOLEAN NOT NULL DEFAULT FALSE' },
       { col: 'mentions_allowed',      sql: 'ALTER TABLE user ADD COLUMN mentions_allowed BOOLEAN NOT NULL DEFAULT TRUE' },
       { col: 'notif_preview_private', sql: 'ALTER TABLE user ADD COLUMN notif_preview_private BOOLEAN NOT NULL DEFAULT FALSE' },
       { col: 'birthday_visibility',   sql: "ALTER TABLE user ADD COLUMN birthday_visibility VARCHAR(20) NOT NULL DEFAULT 'coven'" },
