@@ -152,6 +152,23 @@ export default function PrivacySanctuaryPage() {
         ) : (
           <div className="space-y-5">
 
+            <Card className="bg-card border-border">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Feed and ranking transparency</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-muted-foreground">
+                <p><strong>Following</strong> shows posts from accounts you follow, newest first.</p>
+                <p>
+                  <strong>Discover</strong> shows posts from accounts you don’t follow. It uses the post date,
+                  whether it’s a question, and its reply count. Questions from the past two weeks with fewer
+                  than three replies come first, then other recent posts with fewer than three replies.
+                  Newer posts come first within each group.
+                </p>
+                <p>Both views respect post visibility, Circle membership, and blocks.</p>
+                <Link to="/" className="inline-flex text-primary underline underline-offset-4">Open Home feed</Link>
+              </CardContent>
+            </Card>
+
             {/* ── Profile visibility ── */}
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
