@@ -14,7 +14,11 @@ permissions:
 concurrency: spellful-testflight
 jobs:
   upload:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/spellful-8'
+    if: >-
+      (github.event_name == 'workflow_dispatch' &&
+        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release/spellful-8')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/release/spellful-8' &&
+        contains(github.event.head_commit.message, '[testflight]'))
     environment: testflight
     runs-on: macos-26
     timeout-minutes: 90
@@ -39,7 +43,7 @@ jobs:
           VITE_IOS_API_ORIGIN: ${{ vars.VITE_IOS_API_ORIGIN }}
       - name: Sign archive and upload to App Store Connect
         env:
-          BUILD_NUMBER: ${{ inputs.build_number || '1' }}
+          BUILD_NUMBER: ${{ inputs.build_number || '2' }}
           ASC_TEAM: ${{ secrets.ASC_TEAM_ID }}
           ASC_KEY: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER: ${{ secrets.ASC_ISSUER_ID }}

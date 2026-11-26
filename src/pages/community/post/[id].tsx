@@ -1,3 +1,4 @@
+import { hasNativeShare, publicShareUrl, shareContent } from '@/lib/share-studio';
 import { useState, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -579,9 +580,19 @@ export default function PostThreadPage() {
     reloadReplies();
   };
 
-  const sharePost = () => {
-    navigator.clipboard.writeText(window.location.href).catch(() => {});
-    setShowShareToast(true);
+  const sharePost = async () => {
+    const url = publicShareUrl(window.location.href);
+    if (hasNativeShare()) {
+      const result = await shareContent({ title: post?.title, url });
+      if (result.method === 'clipboard') setShowShareToast(true);
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        setShowShareToast(true);
+      } catch {
+        return;
+      }
+    }
     setTimeout(() => setShowShareToast(false), 2000);
     // Track share count (fire-and-forget — non-critical)
     if (post?.id) {

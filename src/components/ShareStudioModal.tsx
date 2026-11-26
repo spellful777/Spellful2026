@@ -10,7 +10,7 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Copy, Check, Share2, ExternalLink, Moon, Star, User, Sparkles, Download, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { shareContent, buildShareUrl, type SharePayload } from '@/lib/share-studio';
+import { hasNativeShare as canUseNativeShare, shareContent, buildShareUrl, type SharePayload } from '@/lib/share-studio';
 import { generateShareCard, downloadBlob, type ShareCardFormat } from '@/lib/share-canvas';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -210,7 +210,7 @@ export default function ShareStudioModal({
   }, [title, description, cfg.label, cardFormat]);
 
   // Check if native share is available
-  const hasNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const hasNativeShare = canUseNativeShare() || (typeof navigator !== 'undefined' && typeof navigator.share === 'function');
 
   return (
     <AnimatePresence>

@@ -12,7 +12,7 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Copy, Check, Share2, ExternalLink } from 'lucide-react';
-import { shareContent } from '@/lib/share-studio';
+import { hasNativeShare as canUseNativeShare, shareContent } from '@/lib/share-studio';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -119,7 +119,7 @@ export default function ProfileLinkShareSheet({
         : `Check out ${name} (@${username}) on Spellful ✨\n\n${profileUrl}`);
 
   const hasNativeShare =
-    typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+    canUseNativeShare() || (typeof navigator !== 'undefined' && typeof navigator.share === 'function');
 
   const handleNativeShare = useCallback(async () => {
     setSharing(true);
