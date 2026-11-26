@@ -1,49 +1,67 @@
-import { formatDistanceToNow } from 'date-fns';
-import { MessageSquare } from 'lucide-react';
+import { formatDistanceToNowStrict } from 'date-fns';
+import { MessageSquare, MoreHorizontal, Star } from 'lucide-react';
 import { Link } from 'react-router';
 import SparkHeartButton from '@/components/SparkHeartButton';
-import SparkFavoriteButton from '@/components/SparkFavoriteButton';
+import { useSparkFavorite } from '@/components/SparkFavoriteButton';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import type { CommunityPost } from '@/hooks/useCommunity';
 
 export default function SparkCard({ post }: { post: CommunityPost }) {
-  const name = post.authorUsername ?? post.authorName ?? 'Member';
-  const displayName = post.authorUsername ? `@${post.authorUsername}` : name;
+  const name = post.authorName ?? post.authorUsername ?? 'Member';
   const destination = `/community/post/${post.id}`;
+  const { saved, pending, failed, toggle } = useSparkFavorite(post.id, post.bookmarked);
   const author = (
-    <>
+    <span className="flex min-w-0 items-center gap-3">
       {post.authorImage ? (
-        <img src={post.authorImage} alt="" width={32} height={32} loading="lazy" className="mx-auto size-8 rounded-full object-cover" />
+        <img src={post.authorImage} alt="" width={44} height={44} loading="lazy" className="size-11 shrink-0 rounded-full border border-border object-cover" />
       ) : (
-        <span aria-hidden="true" className="mx-auto flex size-8 items-center justify-center rounded-full bg-muted font-heading text-sm">
+        <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-muted font-heading text-base">
           {name.charAt(0).toUpperCase()}
         </span>
       )}
-      <span className="mt-1 block truncate text-xs" title={displayName}>{displayName}</span>
-    </>
+      <span className="min-w-0">
+        <span className="block truncate font-heading text-lg font-bold leading-tight text-foreground">{name}</span>
+        <time className="block text-xs text-muted-foreground" dateTime={post.createdAt}>
+          {formatDistanceToNowStrict(new Date(post.createdAt), { addSuffix: true })}
+        </time>
+      </span>
+    </span>
   );
 
   return (
-    <article data-feed-post-id={post.id} className="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-2 rounded-xl border border-border bg-card px-3 pb-1 pt-3">
-      <div className="min-w-0 text-center text-muted-foreground">
+    <article data-feed-post-id={post.id} className="rounded-xl border border-border bg-card px-3 pb-1 pt-2.5 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
         {post.authorUsername ? (
-          <Link to={`/u/${encodeURIComponent(post.authorUsername)}`} className="block rounded-sm hover:text-foreground focus-visible:outline focus-visible:outline-primary">
-            {author}
-          </Link>
+          <Link to={`/u/${encodeURIComponent(post.authorUsername)}`} className="min-w-0 rounded-md hover:underline focus-visible:outline focus-visible:outline-primary">{author}</Link>
         ) : author}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-label={`More actions for ${name}’s Spark`} className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline focus-visible:outline-primary">
+              <MoreHorizontal className="size-5" aria-hidden="true" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="home-social-menu [&_[role=menuitem]:focus]:text-background">
+            <DropdownMenuItem disabled={pending} onSelect={event => { event.preventDefault(); void toggle(); }}>
+              <Star className={saved ? 'fill-current' : undefined} aria-hidden="true" />
+              {saved ? 'Remove from Favorites' : 'Add to Favorites'}
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild><Link to={destination}>View Spark</Link></DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-      <div className="min-w-0">
-        <Link to={destination} className="block whitespace-pre-wrap break-words rounded-sm text-sm leading-snug text-foreground hover:underline focus-visible:outline focus-visible:outline-primary">
-          {post.title}
+      <Link to={destination} className="mt-2 block whitespace-pre-wrap break-words rounded-md font-heading text-[1.1rem] leading-snug text-foreground hover:underline focus-visible:outline focus-visible:outline-primary">
+        {post.title}
+        {post.imageUrl && /^https:\/\//i.test(post.imageUrl) && (
+          <img src={post.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="mt-2 aspect-video w-full rounded-lg object-cover" />
+        )}
+      </Link>
+      <div className="-ml-1 mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+        <SparkHeartButton postId={post.id} liked={post.liked} likeCount={post.likeCount} />
+        <Link to={destination} aria-label={`Open Spark with ${post.replyCount} replies`} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg px-1 hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-primary">
+          <MessageSquare className="size-4" aria-hidden="true" /> {post.replyCount}
         </Link>
-        <div className="flex flex-wrap items-center text-xs text-muted-foreground">
-          <SparkHeartButton postId={post.id} liked={post.liked} likeCount={post.likeCount} />
-          <Link to={destination} aria-label={`Open Spark with ${post.replyCount} replies`} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg px-1 hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-primary">
-            <MessageSquare className="size-3.5" aria-hidden="true" /> {post.replyCount}
-          </Link>
-          <SparkFavoriteButton postId={post.id} bookmarked={post.bookmarked} />
-          <time className="ml-auto text-[11px]" dateTime={post.createdAt}>{formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}</time>
-        </div>
       </div>
+      {failed && <span role="status" className="sr-only">Couldn’t update Favorites. Try again.</span>}
     </article>
   );
 }

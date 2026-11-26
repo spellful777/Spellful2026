@@ -614,9 +614,10 @@ html.high-contrast {
 .home-feed,
 .home-social-menu,
 [data-home-palette] {
-  --background: 258 27% 9%;
-  --card: 264 26% 17%;
-  --muted: 261 24% 13%;
+  --background: 277 24% 8%;
+  --foreground: 40 38% 93%;
+  --card: 276 24% 16%;
+  --muted: 274 25% 12%;
   --muted-foreground: 268 17% 75%;
   --border: 268 22% 29%;
   --popover: 264 28% 14%;
@@ -624,6 +625,10 @@ html.high-contrast {
   --primary: 41 50% 73%;
   --primary-foreground: 269 33% 16%;
   --hero-gold: var(--primary);
+}
+
+.home-feed {
+  background: hsl(var(--background));
 }
 
 .home-feed .coven-entry {
@@ -747,4 +752,27 @@ html.high-contrast {
   0%, 100% { opacity: 0.65; transform: scale(0.85); }
   45% { opacity: 1; transform: scale(1.22); }
   72% { opacity: 0.4; transform: scale(0.72); }
+}
+
+.home-feed-tabs {
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+}
+
+.home-feed-tabs .home-feed-link {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: hsl(var(--muted-foreground));
+}
+
+.home-feed-tabs .home-feed-link:hover {
+  color: hsl(var(--foreground));
+}
+
+.home-feed-tabs .home-feed-link[aria-current='page'] {
+  border-bottom-color: hsl(var(--primary));
+  color: hsl(43 45% 91%);
 }

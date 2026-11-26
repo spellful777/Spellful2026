@@ -69,21 +69,15 @@ export default function HomeFeed({ username }: { username?: string | null }) {
   const visiblePosts = !error && (!loading || anchor.current) ? posts : [];
 
   return (
-    <main className="home-feed mx-auto max-w-3xl space-y-3 px-4 pb-24 pt-4">
+    <main className="home-feed mx-auto max-w-3xl space-y-2 px-3 pb-24 pt-3 sm:px-4">
       <Helmet><title>Home feed | Spellful</title><meta name="robots" content="noindex" /></Helmet>
       <HomeSocialMenu username={username} />
-      <nav aria-label="Home feed" className="grid grid-cols-3 gap-2">
+      <nav aria-label="Home feed" className="home-feed-tabs sticky top-0 z-30 grid grid-cols-3 md:top-20">
         <Link to="/" className="home-feed-link coven-press" aria-current={filter === 'following' ? 'page' : undefined}>Following</Link>
         <Link to={HOME_EXPLORE} className="home-feed-link coven-press" aria-current={filter === 'discover' ? 'page' : undefined}>Explore</Link>
         <Link to={COMMUNITY_FEED} className="home-feed-link coven-press">Community</Link>
       </nav>
-      {filter === 'discover' && (
-        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-          <h2 className="font-medium text-foreground">Public Sparks</h2>
-          <Link to="/community/discover" className="min-h-11 inline-flex items-center text-primary hover:underline">Find members</Link>
-        </div>
-      )}
-      {newPosts && <div className="sticky top-16 z-20"><Button onClick={refresh}>New posts</Button></div>}
+      {newPosts && <Button onClick={refresh} size="sm">New posts</Button>}
       <div ref={list} className="space-y-3" aria-busy={loading}>
         {error ? (
           <div role="status" className="rounded-xl border border-border p-4">

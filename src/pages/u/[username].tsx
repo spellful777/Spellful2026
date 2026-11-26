@@ -24,6 +24,8 @@ import { useState, useEffect, useRef, useCallback, type CSSProperties } from 're
 import { useParams, useNavigate, Link, useLoaderData, useSearchParams } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
+import { useSocialSummary } from '@/hooks/useSocialSummary';
+import { COMMUNITY_REQUESTS, COMMUNITY_CONNECTIONS } from '@/lib/community-navigation';
 import { useSession } from '@/lib/auth/auth-client';
 import { Button } from '@/components/ui/button';
 import {
@@ -410,6 +412,15 @@ function SocialIcon({ platform }: { platform: string }) {
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
+
+function ProfileRequests() {
+  const summary = useSocialSummary();
+  return (
+    <Link to={COMMUNITY_REQUESTS} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border px-3 text-xs text-muted-foreground hover:text-primary focus-visible:outline focus-visible:outline-primary">
+      <strong className="text-foreground">{summary?.pendingRequests.toLocaleString() ?? '—'}</strong> Requests
+    </Link>
+  );
+}
 
 export default function UserProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -820,15 +831,21 @@ export default function UserProfilePage() {
             )}
 
             {/* Coven + follower count pills */}
-            {(covenCount > 0 || followerCount > 0 || canViewFollowing || !!viewerId) && (
+            {(isOwn || covenCount > 0 || followerCount > 0 || canViewFollowing || !!viewerId) && (
               <div className="flex items-center gap-3 text-muted-foreground text-xs mb-3 flex-wrap">
                 {(followerCount > 0 || viewerId) && (
                   <div className="flex items-center gap-1.5">
                     <Heart className="w-3.5 h-3.5" />
-                    <span aria-live="polite"><strong className="text-foreground">{followerCount}</strong> {followerCount === 1 ? 'follower' : 'followers'}</span>
+                    <span aria-live="polite"><strong className="text-foreground">{followerCount.toLocaleString()}</strong> {followerCount === 1 ? 'follower' : 'followers'}</span>
                   </div>
                 )}
-                {covenCount > 0 && (
+                {isOwn && (
+                  <Link to={COMMUNITY_CONNECTIONS} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border px-3 text-xs text-muted-foreground hover:text-primary focus-visible:outline focus-visible:outline-primary">
+                    <strong className="text-foreground">{covenCount.toLocaleString()}</strong> Coven
+                  </Link>
+                )}
+                {isOwn && <ProfileRequests />}
+                {!isOwn && covenCount > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5" />
                     <span aria-live="polite"><strong className="text-foreground">{covenCount}</strong> coven {covenCount === 1 ? 'member' : 'members'}</span>

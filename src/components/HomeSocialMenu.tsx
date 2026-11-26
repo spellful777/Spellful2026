@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpRight, Bell, Compass, MessageSquare, Pencil, Star, User } from 'lucide-react';
+import { ChevronRight, Bell, Compass, MessageSquare, Pencil, Star, User } from 'lucide-react';
 import { Link } from 'react-router';
-import { getMoonPhase, moonGlyph, type MoonPhaseResult } from '@/lib/moon-phase-engine';
+import { getMoonPhase, moonGlyph, type MoonPhaseName } from '@/lib/moon-phase-engine';
+import { useSocialSummary } from '@/hooks/useSocialSummary';
 import SparkItLink from '@/components/SparkItLink';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { COMMUNITY_FEED, COMMUNITY_CONNECTIONS, COMMUNITY_REQUESTS, COMMUNITY_FAVORITES, HOME_EXPLORE } from '@/lib/community-navigation';
+import { COMMUNITY_FEED, COMMUNITY_REQUESTS, COMMUNITY_FAVORITES, HOME_EXPLORE } from '@/lib/community-navigation';
 
 function HomeMoonLink() {
-  const [moon, setMoon] = useState<MoonPhaseResult | null>(null);
+  const [phase, setPhase] = useState<MoonPhaseName | null>(null);
 
   useEffect(() => {
-    const updateMoon = () => setMoon(getMoonPhase());
+    const updateMoon = () => setPhase(getMoonPhase().phase);
     updateMoon();
     const timer = setInterval(updateMoon, 60_000);
     window.addEventListener('focus', updateMoon);
@@ -22,62 +23,17 @@ function HomeMoonLink() {
   }, []);
 
   return (
-    <Link to="/moon-calendar" className="home-social-surface coven-press flex min-h-11 items-center gap-2 rounded-lg px-3 py-1.5 text-xs focus-visible:outline focus-visible:outline-primary">
-      <span className="flex size-6 shrink-0 items-center justify-center text-xl leading-none" aria-hidden="true">{moonGlyph(moon?.phase)}</span>
-      <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <span className="font-semibold text-foreground">{moon?.phase ?? 'Moon calendar'}</span>
-        {moon && <span className="text-muted-foreground">{moon.illumination}% illuminated</span>}
-      </span>
-      <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+    <Link to="/moon-calendar" className="home-social-surface coven-press flex min-h-11 items-center gap-2 rounded-lg px-3 py-1.5 text-sm focus-visible:outline focus-visible:outline-primary">
+      <span className="flex size-6 shrink-0 items-center justify-center text-xl leading-none" aria-hidden="true">{moonGlyph(phase ?? undefined)}</span>
+      <span className="min-w-0 flex-1 font-semibold text-foreground">{phase ?? 'Moon calendar'}</span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
     </Link>
   );
 }
 
-interface SocialSummary {
-  covenCount: number;
-  pendingRequests: number;
-  followerCount: number;
-}
-
 export default function HomeSocialMenu({ username }: { username?: string | null }) {
-  const [summary, setSummary] = useState<SocialSummary | null>(null);
+  const pendingRequests = useSocialSummary()?.pendingRequests ?? 0;
   const profile = username ? `/u/${encodeURIComponent(username)}` : '/account/edit-profile';
-
-  useEffect(() => {
-    const controller = new AbortController();
-    let pending = false;
-    async function refresh() {
-      if (document.hidden || pending) return;
-      pending = true;
-      try {
-        const response = await fetch('/api/account/social-summary', { signal: controller.signal, cache: 'no-store' });
-        if (response.ok) {
-          const next: SocialSummary = await response.json();
-          if (!controller.signal.aborted) setSummary(next);
-        }
-      } catch {
-        // Leave the last confirmed counts in place if a refresh fails.
-      } finally {
-        pending = false;
-      }
-    }
-
-    void refresh();
-    const timer = setInterval(() => { void refresh(); }, 15_000);
-    window.addEventListener('focus', refresh);
-    return () => {
-      controller.abort();
-      clearInterval(timer);
-      window.removeEventListener('focus', refresh);
-    };
-  }, []);
-
-  const stats = [
-    { label: 'Coven', value: summary?.covenCount, to: COMMUNITY_CONNECTIONS },
-    { label: 'Requests', value: summary?.pendingRequests, to: COMMUNITY_REQUESTS },
-    { label: 'Followers', value: summary?.followerCount, to: profile },
-  ];
-
   return (
     <header className="space-y-2">
       <div className="flex items-center justify-between gap-2">
@@ -89,12 +45,18 @@ export default function HomeSocialMenu({ username }: { username?: string | null 
           <SparkItLink />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="Social menu" className="home-social-surface h-11 w-11 shrink-0 rounded-full">
+              <Button variant="outline" size="icon" aria-label={pendingRequests > 0 ? `Social menu, ${pendingRequests} pending Coven requests` : 'Social menu'} className="home-social-surface relative h-11 w-11 shrink-0 rounded-full">
                 <User aria-hidden="true" />
+                {pendingRequests > 0 && (
+                  <span aria-hidden="true" className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                    {pendingRequests}
+                  </span>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="home-social-menu w-52 [&_[role=menuitem]]:min-h-11 [&_[role=menuitem]:focus]:text-background">
               <DropdownMenuItem asChild><Link to={COMMUNITY_FEED}><MessageSquare aria-hidden="true" />Community</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to="/community/discover"><Compass aria-hidden="true" />Find members</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to={HOME_EXPLORE}><Compass aria-hidden="true" />Explore</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to={COMMUNITY_REQUESTS}><Bell aria-hidden="true" />Coven requests</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to={COMMUNITY_FAVORITES}><Star aria-hidden="true" />Favorites</Link></DropdownMenuItem>
@@ -108,14 +70,6 @@ export default function HomeSocialMenu({ username }: { username?: string | null 
 
       <HomeMoonLink />
 
-      <nav aria-label="Your social counts" className="home-social-surface grid grid-cols-3 divide-x divide-border rounded-lg">
-        {stats.map(({ label, value, to }) => (
-          <Link key={label} to={to} className="coven-press rounded-lg px-2 py-1.5 text-center hover:bg-muted focus-visible:outline focus-visible:outline-primary">
-            <span className="block text-base font-semibold tabular-nums text-foreground">{value?.toLocaleString() ?? '—'}</span>
-            <span className="block text-xs text-muted-foreground">{label}</span>
-          </Link>
-        ))}
-      </nav>
     </header>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Star } from 'lucide-react';
 
-export default function SparkFavoriteButton({ postId, bookmarked }: { postId: number; bookmarked: boolean }) {
+export function useSparkFavorite(postId: number, bookmarked: boolean) {
   const [saved, setSaved] = useState(bookmarked);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -27,6 +27,11 @@ export default function SparkFavoriteButton({ postId, bookmarked }: { postId: nu
     }
   }
 
+  return { saved, pending, failed, toggle };
+}
+
+export default function SparkFavoriteButton({ postId, bookmarked }: { postId: number; bookmarked: boolean }) {
+  const { saved, pending, failed, toggle } = useSparkFavorite(postId, bookmarked);
   return (
     <>
       <button

@@ -12,6 +12,7 @@ export default function SparkComposer() {
   const { session, isPending } = useSession();
   const navigate = useNavigate();
   const [text, setText] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [audience, setAudience] = useState<'public' | 'coven'>('public');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +30,7 @@ export default function SparkComposer() {
       const response = await fetch('/api/community/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'spark', body: text, audience }),
+        body: JSON.stringify({ type: 'spark', body: text, audience, imageUrl: imageUrl.trim() || undefined }),
       });
       const result = await response.json() as { id?: number; error?: string };
       if (!response.ok || !result.id) throw new Error(result.error ?? 'Couldn’t publish your Spark.');
@@ -66,13 +67,20 @@ export default function SparkComposer() {
           </label>
           <span id="spark-count" className={overLimit ? 'text-destructive' : 'text-muted-foreground'}>{count}/{SPARK_LIMIT} characters</span>
         </div>
+        <details className="text-sm text-muted-foreground">
+          <summary className="min-h-11 cursor-pointer py-3">Add an image</summary>
+          <label className="block">
+            Image URL
+            <input type="url" value={imageUrl} onChange={event => setImageUrl(event.target.value)} placeholder="https://" className="mt-1 min-h-11 w-full rounded-lg border border-border bg-background px-3" />
+          </label>
+        </details>
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button type="submit" variant="outline" disabled={!session || submitting || !text.trim() || overLimit} className={sparkActionClass}>
             <SparkIcon className="size-5" monochrome />
             {submitting ? 'Publishing…' : 'Spark it'}
           </Button>
-          <Link to="/community/new" state={{ discussionBody: text }} className="inline-flex min-h-11 items-center text-sm text-primary hover:underline">Start a discussion</Link>
+          <Link to="/community/new" state={{ discussionBody: text, discussionImage: imageUrl }} className="inline-flex min-h-11 items-center text-sm text-primary hover:underline">Start a discussion</Link>
         </div>
       </form>
     </main>

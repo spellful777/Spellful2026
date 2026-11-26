@@ -32,8 +32,17 @@ export default async function handler(req: Request, res: Response) {
     if (typeof body !== 'string' || !body.trim() || countSparkCharacters(body) > SPARK_LIMIT) {
       return res.status(400).json({ error: `A Spark must have 1–${SPARK_LIMIT} characters` });
     }
-    if (title !== undefined || tags || imageUrl || poll || quotedPostId !== undefined || sharedReading !== undefined) {
-      return res.status(400).json({ error: 'Sparks are short text posts. Use a discussion for other content.' });
+    if (title !== undefined || tags || poll || quotedPostId !== undefined || sharedReading !== undefined) {
+      return res.status(400).json({ error: 'Sparks support short text and an optional image. Use a discussion for other content.' });
+    }
+    if (imageUrl !== undefined) {
+      try {
+        if (typeof imageUrl !== 'string' || imageUrl.length > 2048) throw new Error('Invalid URL');
+        const parsed = new URL(imageUrl);
+        if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('Invalid URL');
+      } catch {
+        return res.status(400).json({ error: 'Enter a valid HTTPS image URL' });
+      }
     }
     if (audience !== 'public' && audience !== 'coven') {
       return res.status(400).json({ error: 'Invalid audience' });
@@ -46,7 +55,7 @@ export default async function handler(req: Request, res: Response) {
 
     const text = body.trim();
     const [spark] = await db.insert(communityPosts).values({
-      userId: session.user.id, categoryId: category.id, type, title: text, body: sparkBodyHtml(text), audience,
+      userId: session.user.id, categoryId: category.id, type, title: text, body: sparkBodyHtml(text), audience, imageUrl: imageUrl ?? null,
     }).$returningId();
     return res.status(201).json({ id: spark.id });
   }

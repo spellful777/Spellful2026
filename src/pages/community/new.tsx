@@ -274,7 +274,7 @@ function DiscussionComposer() {
   const [title, setTitle] = useState(reading ? 'My tarot reading' : '');
   const [body, setBody] = useState(() => typeof location.state?.discussionBody === 'string' ? location.state.discussionBody : '');
   const [tags, setTags] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState(() => typeof location.state?.discussionImage === 'string' ? location.state.discussionImage : '');
   const [audience, setAudience] = useState<'public' | 'coven'>('public');
   const [showPoll, setShowPoll] = useState(false);
   const [poll, setPoll] = useState<PollDraft>({ question: '', choices: ['', ''], closesAt: '' });
