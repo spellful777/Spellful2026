@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router';
+import { startSparkReadingDraft } from '@/lib/spark-reading-draft';
 import { tarot } from 'virtual:content';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router';
@@ -1169,6 +1171,7 @@ export default function TarotPage() {
   const [selectedSpread, setSelectedSpread] = useState<SpreadDefinition>(SPREADS[0]);
   const [phase, setPhase] = useState<'select' | 'shuffle' | 'draw' | 'reading'>('select');
   const [intention, setIntention] = useState('');
+  const navigate = useNavigate();
   const [drawnCards, setDrawnCards] = useState<DrawnCard[]>([]);
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const [selectedCard, setSelectedCard] = useState<DrawnCard | null>(null);
@@ -1670,7 +1673,16 @@ export default function TarotPage() {
                 </AnimatePresence>
 
                 {allFlipped && (
+                  <>
+                  <Button type="button" className="min-h-11" onClick={() => navigate(startSparkReadingDraft({
+                    type: 'tarot', spreadType: selectedSpread.id, includePositions: true, includeInterpretations: false,
+                    cards: drawnCards.map((item, displayOrder) => ({
+                      cardId: item.card.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+                      reversed: item.reversed, displayOrder,
+                    })),
+                  }))}>Spark this reading</Button>
                   <StoryWeaver drawn={drawnCards} spreadName={selectedSpread.name} onShare={() => setShareTarotOpen(true)} />
+                  </>
                 )}
 
                 <div className="flex flex-wrap items-center justify-center gap-3 pt-2">

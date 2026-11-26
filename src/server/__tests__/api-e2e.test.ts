@@ -40,10 +40,10 @@ describe('Navigation structure (Header.tsx)', () => {
 
   it('provides guest community access and signed-in sanctuary and coven menus', () => {
     expect(item('Community')).toContain('guestOnly: true');
-    expect(item('My Coven')).toContain('authOnly: true');
+    expect(item('Coven')).toContain('authOnly: true');
     expect(item('My Sanctuary')).toContain('authOnly: true');
     expect(item('My Sanctuary')).toContain("href: '/dashboard', authRequired: true");
-    expect(item('My Coven')).toContain("href: '/messages', authRequired: true");
+    expect(item('Coven')).toContain("href: '/messages', authRequired: true");
   });
 
   it('includes learning, divination and spellcraft tools under Explore', () => {

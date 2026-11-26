@@ -1,3 +1,6 @@
+import type { SparkReading } from '@/lib/spark-reading';
+import type { ProfileFeature } from '@/lib/profile-feature';
+import type { SparkMedia } from '@/lib/spark-media';
 import { mysqlTable, bigint, int, tinyint, varchar, text, boolean, timestamp, json, index, uniqueIndex } from 'drizzle-orm/mysql-core';
 // Note: tinyint imported above; used for TINYINT columns
 
@@ -37,6 +40,9 @@ export const user = mysqlTable('user', {
   interestTags: json('interest_tags').$type<string[]>(),
   socialLinks: json('social_links').$type<Record<string, string>>(),
   welcomeSent: boolean('welcome_sent').default(false),
+  commentGifsEnabled: boolean('comment_gifs_enabled'),
+  shareLikesWithCoven: boolean('share_likes_with_coven').notNull().default(false),
+  shareFollowing: boolean('share_following').notNull().default(false),
   hideOnlineStatus: boolean('hide_online_status').default(false),
   messagePermission: varchar('message_permission', { length: 20 }).default('coven'), // everyone | coven | nobody
   invitePermission: varchar('invite_permission', { length: 20 }).default('coven'),   // everyone | nobody
@@ -47,6 +53,7 @@ export const user = mysqlTable('user', {
   avatarFrame: varchar('avatar_frame', { length: 50 }).default(''),             // moon | celestial | botanical | crystal | ornate | ''
   practiceLabels: json('practice_labels').$type<string[]>(),                   // e.g. ['Green Witch', 'Tarot Reader']
   profileStatus: varchar('profile_status', { length: 100 }).default(''),       // short mood/status
+  featuredAbout: json('featured_about').$type<ProfileFeature>(),
   profileSections: json('profile_sections').$type<{ id: string; enabled: boolean; order: number }[]>(), // modular sections config
   // Profile 4.0 fields
   profileLayout: varchar('profile_layout', { length: 20 }).default('classic'), // compact | classic | immersive
@@ -615,6 +622,11 @@ export const communityPosts = mysqlTable('community_posts', {
   title: varchar('title', { length: 300 }).notNull(),
   body: text('body').notNull(),
   imageUrl: text('image_url'),
+  sparkTopic: varchar('spark_topic', { length: 40 }),
+  sparkReading: json('spark_reading').$type<SparkReading>(),
+  sparkMedia: json('spark_media').$type<SparkMedia[]>(),
+  reshareOf: int('reshare_of'),
+  originalSparkId: int('original_spark_id'),
   tags: varchar('tags', { length: 500 }).default(''),
   isPinned: boolean('is_pinned').default(false),
   isLocked: boolean('is_locked').default(false),
@@ -630,12 +642,21 @@ export const communityPosts = mysqlTable('community_posts', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
+export const sparkMediaUploads = mysqlTable('spark_media_uploads', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  postId: int('post_id').references(() => communityPosts.id, { onDelete: 'set null' }),
+  kind: varchar('kind', { length: 10 }).$type<SparkMedia['kind']>().notNull(),
+});
+
 export const communityReplies = mysqlTable('community_replies', {
   id: int('id').primaryKey().autoincrement(),
   postId: int('post_id').notNull().references(() => communityPosts.id, { onDelete: 'cascade' }),
   userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
   parentId: int('parent_id'),
   body: text('body').notNull(),
+  gifUrl: text('gif_url'),
+  suppressLinkPreview: boolean('suppress_link_preview').notNull().default(false),
   isHidden: boolean('is_hidden').default(false),
   likeCount: int('like_count').default(0),
   depth: int('depth').default(0),
@@ -658,12 +679,25 @@ export const communityBookmarks = mysqlTable('community_bookmarks', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+export const communityReplyFavorites = mysqlTable('community_reply_favorites', {
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  replyId: int('reply_id').notNull().references(() => communityReplies.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [uniqueIndex('uq_reply_favorite').on(table.userId, table.replyId)]);
+
 export const communityFollows = mysqlTable('community_follows', {
   id: int('id').primaryKey().autoincrement(),
   followerId: varchar('follower_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
   followingId: varchar('following_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+export const userFollows = mysqlTable('user_follows', {
+  id: int('id').primaryKey().autoincrement(),
+  followerId: varchar('follower_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  followingId: varchar('following_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [uniqueIndex('uq_follow').on(table.followerId, table.followingId)]);
 
 export const communityBlocks = mysqlTable('community_blocks', {
   id: int('id').primaryKey().autoincrement(),

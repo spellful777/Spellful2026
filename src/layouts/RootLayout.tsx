@@ -1,6 +1,7 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement } from 'react';
 import { ScrollRestoration } from 'react-router';
+import { useCovenPressGlow } from '@/hooks/useCovenPressGlow';
 import { useSession } from '@/lib/auth/auth-client';
 
 import HomepageSameAsJsonLd from '@/components/HomepageSameAsJsonLd';
@@ -29,6 +30,7 @@ interface RootLayoutProps {
 
 function RootLayoutInner({ children }: RootLayoutProps) {
   useRecentPages();
+  useCovenPressGlow();
   const { session, isPending } = useSession();
   // On mobile, the header hides itself when logged in (hidden md:block).
   // Only apply top padding when the header is actually visible.

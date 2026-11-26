@@ -1,9 +1,9 @@
 /**
- * MyCoven — My Coven dashboard tab
+ * MyCoven — Coven dashboard tab
  * Shows: All Coven Members, Online Members, Pending Invitations, Sent Invitations
  */
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { motion } from 'motion/react';
 import { Users, Clock, UserCheck, UserX, UserMinus, RefreshCw, Moon, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -182,6 +182,7 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
   return (
     <button
       onClick={onClick}
+      aria-pressed={active}
       className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
       style={{
         background: active ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
@@ -198,7 +199,18 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
 export default function MyCoven({ currentUserId }: { currentUserId: string }) {
   const [connections, setConnections] = useState<CovenMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('tab');
+  const filter: Filter = tab === 'requests' ? 'pending' : tab === 'online' || tab === 'sent' ? tab : 'all';
+
+  function setFilter(next: Filter) {
+    setSearchParams(previous => {
+      const params = new URLSearchParams(previous);
+      if (next === 'all') params.delete('tab');
+      else params.set('tab', next === 'pending' ? 'requests' : next);
+      return params;
+    }, { replace: true, preventScrollReset: true });
+  }
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
   type Suggestion = { id: string; name: string | null; username: string | null; image: string | null; witchPath: string | null; sharedTags: number };
@@ -207,17 +219,32 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
   const [invitingId, setInvitingId] = useState<string | null>(null);
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      const r = await fetch('/api/coven', { credentials: 'include' });
+      const r = await fetch('/api/coven', { credentials: 'include', signal, cache: 'no-store' });
       if (!r.ok) return;
       const data = await r.json() as { connections: CovenMember[] };
-      setConnections(data.connections ?? []);
+      if (!signal?.aborted) {
+        const next = data.connections ?? [];
+        setConnections(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
+      }
     } catch { /* silent */ }
-    finally { setLoading(false); }
+    finally { if (!signal?.aborted) setLoading(false); }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (actionLoading !== null || invitingId !== null) return;
+    const controller = new AbortController();
+    const refresh = () => { if (!document.hidden) void load(controller.signal); };
+    void load(controller.signal);
+    const timer = setInterval(refresh, 15_000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [actionLoading, invitingId, load]);
 
   // Load suggestions once
   useEffect(() => {
@@ -285,7 +312,6 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
           body: JSON.stringify({ connectionId, action }),
         });
       }
-      await load();
     } finally {
       setActionLoading(null);
     }
@@ -330,7 +356,7 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-serif font-bold" style={{ color: 'hsl(var(--foreground))' }}>
-            My Coven
+            Coven
           </h2>
           <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))' }}>
             {accepted.length} {accepted.length === 1 ? 'member' : 'members'}

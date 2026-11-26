@@ -1,3 +1,4 @@
+import { GrimoireSparks } from '@/components/GrimoireSparks';
 import { grimoire } from 'virtual:content';
 import { useState, useEffect, useCallback } from 'react';
 import { GrimoireOnboarding, GrimoireWelcomeFlow, useGrimoireWelcome } from '@/components/GrimoireOnboarding';
@@ -43,7 +44,7 @@ import {
   ChevronUp,
   Clock,
 } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -514,6 +515,8 @@ function EntryFormDialog({ open, onClose, onSave, initial }: EntryFormProps) {
 
 export default function GrimoirePage() {
   const { session, isPending } = useSession();
+  const [params] = useSearchParams();
+  const kind = params.get('sparks');
   const isAuthenticated = !!session;
   const { show: showWelcome, dismiss: dismissWelcome } = useGrimoireWelcome(isAuthenticated);
 
@@ -649,6 +652,7 @@ export default function GrimoirePage() {
   // Authenticated welcome flow — rendered as overlay after the page mounts
 
   const totalCount = total || entries.length;
+  if (session && (kind === 'favorite' || kind === 'saved')) return <GrimoireSparks key={kind} kind={kind} />;
   const favCount = entries.filter((e) => e.isFavorite).length;
 
   return (
@@ -660,6 +664,7 @@ export default function GrimoirePage() {
       </Helmet>
 
       <main className="min-h-screen pb-20" style={{ background: 'hsl(var(--background))' }}>
+        {session && <GrimoireSparks />}
         {/* Hero header */}
         <div
           className="relative py-16 px-4 text-center overflow-hidden"

@@ -108,6 +108,8 @@ const WitchcraftForBeginnersPage = lazy(() => import('./pages/seo-guides/witchcr
 const HowToCreateGrimoirePage = lazy(() => import('./pages/seo-guides/how-to-create-a-grimoire'));
 // TarotSharePage has a named loader export — use a module-level lazy wrapper
 const TarotSharePage = lazy(() => import('./pages/tarot/share/[publicId]'));
+const ExploreTopic = lazy(() => import('./pages/explore/topic'));
+const CommunitySearchPage = lazy(() => import('./pages/community/search'));
 const ExplorePage = lazy(() => import('./pages/explore/index'));
 
 // Loader for tarot share page — dynamically imports the module to get the named loader export
@@ -124,6 +126,7 @@ function Lazy({ children }: { children: React.ReactNode }) {
 }
 
 export const routes: RouteObject[] = [
+  { path: '/explore/topics/:topic', element: <Lazy><ExploreTopic /></Lazy> },
   {
     path: '/login',
     element: <Lazy><LoginPage /></Lazy>,
@@ -320,7 +323,17 @@ export const routes: RouteObject[] = [
   { path: '/community/bookmarks', element: <Lazy><CommunityBookmarksPage /></Lazy> },
   { path: '/community/notifications', element: <Lazy><CommunityNotificationsPage /></Lazy> },
   { path: '/community/discover', element: <Lazy><CommunityDiscoverPage /></Lazy> },
-  { path: '/community/post/:id', element: <Lazy><CommunityPostPage /></Lazy> },
+  { path: '/community/search', element: <Lazy><CommunitySearchPage /></Lazy> },
+  { path: '/community/post/:id', element: <Lazy><CommunityPostPage /></Lazy>,
+    loader: async ({ params }) => {
+      try {
+        const base = typeof window === 'undefined' ? 'http://localhost:3000' : '';
+        const response = await fetch(base + '/api/community/posts/' + encodeURIComponent(params.id ?? '') + '/reading-preview');
+        if (response.ok) return { readingPreview: await response.json() };
+      } catch { /* Keep the standard preview. */ }
+      return { readingPreview: null };
+    },
+  },
   { path: '/community/help/getting-started', element: <Lazy><CommunityHelpGettingStartedPage /></Lazy> },
   { path: '/community/help/faq', element: <Lazy><CommunityHelpFaqPage /></Lazy> },
   { path: '/community/help/glossary', element: <Lazy><CommunityHelpGlossaryPage /></Lazy> },

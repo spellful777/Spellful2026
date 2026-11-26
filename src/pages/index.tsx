@@ -1,3 +1,5 @@
+import { useSearchParams } from 'react-router';
+import HomeFeed from './home-feed';
 import { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -10,7 +12,8 @@ import { ContentListContext } from '@airo/content';
 import AstroFeed from '@/components/AstroFeed';
 import CommandCenter from '@/components/CommandCenter';
 import { useSession } from '@/lib/auth/auth-client.tsx';
-import { getMoonPhase } from '@/lib/moon-phase-engine';
+import { getMoonPhase, moonGlyph } from '@/lib/moon-phase-engine';
+import HomeCovenCard from '@/components/HomeCovenCard';
 import { InstallBanner } from '@/components/InstallSpellful';
 
 // ─── Seeded stars (SSR-safe) ──────────────────────────────────────────────────
@@ -28,17 +31,6 @@ const STARS = Array.from({ length: 60 }, (_, i) => ({
   color: i % 7 === 0 ? 'hsl(var(--primary))' : i % 5 === 0 ? 'hsl(var(--accent))' : 'hsl(var(--foreground))',
   glow: i % 9 === 0,
 }));
-
-// ─── Moon phase glyph ─────────────────────────────────────────────────────────
-function moonGlyph(phase: string) {
-  const map: Record<string, string> = {
-    'New Moon': '🌑', 'Waxing Crescent': '🌒', 'First Quarter': '🌓',
-    'Waxing Gibbous': '🌔', 'Full Moon': '🌕', 'Waning Gibbous': '🌖',
-    'Last Quarter': '🌗', 'Waning Crescent': '🌘',
-  };
-  // eslint-disable-next-line security/detect-object-injection
-  return map[phase] ?? '🌙';
-}
 
 // ─── Feature accent map ───────────────────────────────────────────────────────
 const FEATURE_ACCENTS: Record<string, string> = {
@@ -160,6 +152,17 @@ function BenefitRow({ icon: Icon, title, desc, accent }: {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
+  const { session } = useSession();
+  const [params] = useSearchParams();
+  if (!session) return <PublicHomePage />;
+  const { user } = session;
+  const username = 'username' in user && typeof user.username === 'string' ? user.username : undefined;
+  return params.get('feed') === 'following' || params.get('feed') === 'explore'
+    ? <HomeFeed key={user.id} username={username} />
+    : <CommandCenter key={user.id} />;
+}
+
+function PublicHomePage() {
   const { session } = useSession();
   const heroRef = useRef<HTMLDivElement>(null);
   const liveMoon = useLiveMoon();
@@ -614,6 +617,10 @@ export default function HomePage() {
           </section>
         )}
 
+        <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
+          <HomeCovenCard />
+        </div>
+
         {/* ══════════════════════════════════════════════════════════════
             5. WHY JOIN SPELLFUL — guests only
         ══════════════════════════════════════════════════════════════ */}
@@ -640,7 +647,7 @@ export default function HomePage() {
                 {[
                   { icon: Sparkles, title: 'My Sanctuary', desc: 'A customizable private daily dashboard — moon phase, birth chart, tarot of the day, and your personal cosmic weather.', accent: '--primary' },
                   { icon: BookOpen, title: 'Living Grimoire', desc: 'Save tarot readings, moon rituals, dream journal entries, and spell discoveries. Your private Book of Shadows, always with you.', accent: '--grimoire-tarot' },
-                  { icon: Users, title: 'My Coven', desc: 'Connect with witches, pagans, and seekers. Share readings, ask questions, and grow your practice in a warm community.', accent: '--accent' },
+                  { icon: Users, title: 'Coven', desc: 'Connect with witches, pagans, and seekers. Share readings, ask questions, and grow your practice in a warm community.', accent: '--accent' },
                   { icon: Star, title: 'Personal Journey', desc: 'Track your learning progress through the Spellful Academy, save favorites, and personalize every tool to your path.', accent: '--grimoire-herb' },
                 ].map((benefit, i) => (
                   <motion.div
@@ -690,75 +697,6 @@ export default function HomePage() {
                   Free forever · No credit card required
                 </p>
               </motion.div>
-            </div>
-          </section>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════
-            6. COMMUNITY — guests only
-        ══════════════════════════════════════════════════════════════ */}
-        {!session && (
-          <section className="py-xxl px-6 relative overflow-hidden" style={{ background: 'hsl(var(--card))' }}>
-            <div className="max-w-5xl mx-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.7 }}
-                >
-                  <SectionLabel>{home.communityBanner.eyebrow}</SectionLabel>
-                  <h2 className="mb-5" style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 400, color: 'hsl(var(--foreground))', lineHeight: 1.15 }}>
-                    {home.communityBanner.heading}
-                  </h2>
-                  <p className="text-sm leading-relaxed mb-8" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)', fontWeight: 300 }}>
-                    {home.communityBanner.body}
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Link
-                      to="/community"
-                      className="inline-flex items-center gap-2 px-7 py-3 rounded-full text-sm transition-all duration-200 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontFamily: 'var(--font-sans)', letterSpacing: '0.04em' }}
-                    >
-                      <Users size={14} />
-                      {home.communityBanner.cta}
-                    </Link>
-                    <Link
-                      to="/about"
-                      className="inline-flex items-center gap-2 px-7 py-3 rounded-full text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      style={{ background: 'transparent', border: '1px solid hsl(var(--border))', color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)', letterSpacing: '0.04em' }}
-                    >
-                      {home.communityBanner.ctaSecondary}
-                    </Link>
-                  </div>
-                  <p className="mt-6 text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
-                    Community discussions are visible to members only. We never display private messages or friend lists publicly.
-                  </p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.7, delay: 0.15 }}
-                  className="relative"
-                >
-                  <div
-                    className="rounded-2xl overflow-hidden aspect-[4/3]"
-                    style={{ border: '1px solid hsl(var(--border))' }}
-                  >
-                    <img
-                      src="/airo-assets/images/pages/home/community-banner"
-                      alt="Spellful community — witches and seekers gathered together"
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      width={600}
-                      height={450}
-                    />
-                    <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to top, hsl(var(--card) / 0.6) 0%, transparent 50%)' }} />
-                  </div>
-                </motion.div>
-              </div>
             </div>
           </section>
         )}

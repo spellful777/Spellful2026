@@ -11,11 +11,18 @@ export default async function handler(req: Request, res: Response) {
     if (!session?.user?.id) return res.status(401).json({ error: 'Unauthorized' });
 
     const { connectionId, action } = req.body as { connectionId: number; action: 'accept' | 'decline' };
-    if (!connectionId || !action) return res.status(400).json({ error: 'connectionId and action required' });
+    if (!connectionId || (action !== 'accept' && action !== 'decline')) return res.status(400).json({ error: 'connectionId and action required' });
 
-    await db.update(covenConnections)
-      .set({ status: action === 'accept' ? 'accepted' : 'declined' })
-      .where(and(eq(covenConnections.id, connectionId), eq(covenConnections.receiverId, session.user.id)));
+    const status = action === 'accept' ? 'accepted' : 'declined';
+    const ownedRequest = and(eq(covenConnections.id, connectionId), eq(covenConnections.receiverId, session.user.id));
+    const [result] = await db.update(covenConnections)
+      .set({ status })
+      .where(and(ownedRequest, eq(covenConnections.status, 'pending')));
+    if (!result.affectedRows) {
+      const [confirmed] = await db.select({ id: covenConnections.id }).from(covenConnections)
+        .where(and(ownedRequest, eq(covenConnections.status, status))).limit(1);
+      if (!confirmed) return res.status(409).json({ error: 'Request is no longer pending' });
+    }
 
     res.json({ ok: true });
   } catch (err) {

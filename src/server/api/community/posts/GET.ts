@@ -1,22 +1,29 @@
+import { findTopic } from '@/lib/spark-topics';
+import { communityLikePreviews } from '@/server/lib/community-like-previews.js';
+import { sparkReshares } from '@/server/lib/spark-reshares.js';
+import { loadOriginalSparks } from '@/server/lib/original-sparks.js';
+import { followsPostAuthor, postAudienceAllows } from '@/server/lib/community-post-access.js';
 /**
  * GET /api/community/posts
- * Query params: filter (all|latest|popular|unanswered|following|mine), category, page, limit
+ * Query params: filter (all|latest|chronological|personalized|popular|trending|unanswered|following|mine), category, kind (spark|discussion), page, limit
  */
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { communityPosts, communityCategories, communityLikes, communityBookmarks, communityFollows, communityBlocks, user } from '@/server/db/schema.js';
-import { eq, and, desc, sql, inArray, notInArray } from 'drizzle-orm';
+import { communityPosts, communityCategories, communityLikes, communityBookmarks, user } from '@/server/db/schema.js';
+import { eq, and, desc, gt, gte, ne, sql, inArray } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request, res: Response) {
   const session = await getAuthSession(req);
-  if (!session?.user?.id) return res.status(401).json({ error: 'Sign in to view the community' });
-  const myId = session.user.id;
+  const topic = findTopic(req.query.topic);
+  if (req.query.topic !== undefined && !topic) return res.status(404).json({ error: 'Topic not found' });
+  if (!session?.user?.id && !topic) return res.status(401).json({ error: 'Sign in to view the community' });
+  const myId = session?.user?.id;
 
   const filter = (req.query.filter as string) || 'latest';
   const categorySlug = req.query.category as string | undefined;
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
+  const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 20));
   const offset = (page - 1) * limit;
 
   // Resolve category id
@@ -27,38 +34,63 @@ export default async function handler(req: Request, res: Response) {
     categoryId = cat.id;
   }
 
-  // Build blocked-user exclusion
-  let blockedIds: string[] = [];
-  if (myId) {
-    const blocks = await db.select({ blockedId: communityBlocks.blockedId }).from(communityBlocks).where(eq(communityBlocks.blockerId, myId));
-    blockedIds = blocks.map((b) => b.blockedId);
-  }
-
-  // Build following list for "following" filter
-  let followingIds: string[] = [];
-  if (filter === 'following' && myId) {
-    const follows = await db.select({ followingId: communityFollows.followingId }).from(communityFollows).where(eq(communityFollows.followerId, myId));
-    followingIds = follows.map((f) => f.followingId);
-  }
-
-  const conditions = [eq(communityPosts.isHidden, false)];
+  const conditions = [eq(communityPosts.isHidden, false), postAudienceAllows(myId)];
+  if (topic) conditions.push(eq(communityPosts.sparkTopic, topic), eq(communityPosts.type, 'spark'));
+  if (req.query.kind === 'spark') conditions.push(eq(communityPosts.type, 'spark'));
+  if (req.query.kind === 'discussion') conditions.push(ne(communityPosts.type, 'spark'));
   if (categoryId) conditions.push(eq(communityPosts.categoryId, categoryId));
-  if (blockedIds.length) conditions.push(notInArray(communityPosts.userId, blockedIds));
   if (filter === 'unanswered') conditions.push(eq(communityPosts.replyCount, 0));
   if (filter === 'mine' && myId) conditions.push(eq(communityPosts.userId, myId));
-  if (filter === 'following' && followingIds.length) conditions.push(inArray(communityPosts.userId, followingIds));
-  if (filter === 'following' && !followingIds.length) return res.json({ posts: [], total: 0, page, pages: 0 });
+  const follows = myId ? followsPostAuthor(myId) : sql`false`;
+  if (filter === 'following') conditions.push(follows);
+  if (filter === 'discover' && myId) {
+    conditions.push(eq(communityPosts.audience, 'public'), ne(communityPosts.userId, myId), sql`not ${follows}`);
+  }
 
-  const orderBy = filter === 'popular'
-    ? [desc(communityPosts.likeCount), desc(communityPosts.replyCount)]
-    : [desc(communityPosts.isPinned), desc(communityPosts.createdAt)];
+  if (typeof req.query.afterId === 'string') {
+    const afterId = Number(req.query.afterId);
+    if (!Number.isSafeInteger(afterId) || afterId < 0) {
+      return res.status(400).json({ error: 'Invalid post cursor' });
+    }
+    const [newPost] = await db.select({ id: communityPosts.id }).from(communityPosts)
+      .where(and(...conditions, gt(communityPosts.id, afterId))).limit(1);
+    return res.json({ hasNewPosts: Boolean(newPost) });
+  }
 
-  const [posts, [{ total }]] = await Promise.all([
+
+  const recent = [desc(communityPosts.createdAt), desc(communityPosts.id)];
+  let orderBy = [desc(communityPosts.isPinned), ...recent];
+  if (filter === 'chronological' || (filter === 'following' && req.query.order === 'newest')) orderBy = recent;
+  if (filter === 'discover') {
+    const fresh = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    const priority = sql`case
+      when ${communityPosts.createdAt} >= ${fresh} and ${communityPosts.type} = 'question'
+        and coalesce(${communityPosts.replyCount}, 0) < 3 then 2
+      when ${communityPosts.createdAt} >= ${fresh} and coalesce(${communityPosts.replyCount}, 0) < 3 then 1
+      else 0 end`;
+    orderBy = [desc(priority), ...recent];
+  }
+  if (filter === 'personalized') orderBy = [desc(follows), ...recent];
+  if (filter === 'popular') orderBy = [desc(communityPosts.likeCount), desc(communityPosts.replyCount), ...recent];
+
+  if (filter === 'trending') {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const engagement = sql`coalesce(${communityPosts.likeCount}, 0) + 2 * coalesce(${communityPosts.replyCount}, 0)`;
+    conditions.push(gte(communityPosts.createdAt, since), sql`${engagement} > 0`);
+    orderBy = [desc(engagement), ...recent];
+  }
+
+  const [posts, [{ total, newestId }]] = await Promise.all([
     db.select({
       id: communityPosts.id,
       type: communityPosts.type,
       title: communityPosts.title,
+      preview: sql<string>`left(${communityPosts.body}, 280)`,
       tags: communityPosts.tags,
+      audience: communityPosts.audience,
+      imageUrl: communityPosts.imageUrl,
+      sparkMedia: communityPosts.sparkMedia, sparkTopic: communityPosts.sparkTopic, sparkReading: communityPosts.sparkReading,
+      originalSparkId: communityPosts.originalSparkId, reshareOf: communityPosts.reshareOf,
       isPinned: communityPosts.isPinned,
       isLocked: communityPosts.isLocked,
       likeCount: communityPosts.likeCount,
@@ -81,7 +113,7 @@ export default async function handler(req: Request, res: Response) {
       .orderBy(...orderBy)
       .limit(limit)
       .offset(offset),
-    db.select({ total: sql<number>`count(*)` }).from(communityPosts).where(and(...conditions)),
+    db.select({ total: sql<number>`count(*)`, newestId: sql<number | null>`max(${communityPosts.id})` }).from(communityPosts).where(and(...conditions)),
   ]);
 
   // Attach liked/bookmarked state for authenticated user
@@ -97,10 +129,15 @@ export default async function handler(req: Request, res: Response) {
     bookmarkedIds = new Set(bookmarks.map((b) => b.postId));
   }
 
+  const originals = await loadOriginalSparks(posts.map(post => post.originalSparkId), myId);
+  const reshares = await sparkReshares(posts.filter(post => post.type === 'spark').map(post => post.reshareOf ?? post.id), myId);
+  const previews = myId ? await communityLikePreviews('post', posts.filter(post => post.type !== 'spark').map(post => post.id), myId) : new Map<number, string[]>();
+  res.setHeader('Cache-Control', 'private, no-store');
   const pages = Math.ceil(total / limit);
   res.json({
-    posts: posts.map((p) => ({ ...p, liked: likedIds.has(p.id), bookmarked: bookmarkedIds.has(p.id) })),
+    posts: posts.map((p) => ({ ...p, likedBy: previews.get(p.id) ?? [], ...reshares.get(p.reshareOf ?? p.id), originalSpark: originals.get(p.originalSparkId ?? 0) ?? null, liked: likedIds.has(p.id), bookmarked: bookmarkedIds.has(p.id) })),
     total,
+    newestId: newestId ?? 0,
     page,
     pages,
   });

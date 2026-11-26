@@ -28,7 +28,7 @@ const STAR_DATA = Array.from({ length: 40 }, (_, i) => {
 type Step = 'form' | 'verify' | 'avatar';
 
 const AVATAR_PRESETS = [
-  { key: 'default-hat-black',   label: 'Midnight',  src: '/airo-assets/images/avatars/default-hat-black' },
+  { key: 'default-hat-black',   label: 'White Hat',  src: '/airo-assets/images/avatars/default-hat-black' },
   { key: 'default-hat-blue',    label: 'Sapphire',  src: '/airo-assets/images/avatars/default-hat-blue' },
   { key: 'default-hat-green',   label: 'Emerald',   src: '/airo-assets/images/avatars/default-hat-green' },
   { key: 'default-hat-orange',  label: 'Amber',     src: '/airo-assets/images/avatars/default-hat-orange' },

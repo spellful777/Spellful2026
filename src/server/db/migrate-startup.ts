@@ -33,6 +33,9 @@ export async function runStartupMigration(): Promise<void> {
     const existing = new Set(cols.map((c) => c.Field));
 
     const userAlters: Array<{ col: string; sql: string }> = [
+      { col: 'comment_gifs_enabled', sql: 'ALTER TABLE user ADD COLUMN comment_gifs_enabled BOOLEAN NULL' },
+      { col: 'share_likes_with_coven', sql: 'ALTER TABLE user ADD COLUMN share_likes_with_coven BOOLEAN NOT NULL DEFAULT FALSE' },
+      { col: 'featured_about', sql: 'ALTER TABLE user ADD COLUMN featured_about JSON NULL' },
       { col: 'is_admin',            sql: 'ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT FALSE' },
       { col: 'phone_number',        sql: 'ALTER TABLE user ADD COLUMN phone_number VARCHAR(30)' },
       { col: 'two_factor_enabled',  sql: 'ALTER TABLE user ADD COLUMN two_factor_enabled BOOLEAN DEFAULT FALSE' },
@@ -57,6 +60,7 @@ export async function runStartupMigration(): Promise<void> {
       { col: 'pronouns',            sql: "ALTER TABLE user ADD COLUMN pronouns VARCHAR(60) NOT NULL DEFAULT ''" },
       { col: 'interest_tags',       sql: 'ALTER TABLE user ADD COLUMN interest_tags JSON NULL DEFAULT NULL' },
       { col: 'social_links',        sql: 'ALTER TABLE user ADD COLUMN social_links JSON NULL DEFAULT NULL' },
+      { col: 'share_following',           sql: 'ALTER TABLE user ADD COLUMN share_following BOOLEAN NOT NULL DEFAULT FALSE' },
       { col: 'hide_online_status',        sql: 'ALTER TABLE user ADD COLUMN hide_online_status BOOLEAN DEFAULT FALSE' },
       { col: 'message_permission',         sql: "ALTER TABLE user ADD COLUMN message_permission VARCHAR(20) NOT NULL DEFAULT 'everyone'" },
       { col: 'invite_permission',          sql: "ALTER TABLE user ADD COLUMN invite_permission VARCHAR(20) NOT NULL DEFAULT 'everyone'" },
@@ -899,6 +903,31 @@ export async function runStartupMigration(): Promise<void> {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(JSON.stringify({ event: 'startup.migration.user_follows.error', msg: msg.slice(0, 120) }));
+    }
+
+    // Merge legacy follows once so restarting cannot restore an unfollowed account.
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS spellful_data_migrations (
+          name VARCHAR(100) PRIMARY KEY
+        ) ENGINE=InnoDB`);
+      const [legacyTable] = await conn.query<mysql.RowDataPacket[]>("SHOW TABLES LIKE 'community_follows'");
+      if (legacyTable.length) {
+        await conn.beginTransaction();
+        const [migration] = await conn.execute<mysql.ResultSetHeader>(
+          "INSERT IGNORE INTO spellful_data_migrations (name) VALUES ('merge_legacy_community_follows')"
+        );
+        if (migration.affectedRows) {
+          await conn.execute(`
+            INSERT IGNORE INTO user_follows (follower_id, following_id, created_at)
+            SELECT follower_id, following_id, created_at FROM community_follows
+          `);
+        }
+        await conn.commit();
+      }
+    } catch (e) {
+      await conn.rollback();
+      console.error(JSON.stringify({ event: 'startup.migration.merge_follows.error', msg: String(e).slice(0, 120) }));
     }
 
     // ── spellful_circles table ────────────────────────────────────────────────
@@ -1794,6 +1823,43 @@ export async function runStartupMigration(): Promise<void> {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(JSON.stringify({ event: 'startup.migration.platform_settings.error', msg: msg.slice(0, 120) }));
     }
+    for (const statement of [
+      'ALTER TABLE community_replies ADD COLUMN gif_url TEXT NULL',
+      'ALTER TABLE community_posts ADD COLUMN spark_media JSON NULL',
+      'ALTER TABLE community_posts ADD COLUMN spark_topic VARCHAR(40) NULL',
+      'ALTER TABLE community_posts ADD COLUMN spark_reading JSON NULL',
+      'ALTER TABLE community_posts ADD COLUMN original_spark_id INT NULL',
+      'ALTER TABLE community_posts ADD COLUMN reshare_of INT NULL',
+      'ALTER TABLE community_replies ADD COLUMN suppress_link_preview BOOLEAN NOT NULL DEFAULT FALSE',
+    ]) {
+      try {
+        await conn.execute(statement);
+      } catch (error) {
+        if ((error as { code?: string }).code !== 'ER_DUP_FIELDNAME') throw error;
+      }
+    }
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS spark_media_uploads (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        post_id INT NULL,
+        kind VARCHAR(10) NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+        FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS community_reply_favorites (
+        user_id VARCHAR(36) NOT NULL,
+        reply_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_reply_favorite (user_id, reply_id),
+        FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+        FOREIGN KEY (reply_id) REFERENCES community_replies(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
 
   } catch (e) {
     // Non-fatal — log and continue; the server still starts

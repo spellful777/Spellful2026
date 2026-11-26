@@ -1,8 +1,10 @@
+import type { SparkReading } from '@/lib/spark-reading';
+import type { SparkMedia, OriginalSpark } from '@/lib/spark-media';
 /**
  * useCommunity — shared data hook for community pages.
  * Fetches categories, posts (with filter/page), and notification count.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface CommunityCategory {
   id: number;
@@ -17,8 +19,19 @@ export interface CommunityCategory {
 
 export interface CommunityPost {
   id: number;
-  type: 'discussion' | 'question';
+  type: 'discussion' | 'question' | 'spark';
   title: string;
+  preview?: string;
+  audience?: string | null;
+  sparkTopic?: string | null;
+  sparkReading?: SparkReading | null;
+  sparkMedia?: SparkMedia[] | null;
+  reshareOf?: number | null;
+  reshareCount?: number;
+  reshared?: boolean;
+  originalSparkId?: number | null;
+  originalSpark?: OriginalSpark | null;
+  imageUrl?: string | null;
   tags: string | null;
   isPinned: boolean;
   isLocked: boolean;
@@ -34,17 +47,19 @@ export interface CommunityPost {
   authorUsername: string | null;
   categoryName: string | null;
   categorySlug: string | null;
+  likedBy?: string[];
   liked: boolean;
   bookmarked: boolean;
 }
 
-export type PostFilter = 'all' | 'latest' | 'popular' | 'unanswered' | 'following' | 'mine';
+export type PostFilter = 'personalized' | 'chronological' | 'all' | 'latest' | 'popular' | 'trending' | 'discover' | 'unanswered' | 'following' | 'mine';
 
 interface PostsResult {
   posts: CommunityPost[];
   total: number;
   page: number;
   pages: number;
+  newestId?: number;
 }
 
 export function useCommunityCategories() {
@@ -62,24 +77,52 @@ export function useCommunityCategories() {
   return { categories, loading };
 }
 
-export function useCommunityPosts(filter: PostFilter, category?: string, page = 1) {
+export function useCommunityPosts(filter: PostFilter, category?: string, page = 1, order?: 'newest', enabled = true, kind?: 'spark' | 'discussion') {
   const [result, setResult] = useState<PostsResult>({ posts: [], total: 0, page: 1, pages: 0 });
   const [loading, setLoading] = useState(true);
 
+  const [error, setError] = useState(false);
+  const pending = useRef<AbortController | null>(null);
   const load = useCallback(() => {
+    pending.current?.abort();
+    const controller = new AbortController();
+    pending.current = controller;
     setLoading(true);
+    setError(false);
+
     const params = new URLSearchParams({ filter, page: String(page), limit: '20' });
     if (category) params.set('category', category);
-    fetch(`/api/community/posts?${params}`)
-      .then((r) => r.ok ? r.json() : Promise.resolve({ posts: [], total: 0, page: 1, pages: 0 }))
-      .then((data: PostsResult) => { if (Array.isArray(data?.posts)) setResult(data); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [filter, category, page]);
+    if (order) params.set('order', order);
+    if (kind) params.set('kind', kind);
+    const empty: PostsResult = { posts: [], total: 0, page, pages: 0 };
 
-  useEffect(() => { load(); }, [load]);
+    fetch(`/api/community/posts?${params}`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error('Unable to load Coven posts');
+        return response.json();
+      })
+      .then((data: PostsResult) => {
+        if (!Array.isArray(data?.posts)) throw new Error('Invalid Coven response');
+        if (!controller.signal.aborted) setResult(data);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setResult(empty);
+          setError(true);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+  }, [filter, category, page, order, kind]);
 
-  return { ...result, loading, reload: load };
+  useEffect(() => {
+    if (!enabled) return;
+    load();
+    return () => pending.current?.abort();
+  }, [enabled, load]);
+
+  return { ...result, loading, error, reload: load };
 }
 
 export function useCommunityNotifications() {

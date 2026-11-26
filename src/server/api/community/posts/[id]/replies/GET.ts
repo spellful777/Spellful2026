@@ -1,13 +1,14 @@
+import { communityLikePreviews } from '@/server/lib/community-like-previews.js';
+import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { communityReplies, communityLikes, user } from '@/server/db/schema.js';
-import { eq, and, asc, inArray, notInArray } from 'drizzle-orm';
+import { communityPosts, communityReplies, communityLikes, communityReplyFavorites, user } from '@/server/db/schema.js';
+import { eq, and, asc, desc, inArray, notInArray, sql } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request<{ id: string }>, res: Response) {
   const session = await getAuthSession(req);
-  if (!session?.user?.id) return res.status(401).json({ error: 'Sign in to view the community' });
-  const myId = session.user.id;
+  const myId = session?.user?.id;
   const postId = parseInt(req.params.id);
   if (isNaN(postId)) return res.status(400).json({ error: 'Invalid id' });
 
@@ -33,6 +34,8 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     postId: communityReplies.postId,
     parentId: communityReplies.parentId,
     body: communityReplies.body,
+    suppressLinkPreview: communityReplies.suppressLinkPreview,
+    gifUrl: communityReplies.gifUrl,
     likeCount: communityReplies.likeCount,
     depth: communityReplies.depth,
     createdAt: communityReplies.createdAt,
@@ -41,21 +44,28 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     authorName: user.name,
     authorImage: user.image,
     authorUsername: user.username,
-    authorLocation: user.location,
+    authorLocation: sql<string | null>`case when ${user.locationVisibility} = 'public' then ${user.location} else null end`,
   })
     .from(communityReplies)
+    .innerJoin(communityPosts, eq(communityPosts.id, communityReplies.postId))
     .leftJoin(user, eq(communityReplies.userId, user.id))
-    .where(and(...conditions))
-    .orderBy(sort === 'liked' ? communityReplies.likeCount : asc(communityReplies.createdAt));
+    .where(and(...conditions, eq(communityPosts.isHidden, false), postAudienceAllows(myId), myId ? undefined : eq(communityPosts.type, 'spark')))
+    .orderBy(sort === 'liked' ? desc(communityReplies.likeCount) : asc(communityReplies.createdAt));
 
   // Liked state
+  let favoriteIds = new Set<number>();
   let likedIds = new Set<number>();
   if (myId && replies.length) {
     const replyIds = replies.map((r) => r.id);
     const likes = await db.select({ targetId: communityLikes.targetId }).from(communityLikes)
       .where(and(eq(communityLikes.userId, myId), eq(communityLikes.targetType, 'reply'), inArray(communityLikes.targetId, replyIds)));
+    const favorites = await db.select({ id: communityReplyFavorites.replyId }).from(communityReplyFavorites)
+      .where(and(eq(communityReplyFavorites.userId, myId), inArray(communityReplyFavorites.replyId, replyIds)));
+    favoriteIds = new Set(favorites.map(({ id }) => id));
     likedIds = new Set(likes.map((l) => l.targetId));
   }
 
-  res.json(replies.map((r) => ({ ...r, liked: likedIds.has(r.id), isOwner: myId === r.userId })));
+  const previews = myId ? await communityLikePreviews('reply', replies.map(reply => reply.id), myId) : new Map<number, string[]>();
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.json(replies.map((r) => ({ ...r, likedBy: previews.get(r.id) ?? [], liked: likedIds.has(r.id), favorited: favoriteIds.has(r.id), isOwner: myId === r.userId })));
 }
