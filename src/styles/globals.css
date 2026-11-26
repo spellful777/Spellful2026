@@ -671,10 +671,9 @@ html.high-contrast {
 }
 
 .spark-action {
+  position: relative;
   border: 1px solid hsl(42 79% 66%);
-  background:
-    linear-gradient(110deg, transparent 41%, hsl(48 100% 98% / 0.68) 50%, transparent 59%) 100% 0 / 260% 100%,
-    linear-gradient(165deg, hsl(47 94% 83%), hsl(41 78% 58%));
+  background: linear-gradient(165deg, hsl(47 94% 83%), hsl(41 78% 58%));
   color: hsl(274 53% 16%);
   font-weight: 700;
   box-shadow: inset 0 1px 0 hsl(48 100% 95% / 0.82), 0 3px 9px hsl(38 89% 46% / 0.24);
@@ -687,13 +686,42 @@ html.high-contrast {
   box-shadow: inset 0 1px 0 hsl(48 100% 95% / 0.9), 0 0 14px hsl(42 87% 58% / 0.38);
 }
 
+.spark-action::before,
+.spark-action::after {
+  position: absolute;
+  pointer-events: none;
+  content: '';
+  background-color: hsl(47 100% 94%);
+  clip-path: polygon(50% 0, 61% 38%, 100% 50%, 61% 62%, 50% 100%, 39% 62%, 0 50%, 39% 38%);
+  opacity: 0.65;
+}
+
+.spark-action::before {
+  top: -4px;
+  right: 7px;
+  width: 10px;
+  height: 10px;
+}
+
+.spark-action::after {
+  bottom: -3px;
+  left: 5px;
+  width: 7px;
+  height: 7px;
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  .spark-action:not(:disabled, [aria-disabled='true']):is(:hover, :focus-visible) {
-    animation: spark-action-glint 0.9s ease-out both;
+  .spark-action:not(:disabled, [aria-disabled='true'])::before {
+    animation: spark-action-twinkle 1.9s ease-in-out 0.2s 2 both;
+  }
+
+  .spark-action:not(:disabled, [aria-disabled='true'])::after {
+    animation: spark-action-twinkle 1.9s ease-in-out 0.85s 2 both;
   }
 }
 
-@keyframes spark-action-glint {
-  from { background-position: 100% 0, 0 0; }
-  to { background-position: 0 0, 0 0; }
+@keyframes spark-action-twinkle {
+  0%, 100% { opacity: 0.65; transform: scale(0.85); }
+  45% { opacity: 1; transform: scale(1.22); }
+  72% { opacity: 0.4; transform: scale(0.72); }
 }
