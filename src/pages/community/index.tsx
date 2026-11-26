@@ -1,3 +1,4 @@
+import { getTrendingTopics } from '@/lib/community-trending-topics';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -220,6 +221,7 @@ function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'
 function TrendingSidebar({ onSelectTrending }: { onSelectTrending: () => void }) {
   const { posts, loading, error, reload } = useCommunityPosts('trending');
   const top = posts.slice(0, 5);
+  const topics = getTrendingTopics(posts);
 
   return (
     <aside className="space-y-4">
@@ -252,6 +254,27 @@ function TrendingSidebar({ onSelectTrending }: { onSelectTrending: () => void })
         )}
         {top.length > 0 && <Button size="sm" variant="ghost" onClick={onSelectTrending}>See trending discussions</Button>}
       </div>
+
+      {!loading && !error && topics.length > 0 && (
+        <section className="rounded-xl border border-border bg-card p-4">
+          <h3 className="mb-2 text-sm font-semibold">Trending topics</h3>
+          <p className="mb-3 text-xs text-muted-foreground">Tags appearing in active discussions this week.</p>
+          <ul className="flex flex-wrap gap-2">
+            {topics.map(({ tag, count }) => (
+              <li key={tag}>
+                <Link
+                  to={`/community/search?tag=${encodeURIComponent(tag)}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-xs hover:border-primary focus-visible:outline focus-visible:outline-primary"
+                >
+                  <span>#{tag}</span>
+                  <span className="sr-only">{count} {count === 1 ? 'trending discussion' : 'trending discussions'}</span>
+                  <span aria-hidden="true" className="text-muted-foreground">{count}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Quick links */}
       <div className="rounded-xl border border-border bg-card p-5">
