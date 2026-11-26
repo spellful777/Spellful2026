@@ -358,6 +358,21 @@ export async function runStartupMigration(): Promise<void> {
       console.error(JSON.stringify({ event: 'startup.migration.message_requests.error', msg: msg.slice(0, 120) }));
     }
 
+    try {
+      await conn.execute(`
+        CREATE TABLE IF NOT EXISTS community_post_followers (
+          post_id INT NOT NULL,
+          user_id VARCHAR(36) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_community_post_follow (post_id, user_id),
+          INDEX idx_community_post_follower (user_id),
+          FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+        )`);
+    } catch {
+      console.error('startup.migration.community_post_followers.failed');
+    }
+
     // ── community_posts: audience + edited_at columns ────────────────────────
     for (const colDef of [
       `ALTER TABLE community_posts ADD COLUMN audience VARCHAR(20) NOT NULL DEFAULT 'public'`,

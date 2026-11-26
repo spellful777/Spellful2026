@@ -1,7 +1,7 @@
 import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { communityPosts, communityCategories, communityPolls, communityPollVotes, communityLikes, communityBookmarks, communityMutes, user } from '@/server/db/schema.js';
+import { communityPosts, communityCategories, communityPolls, communityPollVotes, communityLikes, communityBookmarks, communityMutes, communityPostFollowers, user } from '@/server/db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
@@ -77,5 +77,9 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     muted = !!muteRow[0];
   }
 
-  res.json({ ...post, poll, liked, bookmarked, muted, isOwner: myId === post.userId });
+  const followRows = await db.select({ postId: communityPostFollowers.postId }).from(communityPostFollowers)
+    .where(and(eq(communityPostFollowers.postId, postId), eq(communityPostFollowers.userId, myId)))
+    .limit(1).catch(() => null);
+
+  res.json({ ...post, poll, liked, bookmarked, muted, followingConversation: followRows ? followRows.length > 0 : null, isOwner: myId === post.userId });
 }

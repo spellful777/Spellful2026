@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Button } from '@/components/ui/button';
-import { useCommunityPosts } from '@/hooks/useCommunity';
+import { useCommunityNotifications, useCommunityPosts } from '@/hooks/useCommunity';
 import { PostCard } from './community/index';
 
 export default function HomeFeed() {
+  const unread = useCommunityNotifications();
   const [filter, setFilter] = useState<'following' | 'discover'>('following');
   const [page, setPage] = useState(1);
   const [newPosts, setNewPosts] = useState(false);
@@ -65,7 +66,10 @@ export default function HomeFeed() {
       <Helmet><title>Home feed | Spellful</title><meta name="robots" content="noindex" /></Helmet>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-3xl">Home</h1>
-        <Button asChild><Link to="/community/new">Create post</Link></Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline"><Link to="/community/notifications">Notifications{unread > 0 ? ` (${unread})` : ''}</Link></Button>
+          <Button asChild><Link to="/community/new">Create post</Link></Button>
+        </div>
       </div>
       <nav aria-label="Home feed" className="flex flex-wrap gap-2">
         {(['following', 'discover'] as const).map(option => (

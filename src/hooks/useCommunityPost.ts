@@ -60,6 +60,7 @@ export interface CommunityPostDetail {
   liked: boolean;
   bookmarked: boolean;
   muted: boolean;
+  followingConversation?: boolean | null;
 }
 
 export function usePostDetail(postId: number | null) {

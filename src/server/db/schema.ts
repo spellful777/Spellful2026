@@ -567,6 +567,15 @@ export const communityBookmarks = mysqlTable('community_bookmarks', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+export const communityPostFollowers = mysqlTable('community_post_followers', {
+  postId: int('post_id').notNull().references(() => communityPosts.id, { onDelete: 'cascade' }),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+}, table => [
+  uniqueIndex('uq_community_post_follow').on(table.postId, table.userId),
+  index('idx_community_post_follower').on(table.userId),
+]);
+
 export const communityFollows = mysqlTable('community_follows', {
   id: int('id').primaryKey().autoincrement(),
   followerId: varchar('follower_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),

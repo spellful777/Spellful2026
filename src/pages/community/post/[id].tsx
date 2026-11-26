@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate, useLocation } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft, ThumbsUp, Bookmark, Flag, MessageSquare,
+  ArrowLeft, ThumbsUp, Bookmark, Flag, MessageSquare, Bell, BellOff,
   HelpCircle, Pin, Lock, CheckCircle2, MoreHorizontal,
   Eye, Tag, Share2, Sparkles, Send, MapPin, Pencil, Trash2,
 } from 'lucide-react';
@@ -490,6 +490,8 @@ export default function PostThreadPage() {
     target.scrollIntoView({ block: 'start' });
   }, [hash, postLoading, repliesLoading]);
   const [replyTo, setReplyTo] = useState<{ id: number; authorName: string | null } | null>(null);
+  const [followPending, setFollowPending] = useState(false);
+  const [followError, setFollowError] = useState('');
   const [showShareToast, setShowShareToast] = useState(false);
 
   const [postReportOpen, setPostReportOpen] = useState(false);
@@ -559,6 +561,27 @@ export default function PostThreadPage() {
     await fetch(`/api/community/replies/${replyId}/like`, { method: 'POST' });
     reloadReplies();
   };
+
+  async function updateConversationFollow() {
+    if (!post || followPending || typeof post.followingConversation !== 'boolean') return;
+    const id = post.id;
+    const following = !post.followingConversation;
+    setFollowPending(true);
+    setFollowError('');
+    try {
+      const response = await fetch(`/api/community/posts/${id}/follow`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ following }),
+      });
+      if (!response.ok) throw new Error();
+      setPost(current => current?.id === id ? { ...current, followingConversation: following } : current);
+    } catch {
+      setFollowError('Could not update your conversation follow. Try again.');
+    } finally {
+      setFollowPending(false);
+    }
+  }
 
   const sharePost = () => {
     navigator.clipboard.writeText(window.location.href).catch(() => {});
@@ -749,6 +772,20 @@ export default function PostThreadPage() {
                   <Bookmark className="w-3.5 h-3.5" />
                   {post.bookmarked ? community_post.savedLabel : community_post.saveLabel}
                 </button>
+
+                {typeof post.followingConversation === 'boolean' && session?.user?.id !== post.userId && (
+                  <Button
+                    size="sm"
+                    variant={post.followingConversation ? 'secondary' : 'outline'}
+                    onClick={updateConversationFollow}
+                    disabled={followPending}
+                    aria-pressed={post.followingConversation}
+                  >
+                    {post.followingConversation ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+                    {post.followingConversation ? 'Following conversation' : 'Follow conversation'}
+                  </Button>
+                )}
+                {followError && <p role="status" className="w-full text-sm text-destructive">{followError}</p>}
 
                 {post.audience === 'public' && !post.isHidden && (
                   <Link
