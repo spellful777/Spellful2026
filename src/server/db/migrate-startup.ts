@@ -33,6 +33,8 @@ export async function runStartupMigration(): Promise<void> {
     const existing = new Set(cols.map((c) => c.Field));
 
     const userAlters: Array<{ col: string; sql: string }> = [
+      { col: 'comment_gifs_enabled', sql: 'ALTER TABLE user ADD COLUMN comment_gifs_enabled BOOLEAN NULL' },
+      { col: 'share_likes_with_coven', sql: 'ALTER TABLE user ADD COLUMN share_likes_with_coven BOOLEAN NOT NULL DEFAULT FALSE' },
       { col: 'featured_about', sql: 'ALTER TABLE user ADD COLUMN featured_about JSON NULL' },
       { col: 'is_admin',            sql: 'ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT FALSE' },
       { col: 'phone_number',        sql: 'ALTER TABLE user ADD COLUMN phone_number VARCHAR(30)' },
@@ -1331,6 +1333,8 @@ export async function runStartupMigration(): Promise<void> {
       'ALTER TABLE community_replies ADD COLUMN gif_url TEXT NULL',
       'ALTER TABLE community_posts ADD COLUMN spark_media JSON NULL',
       'ALTER TABLE community_posts ADD COLUMN original_spark_id INT NULL',
+      'ALTER TABLE community_posts ADD COLUMN reshare_of INT NULL',
+      'ALTER TABLE community_replies ADD COLUMN suppress_link_preview BOOLEAN NOT NULL DEFAULT FALSE',
     ]) {
       try {
         await conn.execute(statement);

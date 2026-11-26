@@ -1150,3 +1150,9 @@ body:has(.spark-draft) nav[aria-label="Breadcrumb"] { display: none; }
   .studio-profile > div > div:first-child h1 { font-size: 1.1rem; }
   .profile-identity [data-coven-controls] > :not(.profile-share) { font-size: .71rem; }
 }
+.spark-actions { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: min(100%, 24rem); color: hsl(var(--muted-foreground)); font-size: .78rem; }
+.spark-actions > :is(a,button), .spark-actions > span { display: flex; min-height: 44px; min-width: 0; align-items: center; justify-content: center; gap: 4px; }
+.spark-actions button[aria-pressed=true] { color: hsl(var(--primary)); }
+.spark-actions button:disabled { opacity: .5; }
+.spark-actions :is(a,button):focus-visible { outline: 2px solid hsl(var(--primary)); border-radius: 6px; }
+.spark-comment-branch-compact { margin-left: -4px; --branch-width: 4px; }

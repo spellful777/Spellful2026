@@ -43,6 +43,9 @@ export function SparkCommentActions({ reply, onReply, locked, audience, onUpdate
       <button type="button" onClick={() => change('favorited')} disabled={pending} aria-pressed={Boolean(reply.favorited)}
         aria-label={reply.favorited ? 'Remove reply from Favorites' : 'Add reply to Favorites'}><Star /></button>
     </div>
+    {!!reply.likedBy?.length && <p className="text-xs text-muted-foreground">
+      Liked by {reply.likedBy.join(', ')}{reply.likeCount > reply.likedBy.length ? ` and ${reply.likeCount - reply.likedBy.length} others` : ''}
+    </p>}
     {!share && status && status !== 'Link copied.' && status !== 'Select and copy the link above.' && <p role="status" className="text-xs">{status}</p>}
     <Dialog open={share} onOpenChange={setShare}>
       <DialogContent className="max-w-sm">

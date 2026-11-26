@@ -1,3 +1,5 @@
+import { communityLikePreviews } from '@/server/lib/community-like-previews.js';
+import { sparkReshares } from '@/server/lib/spark-reshares.js';
 import { loadOriginalSparks } from '@/server/lib/original-sparks.js';
 import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
@@ -20,7 +22,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     body: communityPosts.body,
     imageUrl: communityPosts.imageUrl,
       sparkMedia: communityPosts.sparkMedia,
-      originalSparkId: communityPosts.originalSparkId,
+      originalSparkId: communityPosts.originalSparkId, reshareOf: communityPosts.reshareOf,
     tags: communityPosts.tags,
     isPinned: communityPosts.isPinned,
     isLocked: communityPosts.isLocked,
@@ -81,5 +83,10 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   }
 
   const originals = await loadOriginalSparks([post.originalSparkId], myId);
-  res.json({ ...post, originalSpark: originals.get(post.originalSparkId ?? 0) ?? null, poll, liked, bookmarked, muted, isOwner: myId === post.userId });
+  const [reshares, previews] = await Promise.all([
+    sparkReshares(post.type === 'spark' ? [post.reshareOf ?? post.id] : [], myId),
+    communityLikePreviews('post', post.type === 'spark' ? [] : [post.id], myId),
+  ]);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.json({ ...post, ...reshares.get(post.reshareOf ?? post.id), likedBy: previews.get(post.id) ?? [], originalSpark: originals.get(post.originalSparkId ?? 0) ?? null, poll, liked, bookmarked, muted, isOwner: myId === post.userId });
 }

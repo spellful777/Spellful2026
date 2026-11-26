@@ -29,8 +29,10 @@ export interface CommunityReply {
   authorImage: string | null;
   authorUsername: string | null;
   authorLocation: string | null;
+  likedBy?: string[];
   liked: boolean;
   favorited?: boolean;
+  suppressLinkPreview?: boolean;
   gifUrl?: string | null;
 }
 
@@ -40,6 +42,9 @@ export interface CommunityPostDetail {
   title: string;
   body: string;
   sparkMedia?: SparkMedia[] | null;
+  reshareOf?: number | null;
+  reshareCount?: number;
+  reshared?: boolean;
   originalSparkId?: number | null;
   originalSpark?: OriginalSpark | null;
   imageUrl: string | null;
@@ -63,6 +68,7 @@ export interface CommunityPostDetail {
   categoryName: string | null;
   categorySlug: string | null;
   poll: CommunityPoll | null;
+  likedBy?: string[];
   liked: boolean;
   bookmarked: boolean;
   muted: boolean;

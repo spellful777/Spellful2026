@@ -1,17 +1,15 @@
 import { OriginalSparkCard, SparkMediaGallery } from '@/components/SparkMediaGallery';
-import { SPARK_COMPOSE } from '@/lib/community-navigation';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { MessageSquare, MoreHorizontal, Star } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { Link } from 'react-router';
-import SparkHeartButton from '@/components/SparkHeartButton';
-import { useSparkFavorite } from '@/components/SparkFavoriteButton';
+import { SparkActions } from '@/components/SparkActions';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import type { CommunityPost } from '@/hooks/useCommunity';
 
-export default function SparkCard({ post, canInteract = true }: { post: CommunityPost; canInteract?: boolean }) {
+export default function SparkCard({ post, canInteract = true, onFavorite, onSave }: { post: CommunityPost; canInteract?: boolean; onFavorite?: (value: { liked: boolean; likeCount: number }) => void; onSave?: (value: boolean) => void }) {
   const name = post.authorName ?? post.authorUsername ?? 'Member';
   const destination = `/community/post/${post.id}`;
-  const { saved, pending, failed, toggle } = useSparkFavorite(post.id, post.bookmarked);
+
   const author = (
     <span className="flex min-w-0 items-center gap-3">
       {post.authorImage ? (
@@ -43,12 +41,8 @@ export default function SparkCard({ post, canInteract = true }: { post: Communit
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="home-social-menu [&_[role=menuitem]:focus]:text-background">
-            {canInteract && <DropdownMenuItem disabled={pending} onSelect={event => { event.preventDefault(); void toggle(); }}>
-              <Star className={saved ? 'fill-current' : undefined} aria-hidden="true" />
-              {saved ? 'Remove from Favorites' : 'Add to Favorites'}
-            </DropdownMenuItem>}
             <DropdownMenuItem asChild><Link to={destination}>View Spark</Link></DropdownMenuItem>
-            {canInteract && post.audience === 'public' && <DropdownMenuItem asChild><Link to={SPARK_COMPOSE + '&quote=' + post.id}>Quote or reshare</Link></DropdownMenuItem>}
+            <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(new URL(destination, location.origin).href).catch(() => {})}>Copy link</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -59,14 +53,9 @@ export default function SparkCard({ post, canInteract = true }: { post: Communit
         )}
       </Link>
       <SparkMediaGallery media={post.sparkMedia} />
+      {post.reshareOf && <p className="text-xs text-muted-foreground">Reshared by {name}</p>}
       {post.originalSparkId && <OriginalSparkCard spark={post.originalSpark} />}
-      <div className="-ml-1 mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-        {canInteract ? <SparkHeartButton postId={post.id} liked={post.liked} likeCount={post.likeCount} /> : <span aria-label={post.likeCount + " likes"}>♡ {post.likeCount ?? 0}</span>}
-        <Link to={destination} aria-label={`Open Spark with ${post.replyCount} replies`} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg px-1 hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-primary">
-          <MessageSquare className="size-4" aria-hidden="true" /> {post.replyCount}
-        </Link>
-      </div>
-      {failed && <span role="status" className="sr-only">Couldn’t update Favorites. Try again.</span>}
+      <SparkActions post={post} canInteract={canInteract} onFavorite={onFavorite} onSave={onSave} />
     </article>
   );
 }

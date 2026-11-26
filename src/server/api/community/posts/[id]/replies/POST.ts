@@ -25,8 +25,8 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   if (!post) return res.status(404).json({ error: 'Post not found' });
   if (post.isLocked) return res.status(403).json({ error: 'Post is locked' });
 
-  const { body = '', parentId, followUp = false, sharedReading, gifUrl: rawGif } = req.body as {
-    body?: string; parentId?: number; followUp?: boolean; sharedReading?: unknown; gifUrl?: unknown;
+  const { suppressLinkPreview, body = '', parentId, followUp = false, sharedReading, gifUrl: rawGif } = req.body as {
+    suppressLinkPreview?: boolean; body?: string; parentId?: number; followUp?: boolean; sharedReading?: unknown; gifUrl?: unknown;
   };
   const spark = post.type === 'spark';
   const gifUrl = spark ? commentGifUrl(rawGif) : null;
@@ -79,6 +79,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
       parentId: parentId ?? null,
       body: followUp ? `<p><strong>Author follow-up</strong></p>${replyBody}${readingHtml}` : replyBody,
       gifUrl,
+      suppressLinkPreview: suppressLinkPreview === true,
       depth,
     });
     await tx.update(communityPosts).set({ replyCount: sql`COALESCE(reply_count, 0) + 1` })

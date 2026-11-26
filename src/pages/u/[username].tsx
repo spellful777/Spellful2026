@@ -2,7 +2,6 @@ import { ProfileActivity, type ProfileTab } from '@/components/ProfileActivity';
 import { ACCENTS, COVER_PRESETS as STUDIO_COVERS } from '@/lib/profile-look';
 import type { ProfileFeature } from '@/lib/profile-feature';
 import { ChevronDown, Bookmark, Bell } from 'lucide-react';
-import { COMMUNITY_FAVORITES } from '@/lib/community-navigation';
 /**
  * /u/:username — Immersive public member profile (Redesign v2)
  *
@@ -806,7 +805,7 @@ export default function UserProfilePage() {
             </div>
             {isOwn && <div className="profile-owner-actions">
               <Link to="/account/edit-profile">Edit profile</Link><Link className="profile-gold" to="/account/profile">Profile Studio</Link>
-              <ProfileRequests /><Link to={COMMUNITY_FAVORITES}><Bookmark className="size-4" /> Saved</Link>
+              <ProfileRequests /><Link to="/grimoire?sparks=saved"><Bookmark className="size-4" /> Saved</Link>
             </div>}
             {!isOwn && canInteract && (
               <>

@@ -1,3 +1,5 @@
+import { usePostDetail } from '@/hooks/useCommunityPost';
+import { OriginalSparkCard } from '@/components/SparkMediaGallery';
 import { SparkAttachments, useSparkAttachments } from '@/components/SparkAttachments';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -14,10 +16,11 @@ export default function SparkComposer() {
   const [params] = useSearchParams();
   const quote = Number(params.get('quote'));
   const quotedPostId = Number.isSafeInteger(quote) && quote > 0 ? quote : undefined;
+  const { post: original, loading: originalLoading } = usePostDetail(quotedPostId ?? null);
   const attachments = useSparkAttachments(Boolean(session && !quotedPostId));
   const canPublish = !attachments.busy && !attachments.replacement &&
-    (!!text.trim() || attachments.uploads.length > 0 || !!quotedPostId) &&
-    attachments.uploads.every(upload => upload.state === 'ready');
+    (!!text.trim() || attachments.uploads.length > 0) &&
+    (!quotedPostId || original?.audience === 'public') && attachments.uploads.every(upload => upload.state === 'ready');
   const [audience, setAudience] = useState<'public' | 'coven'>('public');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -105,9 +108,10 @@ export default function SparkComposer() {
           <textarea ref={field} id="spark-text" value={text} readOnly={submitting}
             onChange={event => setText(event.target.value)} rows={1} placeholder="Write a Spark…"
             aria-describedby="spark-count" aria-invalid={overLimit} />
-          {quotedPostId ? <p className="spark-draft-quote">
-            This Spark includes the <Link to={'/community/post/' + quotedPostId}>original Spark</Link> and its media. Leave the text blank to reshare.
-          </p> : <SparkAttachments attachments={attachments} disabled={submitting} />}
+          {quotedPostId ? originalLoading ? <p>Loading original Spark…</p> : <OriginalSparkCard spark={original?.audience === 'public' ? {
+            id: original.id, title: original.title, authorName: original.authorName, imageUrl: original.imageUrl,
+            sparkMedia: original.sparkMedia ?? null,
+          } : null} /> : <SparkAttachments attachments={attachments} disabled={submitting} />}
           <div className="spark-draft-meta">
             <label>
               <span className="sr-only">Audience</span>

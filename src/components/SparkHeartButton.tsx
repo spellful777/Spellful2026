@@ -8,9 +8,11 @@ interface Reaction {
 
 interface SparkHeartButtonProps extends Reaction {
   postId: number;
+  onChanged?: (reaction: Reaction) => void;
+  regularLike?: boolean;
 }
 
-export default function SparkHeartButton({ postId, liked, likeCount }: SparkHeartButtonProps) {
+export default function SparkHeartButton({ postId, liked, likeCount, onChanged, regularLike = false }: SparkHeartButtonProps) {
   const [reaction, setReaction] = useState<Reaction>({ liked, likeCount });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(false);
@@ -36,7 +38,9 @@ export default function SparkHeartButton({ postId, liked, likeCount }: SparkHear
       });
       if (!response.ok) throw new Error('Heart update failed');
       const result: { liked: boolean; likeCount?: number } = await response.json();
-      setReaction({ liked: result.liked, likeCount: result.likeCount ?? next.likeCount });
+      const confirmed = { liked: result.liked, likeCount: result.likeCount ?? next.likeCount };
+      setReaction(confirmed);
+      onChanged?.(confirmed);
     } catch {
       setReaction(previous);
       setError(true);
@@ -49,7 +53,7 @@ export default function SparkHeartButton({ postId, liked, likeCount }: SparkHear
     <span className="relative z-10 inline-flex">
       <button
         type="button"
-        aria-label={`Heart this Spark, ${reaction.likeCount} ${reaction.likeCount === 1 ? 'heart' : 'hearts'}`}
+        aria-label={`${regularLike ? reaction.liked ? 'Unlike' : 'Like' : reaction.liked ? 'Remove Spark from Favorites' : 'Favorite Spark'}, ${reaction.likeCount} total`}
         aria-pressed={reaction.liked}
         aria-disabled={pending}
         onClick={toggleHeart}

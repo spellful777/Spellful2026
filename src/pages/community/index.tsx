@@ -221,7 +221,10 @@ export function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>[
 
       {/* Stats row */}
       <div className="flex items-center gap-4 mt-2.5 pl-11 text-xs text-muted-foreground">
-        <SparkHeartButton postId={post.id} liked={post.liked} likeCount={post.likeCount} />
+        <SparkHeartButton regularLike postId={post.id} liked={post.liked} likeCount={post.likeCount} />
+        {!!post.likedBy?.length && <span className="text-xs text-muted-foreground">
+          Liked by {post.likedBy.join(', ')}{post.likeCount > post.likedBy.length ? ` and ${post.likeCount - post.likedBy.length} others` : ''}
+        </span>}
         <span className="flex items-center gap-1">
           <MessageSquare className="w-3 h-3" /> {post.replyCount}
         </span>

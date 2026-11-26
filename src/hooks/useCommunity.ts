@@ -23,6 +23,9 @@ export interface CommunityPost {
   preview?: string;
   audience?: string | null;
   sparkMedia?: SparkMedia[] | null;
+  reshareOf?: number | null;
+  reshareCount?: number;
+  reshared?: boolean;
   originalSparkId?: number | null;
   originalSpark?: OriginalSpark | null;
   imageUrl?: string | null;
@@ -41,6 +44,7 @@ export interface CommunityPost {
   authorUsername: string | null;
   categoryName: string | null;
   categorySlug: string | null;
+  likedBy?: string[];
   liked: boolean;
   bookmarked: boolean;
 }

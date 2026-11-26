@@ -1,3 +1,4 @@
+import { stat } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { join } from 'node:path';
@@ -28,8 +29,11 @@ export async function processSparkMedia(input: string, directory: string, kind: 
   const base = ['-nostdin', '-v', 'error', '-threads', '2', '-filter_threads', '2', ...sniffProbe, '-i', input, '-map', '0:v:0', '-map_metadata', '-1'];
   const photo = join(directory, sparkMediaFilename(kind, true));
   if (kind === 'photo') {
-    await run('ffmpeg', [...base, '-vf', "scale='min(1600,iw)':'min(1600,ih)':force_original_aspect_ratio=decrease",
-      '-frames:v', '1', '-q:v', '4', '-update', '1', photo], options);
+    for (const [edge, quality] of [[1600, 4], [1600, 8], [1280, 10], [1000, 12]]) {
+      const scale = "scale='min(" + edge + ",iw)':'min(" + edge + ",ih)':force_original_aspect_ratio=decrease";
+      await run('ffmpeg', [...base, '-y', '-vf', scale, '-frames:v', '1', '-q:v', String(quality), '-update', '1', photo], options);
+      if ((await stat(photo)).size <= 500 * 1024) break;
+    }
     return;
   }
   const duration = Math.max(Number(probe.format?.duration) || 0, Number(stream.duration) || 0);
@@ -37,10 +41,11 @@ export async function processSparkMedia(input: string, directory: string, kind: 
     throw new InvalidMedia(`Choose a video up to ${videoSeconds} seconds long.`);
   }
   const video = join(directory, sparkMediaFilename(kind));
+  const bitrate = Math.min(4000, Math.max(300, Math.floor(9_500_000 * 8 / duration / 1000) - 96));
   // Bound both dimensions to 720p in either orientation, without upscaling.
   await run('ffmpeg', [...base, '-map', '0:a:0?', '-t', String(videoSeconds),
     '-vf', "scale='min(iw,if(gte(iw,ih),1280,720))':'min(ih,if(gte(iw,ih),720,1280))':force_original_aspect_ratio=decrease:force_divisible_by=2,setsar=1",
-    '-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p',
+    '-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast', '-crf', '23', '-maxrate', bitrate + 'k', '-bufsize', bitrate + 'k', '-pix_fmt', 'yuv420p',
     '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', video], options);
   await run('ffmpeg', ['-nostdin', '-v', 'error', '-i', video, '-frames:v', '1', '-q:v', '4', '-update', '1', photo], options);
   return duration;

@@ -1,3 +1,5 @@
+import { communityLikePreviews } from '@/server/lib/community-like-previews.js';
+import { sparkReshares } from '@/server/lib/spark-reshares.js';
 import { loadOriginalSparks } from '@/server/lib/original-sparks.js';
 import { followsPostAuthor, postAudienceAllows } from '@/server/lib/community-post-access.js';
 /**
@@ -84,7 +86,7 @@ export default async function handler(req: Request, res: Response) {
       audience: communityPosts.audience,
       imageUrl: communityPosts.imageUrl,
       sparkMedia: communityPosts.sparkMedia,
-      originalSparkId: communityPosts.originalSparkId,
+      originalSparkId: communityPosts.originalSparkId, reshareOf: communityPosts.reshareOf,
       isPinned: communityPosts.isPinned,
       isLocked: communityPosts.isLocked,
       likeCount: communityPosts.likeCount,
@@ -124,9 +126,12 @@ export default async function handler(req: Request, res: Response) {
   }
 
   const originals = await loadOriginalSparks(posts.map(post => post.originalSparkId), myId);
+  const reshares = await sparkReshares(posts.filter(post => post.type === 'spark').map(post => post.reshareOf ?? post.id), myId);
+  const previews = await communityLikePreviews('post', posts.filter(post => post.type !== 'spark').map(post => post.id), myId);
+  res.setHeader('Cache-Control', 'private, no-store');
   const pages = Math.ceil(total / limit);
   res.json({
-    posts: posts.map((p) => ({ ...p, originalSpark: originals.get(p.originalSparkId ?? 0) ?? null, liked: likedIds.has(p.id), bookmarked: bookmarkedIds.has(p.id) })),
+    posts: posts.map((p) => ({ ...p, likedBy: previews.get(p.id) ?? [], ...reshares.get(p.reshareOf ?? p.id), originalSpark: originals.get(p.originalSparkId ?? 0) ?? null, liked: likedIds.has(p.id), bookmarked: bookmarkedIds.has(p.id) })),
     total,
     newestId: newestId ?? 0,
     page,

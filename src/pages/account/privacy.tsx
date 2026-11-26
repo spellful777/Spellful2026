@@ -20,6 +20,7 @@ interface PrivacySettings {
   discoverable: boolean;
   searchIndexed: boolean;
   hideOnlineStatus: boolean;
+  shareLikesWithCoven: boolean;
   shareFollowing: boolean;
   messagePermission: 'everyone' | 'coven' | 'nobody';
   birthdayVisibility: 'public' | 'coven' | 'private';
@@ -198,6 +199,12 @@ export default function PrivacySanctuaryPage() {
                     checked={settings.shareFollowing}
                     onCheckedChange={(value) => update('shareFollowing', value)}
                   />
+                </div>
+                <div className="flex items-center justify-between gap-3 py-2">
+                  <div><Label htmlFor="share-likes-coven">Show my likes to mutual Coven connections</Label>
+                    <p className="text-xs text-muted-foreground">Applies to regular post and reply likes. Spark Favorites stay private.</p></div>
+                  <Switch id="share-likes-coven" checked={!!settings.shareLikesWithCoven}
+                    onCheckedChange={value => update('shareLikesWithCoven', value)} />
                 </div>
                 <div className="pt-1">
                   <Link to={`/u/${username}?preview=guest`} className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">

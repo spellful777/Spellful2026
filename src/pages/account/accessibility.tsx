@@ -42,7 +42,31 @@ export default function AccessibilityPage() {
   );
 
   const [commentGifs, setCommentGifs] = useState(true);
-  useEffect(() => { setCommentGifs(localStorage.getItem(COMMENT_GIF_SETTING) !== 'false'); }, []);
+  const [gifSettingError, setGifSettingError] = useState(false);
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const abort = new AbortController();
+    setCommentGifs(localStorage.getItem(COMMENT_GIF_SETTING) !== 'false');
+    fetch('/api/account/privacy-settings', { signal: abort.signal }).then(response => response.ok ? response.json() : null)
+      .then(data => {
+        if (!abort.signal.aborted && typeof data?.settings?.commentGifsEnabled === 'boolean')
+          setCommentGifs(data.settings.commentGifsEnabled);
+      }).catch(() => {});
+    return () => abort.abort();
+  }, [session?.user?.id]);
+
+  async function updateCommentGifs(enabled: boolean) {
+    const previous = commentGifs;
+    setCommentGifs(enabled);
+    setGifSettingError(false);
+    try {
+      const response = await fetch('/api/account/privacy-settings', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ commentGifsEnabled: enabled }),
+      });
+      if (!response.ok) throw Error();
+      localStorage.setItem(COMMENT_GIF_SETTING, String(enabled));
+    } catch { setCommentGifs(previous); setGifSettingError(true); }
+  }
 
   // Apply on mount
   useEffect(() => {
@@ -120,11 +144,9 @@ export default function AccessibilityPage() {
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
-          <Label htmlFor="comment-gifs">Show the GIF picker in Spark comments on this device</Label>
-          <Switch id="comment-gifs" checked={commentGifs} onCheckedChange={enabled => {
-            setCommentGifs(enabled);
-            localStorage.setItem(COMMENT_GIF_SETTING, String(enabled));
-          }} />
+          <Label htmlFor="comment-gifs">Show the GIF picker in Spark comments</Label>
+          <Switch id="comment-gifs" checked={commentGifs} onCheckedChange={enabled => void updateCommentGifs(enabled)} />
+          {gifSettingError && <p role="alert">Couldn’t save the GIF setting.</p>}
         </div>
 
         {/* Text size */}

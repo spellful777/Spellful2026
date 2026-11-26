@@ -15,7 +15,7 @@ export default async function handler(req: Request, res: Response) {
   const offset = (page - 1) * limit;
 
   const viewer = session.user.id;
-  const visible = and(eq(communityNotifications.userId, viewer), sql`(
+  const visible = and(eq(communityNotifications.userId, viewer), sql`${communityNotifications.type} not in ('like', 'favorite', 'post_like', 'reply_like', 'spark_favorite')`, sql`(
     ${communityNotifications.type} not in ('mention', 'follow_up') or (
       exists (select 1 from ${communityPosts}
         where ${communityPosts.id} = ${communityNotifications.postId}

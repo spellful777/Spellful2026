@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Star } from 'lucide-react';
 
-export function useSparkFavorite(postId: number, bookmarked: boolean) {
+export function useSparkFavorite(postId: number, bookmarked: boolean, onChanged?: (saved: boolean) => void) {
   const [saved, setSaved] = useState(bookmarked);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -20,6 +20,7 @@ export function useSparkFavorite(postId: number, bookmarked: boolean) {
       if (!response.ok) throw new Error('Favorite could not be saved');
       const result: { bookmarked: boolean } = await response.json();
       setSaved(result.bookmarked);
+      onChanged?.(result.bookmarked);
     } catch {
       setFailed(true);
     } finally {

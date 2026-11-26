@@ -1,9 +1,11 @@
-import { SPARK_COMPOSE } from '@/lib/community-navigation';
+import { CommentGifPicker } from '@/components/CommentGifPicker';
+import { SparkActions } from '@/components/SparkActions';
+import { CommentLinkPreview } from '@/components/CommentLinkPreview';
+import { commentUrl } from '@/lib/comment-links';
 import { OriginalSparkCard, SparkMediaGallery } from '@/components/SparkMediaGallery';
 import { parseFragment } from 'parse5';
 import { SparkCommentActions } from '@/components/SparkCommentActions';
-import { SPARK_COMMENT_LIMIT, COMMENT_GIF_SETTING, commentGifUrl } from '@/lib/spark-comments';
-import SparkFavoriteButton from '@/components/SparkFavoriteButton';
+import { SPARK_COMMENT_LIMIT, COMMENT_GIF_SETTING } from '@/lib/spark-comments';
 import { SPARK_LIMIT, countSparkCharacters } from '@/lib/sparks';
 import SparkHeartButton from '@/components/SparkHeartButton';
 import { useState, useRef, useEffect } from 'react';
@@ -121,16 +123,8 @@ type ReplyTarget = Pick<CommunityReply, 'id' | 'authorName' | 'authorUsername'>;
 const handleName = (author: { authorUsername: string | null; authorName: string | null }) =>
   author.authorUsername ? `@${author.authorUsername}` : author.authorName ?? 'Unknown member';
 
-function CompactLink({ text }: { text: string }) {
-  const match = text.match(/https?:\/\/[^\s<>"']+/i)?.[0]?.replace(/[.,!?;)]+$/, '');
-  if (!match) return null;
-  try {
-    const url = new URL(match);
-    if (url.username || url.password) return null;
-    return <a className="spark-comment-link" href={url.href} target="_blank" rel="noopener noreferrer">
-      <span>{url.hostname}</span>{url.pathname !== '/' && <span>{url.pathname}</span>}
-    </a>;
-  } catch { return null; }
+function CommentHandle({ name }: { name: string }) {
+  return name.startsWith('@') ? <Link className="underline" to={'/u/' + encodeURIComponent(name.slice(1))}>{name}</Link> : <>{name}</>;
 }
 
 function ReplyCard({
@@ -309,7 +303,7 @@ function ReplyCard({
         </div>
 
         {/* Block sheet */}
-        {sparkContext && <p className="spark-comment-context">Replying to {sparkContext.parent}{sparkContext.parent !== sparkContext.original && ` · Spark by ${sparkContext.original}`}</p>}
+        {sparkContext && <p className="spark-comment-context">Replying to <CommentHandle name={sparkContext.parent} /> · Spark by <CommentHandle name={sparkContext.original} /></p>}
         {reply.userId && reply.userId !== currentUserId && (
           <BlockUserSheet
             open={blockSheetOpen}
@@ -383,9 +377,9 @@ function ReplyCard({
           </div>
         ) : (
           <>
-            <CommunityPostBody html={reply.body} />
+            <CommunityPostBody html={reply.body} autoLink={!!sparkContext} />
             {sparkContext && reply.gifUrl && <img className="spark-comment-gif" src={reply.gifUrl} alt="GIF attachment" loading="lazy" referrerPolicy="no-referrer" />}
-            {sparkContext && <CompactLink text={reply.body} />}
+            {sparkContext && !reply.suppressLinkPreview && <CommentLinkPreview text={parseFragment(reply.body).childNodes.map(node => "value" in node ? node.value : "").join("") || reply.body} />}
           </>
         )}
 
@@ -404,6 +398,9 @@ function ReplyCard({
             <MessageSquare className="w-3.5 h-3.5" /> Reply
           </button>
         </div>}
+        {!sparkContext && !!reply.likedBy?.length && <p className="text-xs text-muted-foreground">
+          Liked by {reply.likedBy.join(', ')}{reply.likeCount > reply.likedBy.length ? ` and ${reply.likeCount - reply.likedBy.length} others` : ''}
+        </p>}
       </div>
 
       {/* Nested children */}
@@ -436,12 +433,24 @@ function ReplyComposer({
   const [followUp, setFollowUp] = useState(false);
   const [error, setError] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [gifInput, setGifInput] = useState<string | null>(null);
+  const [gifOpen, setGifOpen] = useState(false);
+  const [removedPreview, setRemovedPreview] = useState<string | null>(null);
+  const activeLink = commentUrl(body)?.href || null;
   const [gifUrl, setGifUrl] = useState<string | null>(null);
   const [gifsEnabled, setGifsEnabled] = useState(false);
   const count = countSparkCharacters(body);
   const tooLong = !!sparkAuthor && count > SPARK_COMMENT_LIMIT;
-  useEffect(() => { setGifsEnabled(localStorage.getItem(COMMENT_GIF_SETTING) !== 'false'); }, []);
+  useEffect(() => {
+    if (!sparkAuthor) return;
+    const abort = new AbortController();
+    fetch('/api/account/privacy-settings', { signal: abort.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => {
+        if (!abort.signal.aborted) setGifsEnabled(data?.settings?.commentGifsEnabled ??
+          (localStorage.getItem(COMMENT_GIF_SETTING) !== 'false'));
+      }).catch(() => {});
+    return () => abort.abort();
+  }, [sparkAuthor]);
   useEffect(() => { if (replyTo) textareaRef.current?.focus(); }, [replyTo]);
 
   const submit = async () => {
@@ -453,15 +462,16 @@ function ReplyComposer({
       const res = await fetch(`/api/community/posts/${postId}/replies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: trimmed, gifUrl: gifUrl ?? undefined, parentId: replyTo?.id ?? null, followUp: canFollowUp && !replyTo && followUp }),
+        body: JSON.stringify({ body: trimmed, suppressLinkPreview: !!activeLink && activeLink === removedPreview, gifUrl: gifUrl ?? undefined, parentId: replyTo?.id ?? null, followUp: canFollowUp && !replyTo && followUp }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(data.error ?? 'Could not post your reply.');
       }
       setBody('');
+      setRemovedPreview(null);
       setGifUrl(null);
-      setGifInput(null);
+      setGifOpen(false);
       setFollowUp(false);
       onClear();
       onSubmitted();
@@ -484,7 +494,7 @@ function ReplyComposer({
     <div className={sparkAuthor ? 'spark-comment-composer' : 'rounded-xl border border-border bg-card p-4'}>
       {(replyTo || sparkAuthor) && (
         <div className="flex items-center justify-between mb-2 text-xs text-accent">
-          <span>{replyTo ? `Replying to ${handleName(replyTo)}` : `Replying to ${sparkAuthor}`}{replyTo && sparkAuthor && ` · Spark by ${sparkAuthor}`}</span>
+          <span>Replying to <CommentHandle name={replyTo ? handleName(replyTo) : sparkAuthor!} />{sparkAuthor && <> · Spark by <CommentHandle name={sparkAuthor} /></>}</span>
           {replyTo && <button onClick={onClear} aria-label="Clear reply target" className="text-muted-foreground hover:text-foreground transition-colors">✕</button>}
         </div>
       )}
@@ -495,17 +505,14 @@ function ReplyComposer({
         </label>
       )}
       {error && <p role="alert" className="mb-2 text-sm text-destructive">{error}</p>}
-      {gifInput !== null && <div className="mb-2 flex flex-wrap gap-2">
-        <input className="min-w-0 flex-1 rounded border border-border bg-background px-2" aria-label="GIF link" placeholder="Paste a GIPHY or Tenor GIF link" value={gifInput} onChange={event => setGifInput(event.target.value)} />
-        <Button size="sm" disabled={!commentGifUrl(gifInput)} onClick={() => { setGifUrl(commentGifUrl(gifInput)); setGifInput(null); }}>Attach GIF</Button>
-      </div>}
+      {gifOpen && <CommentGifPicker onPick={url => { setGifUrl(url); setGifOpen(false); }} />}
       {gifUrl && <div className="mb-2"><img className="spark-comment-gif" src={gifUrl} alt="Selected GIF" referrerPolicy="no-referrer" /><button onClick={() => setGifUrl(null)} className="min-h-11 text-xs">Remove GIF</button></div>}
-      {sparkAuthor && <CompactLink text={body} />}
+      {sparkAuthor && activeLink && activeLink !== removedPreview && <CommentLinkPreview text={body} onRemove={() => setRemovedPreview(activeLink)} />}
       <div className={sparkAuthor ? 'spark-comment-input' : undefined}>
       <textarea
         ref={textareaRef}
         aria-label="Write a reply"
-        aria-describedby={sparkAuthor ? 'spark-comment-count' : undefined}
+        aria-describedby={sparkAuthor && count >= 240 ? 'spark-comment-count' : undefined}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder={community_post.replyPlaceholder}
@@ -513,7 +520,7 @@ function ReplyComposer({
         className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
       />
       <div className={sparkAuthor ? 'flex items-center gap-2' : 'flex justify-end mt-2'}>
-        {sparkAuthor && gifsEnabled && <Button size="sm" variant="outline" aria-label="Choose a GIF" aria-expanded={gifInput !== null} onClick={() => setGifInput(gifInput === null ? '' : null)}>GIF</Button>}
+        {sparkAuthor && gifsEnabled && <Button size="sm" variant="outline" aria-label="Choose a GIF" aria-expanded={gifOpen} onClick={() => setGifOpen(open => !open)}>GIF</Button>}
         <Button
           size="sm"
           disabled={(!body.trim() && !gifUrl) || submitting || tooLong}
@@ -525,7 +532,7 @@ function ReplyComposer({
         </Button>
       </div>
       </div>
-      {sparkAuthor && <p id="spark-comment-count" className={`text-right text-xs ${tooLong ? 'text-destructive' : 'text-muted-foreground'}`}>{count}/{SPARK_COMMENT_LIMIT}</p>}
+      {sparkAuthor && count >= 240 && <p id="spark-comment-count" className={`text-right text-xs ${tooLong ? 'text-destructive' : 'text-muted-foreground'}`}>{count}/{SPARK_COMMENT_LIMIT}</p>}
     </div>
   );
 }
@@ -759,7 +766,7 @@ export default function PostThreadPage() {
                   </Link>
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-xs text-muted-foreground">
-                      {spark && post.authorUsername && `@${post.authorUsername} · `}{formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                      {spark && post.authorUsername && <><CommentHandle name={`@${post.authorUsername}`} /> · </>}{formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
                       {post.updatedAt !== post.createdAt && ' · edited'}
                     </p>
                     {post.authorLocation && (
@@ -805,9 +812,10 @@ export default function PostThreadPage() {
 
               {/* Action bar */}
               <div className="spark-original-actions flex items-center gap-2 mt-5 pt-4 border-t border-border/50 flex-wrap">
-                <SparkHeartButton key={post.id} postId={post.id} liked={post.liked} likeCount={post.likeCount} />
+                {post.type === 'spark' ? <SparkActions post={post} /> : <SparkHeartButton regularLike postId={post.id} liked={post.liked} likeCount={post.likeCount} />}
+                {post.type !== 'spark' && !!post.likedBy?.length && <p className="text-xs">Liked by {post.likedBy.join(', ')}{post.likeCount > post.likedBy.length ? ` and ${post.likeCount - post.likedBy.length} others` : ''}</p>}
 
-                {post.type === 'spark' ? <SparkFavoriteButton key={post.id} postId={post.id} bookmarked={post.bookmarked} /> : (
+                {post.type !== 'spark' && (
                 <button
                   onClick={toggleBookmark}
                   className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
@@ -821,9 +829,9 @@ export default function PostThreadPage() {
                 </button>
                 )}
 
-                {post.audience === 'public' && !post.isHidden && (
+                {post.type !== 'spark' && post.audience === 'public' && !post.isHidden && (
                   <Link
-                    to={(spark ? SPARK_COMPOSE + '&quote=' : '/community/new?quote=') + post.id}
+                    to={'/community/new?quote=' + post.id}
                     className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground"
                   >
                     <MessageSquare className="w-3.5 h-3.5" /> {spark ? "Quote or reshare" : "Quote post"}

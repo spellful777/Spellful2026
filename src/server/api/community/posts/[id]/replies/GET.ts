@@ -1,3 +1,4 @@
+import { communityLikePreviews } from '@/server/lib/community-like-previews.js';
 import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
@@ -34,6 +35,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     postId: communityReplies.postId,
     parentId: communityReplies.parentId,
     body: communityReplies.body,
+    suppressLinkPreview: communityReplies.suppressLinkPreview,
     gifUrl: communityReplies.gifUrl,
     likeCount: communityReplies.likeCount,
     depth: communityReplies.depth,
@@ -64,5 +66,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     likedIds = new Set(likes.map((l) => l.targetId));
   }
 
-  res.json(replies.map((r) => ({ ...r, liked: likedIds.has(r.id), favorited: favoriteIds.has(r.id), isOwner: myId === r.userId })));
+  const previews = await communityLikePreviews('reply', replies.map(reply => reply.id), myId);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.json(replies.map((r) => ({ ...r, likedBy: previews.get(r.id) ?? [], liked: likedIds.has(r.id), favorited: favoriteIds.has(r.id), isOwner: myId === r.userId })));
 }

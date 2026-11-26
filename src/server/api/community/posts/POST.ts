@@ -37,7 +37,7 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: `Choose up to ${maxSparkPhotos} photos or one video.` });
     }
     if (typeof body !== 'string' || countSparkCharacters(body) > SPARK_LIMIT ||
-        (!body.trim() && !mediaIds.length && quotedPostId === undefined)) {
+        (!body.trim() && !mediaIds.length)) {
       return res.status(400).json({ error: `Add text up to ${SPARK_LIMIT} characters or attach media.` });
     }
     if (title !== undefined || tags || poll || sharedReading !== undefined) {
@@ -46,7 +46,7 @@ export default async function handler(req: Request, res: Response) {
     let originalSparkId: number | null = null;
     if (quotedPostId !== undefined) {
       if (!Number.isSafeInteger(quotedPostId) || quotedPostId < 1) return res.sendStatus(400);
-      const [source] = await db.select({ id: communityPosts.id, original: communityPosts.originalSparkId })
+      const [source] = await db.select({ id: communityPosts.id, original: communityPosts.reshareOf })
         .from(communityPosts).where(and(visiblePostForMember(quotedPostId, session.user.id),
           eq(communityPosts.type, 'spark'), eq(communityPosts.audience, 'public'))).limit(1);
       if (!source) return res.status(404).json({ error: 'Original Spark unavailable.' });
