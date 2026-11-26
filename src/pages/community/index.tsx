@@ -190,9 +190,9 @@ function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5">
               {tags.slice(0, 4).map((tag) => (
-                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
+                <Link key={tag} to={`/community/search?tag=${encodeURIComponent(tag)}`} className="relative z-10 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:underline">
                   #{tag}
-                </span>
+                </Link>
               ))}
             </div>
           )}

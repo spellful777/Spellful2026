@@ -61,6 +61,7 @@ import CommunityPage from './pages/community/index';
 import CommunityCategoryPage from './pages/community/[slug]';
 import CommunityPostPage from './pages/community/post/[id]';
 import CommunityDiscoverPage from './pages/community/discover';
+import CommunitySearchPage from './pages/community/search';
 import CommunityNewPage from './pages/community/new';
 import CommunityBookmarksPage from './pages/community/bookmarks';
 import CommunityNotificationsPage from './pages/community/notifications';
@@ -294,6 +295,7 @@ export const routes: RouteObject[] = [
   // Static community paths MUST come before /community/:slug so React Router
   // does not match "new", "bookmarks", "notifications", "post", or "discover"
   // as a :slug param and render the wrong page.
+  { path: '/community/search', element: <CommunitySearchPage /> },
   { path: '/community/new', element: <CommunityNewPage /> },
   { path: '/community/bookmarks', element: <CommunityBookmarksPage /> },
   { path: '/community/notifications', element: <CommunityNotificationsPage /> },
