@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityCategories, communityPosts } from '@/server/db/schema.js';
-import { eq, count, and } from 'drizzle-orm';
+import { eq, ne, count, and } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -24,7 +24,7 @@ export default async function handler(req: Request, res: Response) {
   const counts = await db
     .select({ categoryId: communityPosts.categoryId, total: count() })
     .from(communityPosts)
-    .where(and(eq(communityPosts.isHidden, false)))
+    .where(and(eq(communityPosts.isHidden, false), ne(communityPosts.type, 'spark')))
     .groupBy(communityPosts.categoryId);
 
   const countMap = new Map(counts.map((c) => [c.categoryId, c.total]));

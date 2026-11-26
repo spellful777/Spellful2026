@@ -1,9 +1,9 @@
 {
-  "pageTitle": "Saved Discussions",
-  "pageSubtitle": "Posts you've bookmarked for later.",
+  "pageTitle": "Favorites",
+  "pageSubtitle": "Sparks and discussions you've saved.",
   "backLabel": "Back to Community",
-  "emptyTitle": "No saved discussions yet",
-  "emptyText": "Bookmark any post from the community to find it here.",
+  "emptyTitle": "No favorites yet",
+  "emptyText": "Favorite a Spark or save a discussion to find it here.",
   "browseCta": "Browse Community",
   "removeLabel": "Remove",
   "categoryLabel": "in",

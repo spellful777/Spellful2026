@@ -242,6 +242,17 @@ export type MoonPhaseName =
   | 'Last Quarter'
   | 'Waning Crescent';
 
+const moonPhaseGlyphs = new Map<string, string>([
+  ['New Moon', '🌑'], ['Waxing Crescent', '🌒'], ['First Quarter', '🌓'],
+  ['Waxing Gibbous', '🌔'], ['Full Moon', '🌕'], ['Waning Gibbous', '🌖'],
+  ['Last Quarter', '🌗'], ['Waning Crescent', '🌘'],
+]);
+
+export function moonGlyph(phase?: string): string {
+  return (phase && moonPhaseGlyphs.get(phase)) || '🌙';
+}
+
+
 /**
  * Get the current moon phase for any UTC date.
  * Uses elongation bisection — no linear drift, no hardcoded reference points.

@@ -1,15 +1,21 @@
 import { uploadedMediaUrl } from '@/lib/native-api';
+import { getTrendingTopics } from '@/lib/community-trending-topics';
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { community } from 'virtual:content';
 import { motion } from 'motion/react';
 import {
   Wand2, Layers, Moon, Leaf, Heart, BookOpen, Sparkles, Globe,
-  PenLine, Bell, Bookmark, TrendingUp, MessageSquare, HelpCircle,
-  Pin, Lock, ThumbsUp, Eye, ChevronRight, Search, Users, Star, Building2,
+  Bell, Bookmark, TrendingUp, MessageSquare, HelpCircle,
+  Pin, Lock, Eye, ChevronRight, Search, Users, Star, Building2,
 } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
+import SparkCard from '@/components/SparkCard';
+import { SPARK_COMPOSE, COMMUNITY_FAVORITES } from '@/lib/community-navigation';
+import SparkHeartButton from '@/components/SparkHeartButton';
+import SparkIcon from '@/components/SparkIcon';
+import SparkItLink from '@/components/SparkItLink';
 import MyCoven from '@/components/MyCoven';
 import { UsernameSetupModal } from '@/components/UsernameSetupModal';
 import { useCommunityCategories, useCommunityPosts, useCommunityNotifications, type PostFilter } from '@/hooks/useCommunity';
@@ -20,7 +26,8 @@ import { formatDistanceToNow } from 'date-fns';
 import FriendUpdatesFeed from '@/components/FriendUpdatesFeed';
 import SinceYouWereAwayBanner from '@/components/SinceYouWereAwayBanner';
 import CovenHearth from '@/components/CovenHearth';
-import CommunityNavBar from '@/components/CommunityNavBar';
+import { COMMUNITY_FEED, COMMUNITY_GROUPS, COMMUNITY_UPDATES } from '@/lib/community-navigation';
+import CosmicPulse from "@/components/CosmicPulse";
 
 // ── Community stats strip ─────────────────────────────────────────────────────
 interface CommunityStats { onlineCount: number; registeredCount: number; }
@@ -132,7 +139,10 @@ function CategoryIcon({ name, className, style }: { name: string; className?: st
 
 // ── Filter tabs ───────────────────────────────────────────────────────────────
 const FILTERS: { value: PostFilter; label: string }[] = [
-  { value: 'latest',     label: 'Latest' },
+  { value: 'personalized', label: 'For you' },
+  { value: 'chronological', label: 'Newest first' },
+  { value: 'latest', label: 'Pinned first' },
+  { value: 'trending',   label: 'Trending' },
   { value: 'popular',    label: 'Popular' },
   { value: 'unanswered', label: 'Unanswered' },
   { value: 'following',  label: 'Following' },
@@ -140,107 +150,120 @@ const FILTERS: { value: PostFilter; label: string }[] = [
 ];
 
 // ── Post card ─────────────────────────────────────────────────────────────────
-function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'][number] }) {
+export function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'][number] }) {
+  if (post.type === 'spark') return <SparkCard post={post} />;
   const tags = post.tags ? post.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
   const ago = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: 'easeOut' as const }}
-      className="group"
+    <article
+      data-feed-post-id={post.id}
+      className="group relative rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 focus-within:border-primary"
     >
-      <Link
-        to={`/community/post/${post.id}`}
-        className="block rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-[hsl(var(--card-mid))] transition-colors p-4 gap-3"
-      >
-        {/* Top row */}
-        <div className="flex items-start gap-3">
-          {/* Avatar — links to profile */}
-          <Link
-            to={post.authorUsername ? `/u/${post.authorUsername}` : '#'}
-            onClick={(e) => e.stopPropagation()}
-            className="shrink-0 mt-0.5"
-          >
-            {post.authorImage ? (
-              <img src={uploadedMediaUrl(post.authorImage)} alt={post.authorName ?? ''} className="w-8 h-8 rounded-full object-cover hover:ring-2 hover:ring-primary/50 transition-all" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground hover:ring-2 hover:ring-primary/50 transition-all">
-                {(post.authorName ?? '?')[0].toUpperCase()}
-              </div>
-            )}
-          </Link>
+      {/* Top row */}
+      <div className="flex items-start gap-3">
+        <div aria-hidden="true" className="shrink-0 mt-0.5">
+          {post.authorImage ? (
+            <img loading="lazy" src={uploadedMediaUrl(post.authorImage)} alt="" className="w-8 h-8 rounded-full object-cover hover:ring-2 hover:ring-primary/50 transition-all" />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground hover:ring-2 hover:ring-primary/50 transition-all">
+              {(post.authorName ?? '?')[0].toUpperCase()}
+            </div>
+          )}
+        </div>
 
-          <div className="flex-1 min-w-0">
-            {/* Meta row */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground mb-1">
+        <div className="flex-1 min-w-0">
+          {/* Meta row */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground mb-1">
+            {post.authorUsername ? (
               <Link
-                to={post.authorUsername ? `/u/${post.authorUsername}` : '#'}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-foreground/70 hover:text-primary transition-colors"
-              >{post.authorName ?? 'Unknown'}</Link>
-              <span>·</span>
-              <span>{ago}</span>
-              {post.categoryName && (
-                <>
-                  <span>·</span>
-                  <span className="text-accent">{post.categoryName}</span>
-                </>
-              )}
-              {post.isPinned && <Pin className="w-3 h-3 text-primary" />}
-              {post.isLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
-            </div>
+                to={`/u/${post.authorUsername}`}
+                className="relative z-10 rounded font-medium text-foreground/70 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+              >
+                {post.authorName ?? post.authorUsername}
+              </Link>
+            ) : <span>{post.authorName ?? 'Unknown'}</span>}
+            <span>·</span>
+            <span>{ago}</span>
+            {post.categoryName && (
+              <>
+                <span>·</span>
+                <span className="text-accent">{post.categoryName}</span>
+              </>
+            )}
+            {post.isPinned && <Pin className="w-3 h-3 text-primary" />}
+            {post.isLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
+          </div>
 
-            {/* Title */}
-            <div className="flex items-start gap-2">
-              {post.type === 'question' && (
-                <HelpCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-              )}
-              <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+          {/* Title */}
+          <div className="flex items-start gap-2">
+            {post.type === 'question' && (
+              <HelpCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+            )}
+            <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+              <Link
+                to={`/community/post/${post.id}`}
+                className="after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-primary"
+              >
                 {post.title}
-              </h3>
-              {post.acceptedReplyId && (
-                <Badge variant="outline" className="shrink-0 text-[10px] border-[hsl(var(--success))] text-[hsl(var(--success))] px-1.5 py-0">
-                  Solved
-                </Badge>
-              )}
-            </div>
-
-            {/* Tags */}
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {tags.slice(0, 4).map((tag) => (
-                  <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
+              </Link>
+            </h3>
+            {post.acceptedReplyId && (
+              <Badge variant="outline" className="shrink-0 text-[10px] border-[hsl(var(--success))] text-[hsl(var(--success))] px-1.5 py-0">
+                Solved
+              </Badge>
             )}
           </div>
-        </div>
 
-        {/* Stats row */}
-        <div className="flex items-center gap-4 mt-2.5 pl-11 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <ThumbsUp className="w-3 h-3" /> {post.likeCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <MessageSquare className="w-3 h-3" /> {post.replyCount}
-          </span>
-          <span className="flex items-center gap-1">
-            <Eye className="w-3 h-3" /> {post.viewCount}
-          </span>
+          {post.preview && (
+            <p className="mt-1 line-clamp-3 break-words text-sm text-muted-foreground">{post.preview}</p>
+          )}
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {tags.slice(0, 4).map((tag) => (
+                <Link key={tag} to={`/community/search?tag=${encodeURIComponent(tag)}`} className="relative z-10 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground hover:underline">
+                  #{tag}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
-      </Link>
-    </motion.div>
+      </div>
+
+      {post.imageUrl && /^https:\/\//i.test(post.imageUrl) && (
+        <img
+          src={post.imageUrl}
+          alt="Image attached to the post"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          className="mt-3 aspect-video w-full rounded-lg bg-muted object-contain"
+        />
+      )}
+
+      {/* Stats row */}
+      <div className="flex items-center gap-4 mt-2.5 pl-11 text-xs text-muted-foreground">
+        <SparkHeartButton regularLike postId={post.id} liked={post.liked} likeCount={post.likeCount} />
+        {!!post.likedBy?.length && <span className="text-xs text-muted-foreground">
+          Liked by {post.likedBy.join(', ')}{post.likeCount > post.likedBy.length ? ` and ${post.likeCount - post.likedBy.length} others` : ''}
+        </span>}
+        <span className="flex items-center gap-1">
+          <MessageSquare className="w-3 h-3" /> {post.replyCount}
+        </span>
+        <span className="flex items-center gap-1">
+          <Eye className="w-3 h-3" /> {post.viewCount}
+        </span>
+      </div>
+    </article>
   );
 }
 
 // ── Trending sidebar ──────────────────────────────────────────────────────────
-function TrendingSidebar() {
-  const { posts, loading } = useCommunityPosts('popular', undefined, 1);
+function TrendingSidebar({ onSelectTrending }: { onSelectTrending: () => void }) {
+  const { posts, loading, error, reload } = useCommunityPosts('trending', undefined, 1, undefined, true, 'discussion');
   const top = posts.slice(0, 5);
+  const topics = getTrendingTopics(posts);
 
   return (
     <aside className="space-y-4">
@@ -248,27 +271,52 @@ function TrendingSidebar() {
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
           <TrendingUp className="w-4 h-4 text-primary" /> {community.sidebar.trendingTitle}
         </h3>
+        <p className="mb-3 text-xs text-muted-foreground">Active discussions started in the past week.</p>
         {loading ? (
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
           </div>
+        ) : error ? (
+          <Button size="sm" variant="outline" onClick={reload}>Retry trending discussions</Button>
         ) : top.length === 0 ? (
           <p className="text-xs text-muted-foreground">{community.sidebar.trendingEmpty}</p>
         ) : (
           <ol className="space-y-2">
-            {top.map((p, i) => (
+            {top.map((p) => (
               <li key={p.id}>
-                <Link to={`/community/post/${p.id}`} className="flex items-start gap-2 group">
-                  <span className="text-xs font-bold text-primary/60 w-4 shrink-0 mt-0.5">{i + 1}</span>
+                <Link to={`/community/post/${p.id}`} className="block rounded p-1 hover:bg-muted focus-visible:outline focus-visible:outline-primary">
                   <span className="text-xs text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 leading-snug">
                     {p.title}
                   </span>
+                  <span className="block text-xs text-muted-foreground">{p.replyCount ?? 0} replies · {p.likeCount ?? 0} likes</span>
                 </Link>
               </li>
             ))}
           </ol>
         )}
+        {top.length > 0 && <Button size="sm" variant="ghost" onClick={onSelectTrending}>See trending discussions</Button>}
       </div>
+
+      {!loading && !error && topics.length > 0 && (
+        <section className="rounded-xl border border-border bg-card p-4">
+          <h3 className="mb-2 text-sm font-semibold">Trending topics</h3>
+          <p className="mb-3 text-xs text-muted-foreground">Tags appearing in active discussions this week.</p>
+          <ul className="flex flex-wrap gap-2">
+            {topics.map(({ tag, count }) => (
+              <li key={tag}>
+                <Link
+                  to={`/community/search?tag=${encodeURIComponent(tag)}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-xs hover:border-primary focus-visible:outline focus-visible:outline-primary"
+                >
+                  <span>#{tag}</span>
+                  <span className="sr-only">{count} {count === 1 ? 'trending discussion' : 'trending discussions'}</span>
+                  <span aria-hidden="true" className="text-muted-foreground">{count}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Quick links */}
       <div className="rounded-xl border border-border bg-card p-5">
@@ -278,9 +326,9 @@ function TrendingSidebar() {
         </h3>
         <nav className="space-y-1.5">
           {[
-            { to: '/community/bookmarks', icon: Bookmark, label: 'Saved Posts', desc: 'Your bookmarked discussions' },
+            { to: COMMUNITY_FAVORITES, icon: Bookmark, label: 'Favorites', desc: 'Your saved Sparks and discussions' },
             { to: '/community/notifications', icon: Bell, label: 'Notifications', desc: 'Replies & mentions' },
-            { to: '/community/new', icon: PenLine, label: 'New Discussion', desc: 'Start a conversation' },
+            { to: SPARK_COMPOSE, icon: SparkIcon, label: 'Spark it', desc: 'Start a conversation' },
             { to: '/creators', icon: Star, label: 'Creators', desc: 'Browse verified creators' },
             { to: '/organizations', icon: Building2, label: 'Organizations', desc: 'Shops, studios & collectives' },
           ].map(({ to, icon: Icon, label, desc }) => (
@@ -309,20 +357,60 @@ function TrendingSidebar() {
   );
 }
 
+const COMMUNITY_VIEWS = [
+  { view: 'feed', label: 'Feed', to: COMMUNITY_FEED, icon: Heart },
+  { view: 'updates', label: 'Updates', to: COMMUNITY_UPDATES, icon: Bell },
+  { view: 'groups', label: 'Groups', to: COMMUNITY_GROUPS, icon: MessageSquare },
+  { view: 'coven', label: 'Coven', to: '/community?view=coven', icon: Users },
+  { view: 'hearth', label: 'Hearth', to: '/community?view=hearth', icon: Sparkles },
+] as const;
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CommunityPage() {
   const { session, isPending } = useSession();
   const navigate = useNavigate();
+  const location = useLocation();
   const [filter, setFilter] = useState<PostFilter>('latest');
   const [activeCategory, setActiveCategory] = useState<string | undefined>(undefined);
-  const [page, setPage] = useState(1);
+  const [groupPage, setGroupPage] = useState(1);
+  const [feedPage, setFeedPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [hasNewFeedPosts, setHasNewFeedPosts] = useState(false);
   const [catExpanded, setCatExpanded] = useState(false);
-  const [view, setView] = useState<'feed' | 'coven' | 'friends' | 'hearth'>('feed');
+  const requestedView = new URLSearchParams(location.search).get('view');
+  const view = COMMUNITY_VIEWS.find((item) => item.view === requestedView)?.view ?? 'feed';
 
+  const isFeed = view === 'feed';
+  const showPosts = isFeed || view === 'groups';
+  const postFilter = isFeed ? 'following' : filter;
+  const page = isFeed ? feedPage : groupPage;
+  const setPage = isFeed ? setFeedPage : setGroupPage;
   const { categories, loading: catsLoading } = useCommunityCategories();
-  const { posts, total, pages, loading: postsLoading } = useCommunityPosts(filter, activeCategory, page);
+  const { posts, total, pages, loading: postsLoading, error: postsError, reload: reloadPosts, newestId } =
+    useCommunityPosts(postFilter, isFeed ? undefined : activeCategory, page, isFeed ? 'newest' : undefined, showPosts && !!session, isFeed ? 'spark' : 'discussion');
   const unread = useCommunityNotifications();
+
+  useEffect(() => {
+    setHasNewFeedPosts(false);
+    if (!isFeed || !session?.user?.id || feedPage !== 1 || newestId === undefined || postsLoading || postsError) return;
+    const controller = new AbortController();
+    async function checkForPosts() {
+      if (document.hidden) return;
+      try {
+        const response = await fetch(`/api/community/posts?filter=following&kind=spark&afterId=${newestId}`, {
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        if (!response.ok) return;
+        const result = await response.json() as { hasNewPosts?: boolean };
+        if (result.hasNewPosts && !controller.signal.aborted) setHasNewFeedPosts(true);
+      } catch {
+        // Leave the current feed available if the background check fails.
+      }
+    }
+    const timer = setInterval(() => { void checkForPosts(); }, 45_000);
+    return () => { controller.abort(); clearInterval(timer); };
+  }, [isFeed, session?.user?.id, feedPage, newestId, postsLoading, postsError]);
 
   // Presence heartbeat — registers this user as online so the live count is accurate.
   // Fires immediately on mount and refreshes every 4 minutes (well within the 5-min window).
@@ -350,8 +438,8 @@ export default function CommunityPage() {
 
   // Auth gate — redirect to login
   if (!isPending && !session) {
-    navigate('/login?redirect=/community');
-    return null;
+    const destination = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?redirect=${destination}`} replace />;
   }
 
   // Username gate — must choose a username before participating
@@ -364,12 +452,12 @@ export default function CommunityPage() {
 
   const handleFilterChange = (f: PostFilter) => {
     setFilter(f);
-    setPage(1);
+    setGroupPage(1);
   };
 
   const handleCategoryChange = (slug: string | undefined) => {
     setActiveCategory(slug);
-    setPage(1);
+    setGroupPage(1);
   };
 
   return (
@@ -399,25 +487,10 @@ export default function CommunityPage() {
         <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/community/og-image" />
       </Helmet>
 
-      <main className="min-h-screen">
-        {/* ── Signed-in: compact nav bar ── */}
-        {session && (
-          <CommunityNavBar
-            userName={session.user?.name}
-            userImage={session.user?.image}
-            username={(session.user as { username?: string }).username}
-            unread={unread}
-            search={search}
-            onSearchChange={setSearch}
-            onSearchSubmit={handleSearch}
-          />
-        )}
-
-        {/* ── Guest only: Magical Hero header ── */}
-        {(!session && !isPending) && (
+      <main className="coven-community min-h-screen">
+        {/* ── Magical Hero header ── */}
         <section
-          className="relative overflow-hidden border-b border-border"
-          style={{ background: `linear-gradient(160deg, hsl(var(--hero-midnight)) 0%, hsl(var(--hero-plum)) 50%, hsl(var(--hero-midnight)) 100%)` }}
+          className="coven-hero relative overflow-hidden border-b border-border"
         >
           {/* Radial glow behind logo */}
           <div
@@ -565,7 +638,7 @@ export default function CommunityPage() {
                 The Spellful Community
               </h1>
               <p className="text-sm md:text-base max-w-md mx-auto leading-relaxed" style={{ color: `hsl(var(--hero-lavender-soft))` }}>
-                A sacred space to share wisdom, ask questions, and walk the path together.
+                Catch up with people you follow and join group discussions about your practice.
               </p>
             </motion.div>
 
@@ -576,19 +649,7 @@ export default function CommunityPage() {
               transition={{ duration: 0.45, delay: 0.28, ease: 'easeOut' as const }}
               className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-2xl pb-8 md:pb-10"
             >
-              {/* Primary CTA */}
-              <Link to="/community/new" className="shrink-0">
-                <Button
-                  size="sm"
-                  className="gap-2 font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 bg-primary text-primary-foreground hover:bg-primary/90"
-                  style={{ boxShadow: `0 0 14px hsl(var(--hero-gold) / 0.35)` }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 24px hsl(var(--hero-gold) / 0.6)`; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 14px hsl(var(--hero-gold) / 0.35)`; }}
-                >
-                  <PenLine className="w-4 h-4" />
-                  {community.hero.ctaLabel}
-                </Button>
-              </Link>
+              <SparkItLink />
 
               {/* Search */}
               <form onSubmit={handleSearch} className="relative flex-1 w-full sm:max-w-xs">
@@ -658,7 +719,6 @@ export default function CommunityPage() {
           {/* Stats strip sits inside the hero section */}
           <CommunityStatsStrip />
         </section>
-        )}
 
         {/* ── Since-you-were-away banner ── */}
         {session && (
@@ -668,19 +728,42 @@ export default function CommunityPage() {
         )}
 
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-10">
+          <nav aria-label="Community navigation" className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card p-2.5 shadow-md">
+            {COMMUNITY_VIEWS.map(({ view: itemView, label, to, icon: Icon }) => (
+              <Link
+                key={itemView}
+                to={to}
+                preventScrollReset
+                aria-current={view === itemView ? 'page' : undefined}
+                className="coven-nav-link inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors"
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                {label}
+              </Link>
+            ))}
+            <Link
+              to="/community/discover"
+              className="coven-nav-link inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors"
+            >
+              <Search className="h-4 w-4" aria-hidden="true" />
+              Discover
+            </Link>
+          </nav>
+
           {/* ── Magical Category Navigation ── */}
-          <section className="mb-8" aria-label="Browse by category">
+          {view === 'groups' && <section className="mb-8" aria-label="Browse discussion groups">
             {/* Section header */}
             <div className="text-center mb-5">
               <p className="text-[10px] tracking-widest uppercase mb-1.5" style={{ color: 'hsl(var(--primary))', fontFamily: 'var(--font-sans)' }}>
                 {community.categorySection.eyebrow}
               </p>
               <h2 className="text-2xl md:text-3xl mb-1" style={{ fontFamily: 'var(--font-heading)', color: 'hsl(var(--foreground))' }}>
-                {community.categorySection.heading}
+                Discussion groups
               </h2>
               <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
-                {community.categorySection.subheading}
+                Choose a group to browse its conversations.
               </p>
+              <Button asChild variant="outline" className="mt-3"><Link to="/community/new">Start a discussion</Link></Button>
             </div>
 
             {(() => {
@@ -809,67 +892,14 @@ export default function CommunityPage() {
                 </>
               );
             })()}
-          </section>
+          </section>}
 
+          <CosmicPulse />
           {/* ── Feed + sidebar ── */}
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Feed */}
             <div className="flex-1 min-w-0">
-              {/* View toggle: Feed / Friend Updates / My Coven / Discover */}
-              <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
-                <button
-                  onClick={() => setView('feed')}
-                  className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: view === 'feed' ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
-                    color: view === 'feed' ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
-                  }}
-                >
-                  Feed
-                </button>
-                <button
-                  onClick={() => setView('friends')}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: view === 'friends' ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
-                    color: view === 'friends' ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
-                  }}
-                >
-                  <Heart className="w-3 h-3" />
-                  Friend Updates
-                </button>
-                <button
-                  onClick={() => setView('coven')}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: view === 'coven' ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
-                    color: view === 'coven' ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
-                  }}
-                >
-                  <Users className="w-3 h-3" />
-                  My Coven
-                </button>
-                <button
-                  onClick={() => setView('hearth')}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: view === 'hearth' ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
-                    color: view === 'hearth' ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
-                  }}
-                >
-                  🔥 Hearth
-                </button>
-                <Link
-                  to="/community/discover"
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}
-                >
-                  <Sparkles className="w-3 h-3" />
-                  Discover
-                </Link>
-              </div>
-
-              {/* My Coven view */}
+              {/* Coven view */}
               {view === 'coven' && session?.user?.id && (
                 <MyCoven currentUserId={session.user.id} />
               )}
@@ -877,17 +907,20 @@ export default function CommunityPage() {
               {/* Coven Hearth view */}
               {view === 'hearth' && <CovenHearth />}
 
-              {/* Friend Updates view */}
-              {view === 'friends' && (
-                <FriendUpdatesFeed />
-              )}
+              {view === 'updates' && session && <FriendUpdatesFeed />}
 
-              {/* Filter tabs + feed — only shown in feed view */}
-              {view === 'feed' && (<>
+              {showPosts && session && (<>
+              {isFeed ? (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-heading text-xl">Sparks from people you follow</h2>
+                  {hasNewFeedPosts && <Button size="sm" onClick={reloadPosts}>Show new posts</Button>}
+                </div>
+              ) : (
               <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1 scrollbar-none">
                 {FILTERS.map(({ value, label }) => (
                   <button
                     key={value}
+                    aria-pressed={filter === value}
                     onClick={() => handleFilterChange(value)}
                     className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       filter === value
@@ -912,23 +945,31 @@ export default function CommunityPage() {
                   </span>
                 )}
               </div>
+              )}
 
               {/* Post list */}
               {postsLoading ? (
                 <div className="space-y-3">
                   {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
                 </div>
+              ) : postsError ? (
+                <div className="rounded-xl border border-border bg-card p-6 text-center">
+                  <p role="status" className="text-sm text-muted-foreground">Coven posts couldn’t load.</p>
+                  <Button className="mt-3" size="sm" variant="outline" onClick={reloadPosts}>Try again</Button>
+                </div>
               ) : posts.length === 0 ? (
                 <div className="rounded-xl border border-border bg-card p-10 text-center">
                   <Sparkles className="w-8 h-8 text-primary/40 mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">
-                    {filter === 'following'
+                    {postFilter === 'trending'
+                      ? 'No active discussions started in the past week.'
+                      : postFilter === 'following'
                       ? community.emptyStates.following
-                      : filter === 'mine'
+                      : postFilter === 'mine'
                       ? community.emptyStates.mine
                       : community.emptyStates.default}
                   </p>
-                  {filter === 'following' ? (
+                  {postFilter === 'following' ? (
                     <Link to="/community/discover" className="mt-4 inline-block">
                       <Button size="sm" variant="outline" className="gap-2 mt-3">
                         <Users className="w-3.5 h-3.5" /> Discover Members
@@ -937,7 +978,7 @@ export default function CommunityPage() {
                   ) : (
                     <Link to="/community/new" className="mt-4 inline-block">
                       <Button size="sm" variant="outline" className="gap-2 mt-3">
-                        <PenLine className="w-3.5 h-3.5" /> {community.emptyStates.ctaLabel}
+                        Start a discussion
                       </Button>
                     </Link>
                   )}
@@ -977,7 +1018,11 @@ export default function CommunityPage() {
 
             {/* Sidebar */}
             <div className="lg:w-64 shrink-0">
-              <TrendingSidebar />
+              <TrendingSidebar onSelectTrending={() => {
+                navigate(COMMUNITY_GROUPS, { preventScrollReset: true });
+                handleCategoryChange(undefined);
+                handleFilterChange('trending');
+              }} />
             </div>
           </div>
         </div>

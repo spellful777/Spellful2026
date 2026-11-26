@@ -1,13 +1,15 @@
+import { profileActivity } from '@/server/lib/profile-activity.js';
+import { profileAudience } from '@/server/lib/profile-audience.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { user, covenConnections, communityFollows } from '@/server/db/schema.js';
-import { eq, and, or, count, sql } from 'drizzle-orm';
+import { user, covenConnections, communityBlocks, userFollows, communityPosts, profilePlaylists, profileSoundscapesSettings } from '@/server/db/schema.js';
+import { eq, and, or, count, desc, isNotNull, sql } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
-import { isBlocked } from '@/server/lib/block-check.js';
 
 export default async function handler(req: Request<{ username: string }>, res: Response) {
   try {
     if (!db) return res.status(503).json({ error: 'Database unavailable' });
+    res.setHeader('Cache-Control', 'private, no-store');
     const { username } = req.params;
     const session = await getAuthSession(req);
     const viewerId = session?.user?.id ?? null;
@@ -41,8 +43,11 @@ export default async function handler(req: Request<{ username: string }>, res: R
         avatarFrame: user.avatarFrame,
         practiceLabels: user.practiceLabels,
         profileStatus: user.profileStatus,
+        featuredAbout: user.featuredAbout,
         profileSections: user.profileSections,
         hideOnlineStatus: user.hideOnlineStatus,
+        shareFollowing: user.shareFollowing,
+        invitePermission: user.invitePermission,
         profileLayout: user.profileLayout,
         bioVisibility: user.bioVisibility,
         locationVisibility: user.locationVisibility,
@@ -60,53 +65,64 @@ export default async function handler(req: Request<{ username: string }>, res: R
 
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
 
-    // Block check — return neutral "unavailable" to avoid disclosing the block
-    if (viewerId && viewerId !== profile.id) {
-      try {
-        if (await isBlocked(viewerId, profile.id)) {
-          return res.status(404).json({ error: 'Profile unavailable' });
-        }
-      } catch { /* non-fatal */ }
+    const access = await profileAudience(profile, viewerId, req.query.preview);
+    if (!access) return res.status(404).json({ error: 'Profile unavailable' });
+    if (!access.allowed) return res.status(403).json({ error: profile.profileVisibility === 'coven' ? 'This profile is coven-only' : 'This profile is private' });
+    const tab = req.query.activity;
+    if (tab === 'sparks' || tab === 'replies' || tab === 'media') {
+      const before = Number(req.query.before);
+      return res.json(await profileActivity(profile.id, access, viewerId, tab, Number.isSafeInteger(before) && before > 0 ? before : 0));
     }
+    const isOwn = access.owner;
+    const canViewFollowing = isOwn || !!profile.shareFollowing;
+    if (req.query.following === '1' || req.query.followers === '1') {
+      const followers = req.query.followers === '1';
+      const listViewer = access.preview ? null : viewerId;
+      if (!followers && !canViewFollowing) return res.status(403).json({ error: 'Following list is private' });
 
-    const visibility = profile.profileVisibility ?? 'private';
-    if (visibility === 'private' && profile.id !== viewerId)
-      return res.status(403).json({ error: 'This profile is private' });
-
-    if (visibility === 'coven' && profile.id !== viewerId) {
-      if (!viewerId) return res.status(403).json({ error: 'This profile is coven-only' });
-      const [conn] = await db.select().from(covenConnections).where(
-        and(or(
-          and(eq(covenConnections.requesterId, viewerId), eq(covenConnections.receiverId, profile.id)),
-          and(eq(covenConnections.requesterId, profile.id), eq(covenConnections.receiverId, viewerId))
-        ), eq(covenConnections.status, 'accepted'))
-      ).limit(1);
-      if (!conn) return res.status(403).json({ error: 'This profile is coven-only' });
-    }
-
-    let connectionStatus: string | null = null;
-    let connectionId: number | null = null;
-    if (viewerId && profile.id !== viewerId) {
-      const [conn] = await db
-        .select({ id: covenConnections.id, status: covenConnections.status, requesterId: covenConnections.requesterId })
-        .from(covenConnections).where(
+      const pageSize = 30;
+      const before = Number(req.query.before);
+      const entries = await db
+        .select({ followId: userFollows.id, username: user.username, name: user.name, image: user.image })
+        .from(userFollows)
+        .innerJoin(user, eq(user.id, followers ? userFollows.followerId : userFollows.followingId))
+        .where(and(
+          eq(followers ? userFollows.followingId : userFollows.followerId, profile.id),
+          isNotNull(user.username),
+          Number.isSafeInteger(before) && before > 0 ? sql`${userFollows.id} < ${before}` : undefined,
           or(
-            and(eq(covenConnections.requesterId, viewerId), eq(covenConnections.receiverId, profile.id)),
-            and(eq(covenConnections.requesterId, profile.id), eq(covenConnections.receiverId, viewerId))
-          )
-        ).limit(1);
-      if (conn) {
-        connectionId = conn.id;
-        if (conn.status === 'pending') {
-          connectionStatus = conn.requesterId === viewerId ? 'pending_sent' : 'pending_received';
-        } else {
-          connectionStatus = conn.status;
-        }
-      }
+            eq(user.profileVisibility, 'public'),
+            listViewer ? eq(user.id, listViewer) : undefined,
+            listViewer ? and(eq(user.profileVisibility, 'coven'), sql`exists (
+              select 1 from ${covenConnections} where ${covenConnections.status} = 'accepted' and (
+                (${covenConnections.requesterId} = ${listViewer} and ${covenConnections.receiverId} = ${user.id}) or
+                (${covenConnections.receiverId} = ${listViewer} and ${covenConnections.requesterId} = ${user.id})
+              )
+            )`) : undefined,
+          ),
+          listViewer ? sql`not exists (
+            select 1 from ${communityBlocks} where
+              (${communityBlocks.blockerId} = ${listViewer} and ${communityBlocks.blockedId} = ${user.id}) or
+              (${communityBlocks.blockedId} = ${listViewer} and ${communityBlocks.blockerId} = ${user.id})
+          )` : undefined,
+        ))
+        .orderBy(desc(userFollows.id))
+        .limit(pageSize + 1);
+      const members = entries.slice(0, pageSize);
+      return res.json({
+        members: members.map(({ username, name, image }) => ({ username, name, image })),
+        next: entries.length > pageSize ? members[pageSize - 1].followId : null,
+      });
     }
+
+    const conn = access.connection;
+    const connectionStatus = conn?.status === 'pending'
+      ? conn.requesterId === viewerId ? 'pending_sent' : 'pending_received'
+      : conn?.status ?? (access.coven ? 'accepted' : null);
+    const connectionId = conn?.id ?? null;
 
     // Coven count (accepted connections)
-    const [[covenRow], [followerRow]] = await Promise.all([
+    const [[covenRow], [followerRow], [following], [followingRow]] = await Promise.all([
       db.select({ n: count() }).from(covenConnections).where(
         and(
           or(
@@ -116,14 +132,50 @@ export default async function handler(req: Request<{ username: string }>, res: R
           eq(covenConnections.status, 'accepted')
         )
       ),
-      db.select({ n: count() }).from(communityFollows).where(
-        eq(communityFollows.followingId, profile.id)
+      db.select({ n: count() }).from(userFollows).where(
+        eq(userFollows.followingId, profile.id)
       ),
+      viewerId && !isOwn
+        ? db.select({ id: userFollows.id }).from(userFollows).where(and(
+            eq(userFollows.followerId, viewerId),
+            eq(userFollows.followingId, profile.id),
+          )).limit(1)
+        : [],
+      db.select({ n: count() }).from(userFollows).where(eq(userFollows.followerId, profile.id)),
     ]);
     const covenCount = Number(covenRow?.n ?? 0);
     const followerCount = Number(followerRow?.n ?? 0);
 
-    res.json({ profile, connectionStatus, connectionId, isOwn: profile.id === viewerId, covenCount, followerCount });
+    const selected = profile.featuredAbout;
+    let featuredAbout = selected;
+    if (selected?.kind === 'playlist' && !access.owner) {
+      const [item] = await db.select({ visibility: profilePlaylists.visibility, sectionVisibility: profileSoundscapesSettings.visibility })
+        .from(profilePlaylists).innerJoin(profileSoundscapesSettings, eq(profileSoundscapesSettings.userId, profile.id))
+        .where(and(eq(profilePlaylists.id, selected.id), eq(profilePlaylists.userId, profile.id), eq(profileSoundscapesSettings.enabled, 1))).limit(1);
+      if (!item || !access.allows(item.visibility ?? 'private') || !access.allows(item.sectionVisibility ?? 'private')) featuredAbout = null;
+    }
+    if (selected?.kind === 'spark') {
+      const [spark] = await db.select({ audience: communityPosts.audience }).from(communityPosts).where(and(
+        eq(communityPosts.id, selected.id), eq(communityPosts.userId, profile.id),
+        eq(communityPosts.type, 'spark'), eq(communityPosts.isHidden, false))).limit(1);
+      if (!spark || !access.allows(spark.audience)) featuredAbout = null;
+    }
+    const { shareFollowing: _shareFollowing, invitePermission, ...publicProfile } = profile;
+    res.json({
+      profile: {
+        ...publicProfile, featuredAbout,
+        interestTags: !isOwn && profile.profileSections?.some(section => section.id === 'interests' && !section.enabled) ? null : profile.interestTags,
+        bio: access.allows(profile.bioVisibility) ? profile.bio : null,
+        location: access.allows(profile.locationVisibility) ? profile.location : null,
+        sunSign: access.allows(profile.zodiacVisibility) ? profile.sunSign : null,
+        moonSign: access.allows(profile.zodiacVisibility) ? profile.moonSign : null,
+        risingSign: access.allows(profile.zodiacVisibility) ? profile.risingSign : null,
+        socialLinks: access.allows(profile.socialLinksVisibility) ? profile.socialLinks : null,
+      },
+      connectionStatus, connectionId, isOwn, covenCount, followerCount,
+      followingCount: Number(followingRow?.n ?? 0),
+      isFollowing: !!following, canViewFollowing, canRequestCoven: invitePermission !== 'nobody',
+    });
   } catch (err) {
     console.error(JSON.stringify({ event: 'profile.get.error', msg: String(err).slice(0, 400) }));
     res.status(500).json({ error: 'Failed to load profile' });

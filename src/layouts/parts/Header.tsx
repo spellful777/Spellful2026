@@ -1,6 +1,8 @@
+import SparkIcon from '@/components/SparkIcon';
+import { COMMUNITY_FEED, COMMUNITY_GROUPS, SPARK_COMPOSE, COMMUNITY_FAVORITES } from '@/lib/community-navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router';
-import { Menu, X, User, BookOpen, ChevronDown, Users, Bookmark, Bell, Sparkles, Star, PenLine, MessageCircle, Moon } from 'lucide-react';
+import { Menu, X, User, BookOpen, ChevronDown, Users, Bookmark, Bell, Sparkles, Star, MessageCircle, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSession } from '@/lib/auth/auth-client';
 import MessagingBell from '@/components/MessagingBell';
@@ -67,16 +69,17 @@ const NAV: NavItem[] = [
       { label: 'Reminders', href: '/reminders', authRequired: true, icon: 'reminders' },
     ],
   },
-  // ── 4. My Coven (auth-gated) ──────────────────────────────────────────────
+  // ── 4. Coven (auth-gated) ──────────────────────────────────────────────
   {
-    label: 'My Coven',
-    mobileLabel: 'My Coven',
+    label: 'Coven',
+    mobileLabel: 'Coven',
     authOnly: true,
     children: [
-      { label: 'Discussions', href: '/community', authRequired: true, icon: 'discussions' },
-      { label: 'New Post', href: '/community/new', authRequired: true, icon: 'newpost' },
+      { label: 'Feed', href: COMMUNITY_FEED, authRequired: true, icon: 'discussions' },
+      { label: 'Groups', href: COMMUNITY_GROUPS, authRequired: true, icon: 'discussions' },
+      { label: 'Spark it', href: SPARK_COMPOSE, authRequired: true, icon: 'newpost' },
       { label: 'Messages', href: '/messages', authRequired: true, icon: 'messages' },
-      { label: 'Bookmarks', href: '/community/bookmarks', authRequired: true, icon: 'bookmark' },
+      { label: 'Favorites', href: COMMUNITY_FAVORITES, authRequired: true, icon: 'bookmark' },
       { label: 'Notifications', href: '/community/notifications', authRequired: true, icon: 'bell' },
     ],
   },
@@ -124,6 +127,10 @@ function useCommunityUnread(loggedIn: boolean) {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isActive(item: NavItem, pathname: string): boolean {
+  if (item.label === 'Coven') {
+    const path = pathname.split('?')[0];
+    if (path === COMMUNITY_FEED || path.startsWith('/community/')) return true;
+  }
   if (item.href) return pathname === item.href;
   return item.children?.some((c) => pathname === c.href) ?? false;
 }
@@ -145,7 +152,7 @@ function ChildIcon({ icon, unread }: { icon?: string; unread?: number }) {
   if (icon === 'grimoire')    return <BookOpen size={sz} strokeWidth={sw} />;
   if (icon === 'reminders')   return <Moon size={sz} strokeWidth={sw} />;
   if (icon === 'discussions') return <Users size={sz} strokeWidth={sw} />;
-  if (icon === 'newpost')     return <PenLine size={sz} strokeWidth={sw} />;
+  if (icon === 'newpost')     return <SparkIcon />;
   if (icon === 'messages')    return <MessageCircle size={sz} strokeWidth={sw} />;
   if (icon === 'bookmark')    return <Bookmark size={sz} strokeWidth={sw} />;
   if (icon === 'bell') return (
@@ -173,9 +180,9 @@ const DROPDOWN_SECTIONS: Record<string, SectionConfig[]> = {
     { label: 'Personal', hrefs: ['/dashboard', '/sanctuary'] },
     { label: 'Tools', hrefs: ['/grimoire', '/reminders'] },
   ],
-  'My Coven': [
-    { label: 'Community', hrefs: ['/community', '/community/new'] },
-    { label: 'Inbox', hrefs: ['/messages', '/community/bookmarks', '/community/notifications'] },
+  'Coven': [
+    { label: 'Community', hrefs: [COMMUNITY_FEED, COMMUNITY_GROUPS, SPARK_COMPOSE] },
+    { label: 'Inbox', hrefs: ['/messages', COMMUNITY_FAVORITES, '/community/notifications'] },
   ],
 };
 
@@ -257,7 +264,7 @@ function DesktopDropdown({ item, pathname, session, unread = 0 }: DropdownProps)
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'hsl(var(--primary))'; }}
           onMouseLeave={(e) => { if (!active && !open) (e.currentTarget as HTMLButtonElement).style.color = 'hsl(var(--foreground) / 0.7)'; }}
         >
-          {(item.label === 'My Coven' || item.label === 'Community') && (
+          {(item.label === 'Coven' || item.label === 'Community') && (
             <span className="relative inline-flex items-center">
               <Users size={13} strokeWidth={1.5} />
               {unread > 0 && (
@@ -295,7 +302,7 @@ function DesktopDropdown({ item, pathname, session, unread = 0 }: DropdownProps)
             {isSectioned && (
               <div className="px-4 pt-3 pb-2 flex items-center gap-2" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
                 {item.label === 'My Sanctuary' && <Star size={12} strokeWidth={1.5} style={{ color: 'hsl(var(--primary))' }} />}
-                {item.label === 'My Coven' && <Users size={12} strokeWidth={1.5} style={{ color: 'hsl(var(--primary))' }} />}
+                {item.label === 'Coven' && <Users size={12} strokeWidth={1.5} style={{ color: 'hsl(var(--primary))' }} />}
                 <span className="text-[10px] uppercase tracking-widest" style={{ color: 'hsl(var(--primary))', fontFamily: 'var(--font-sans)', letterSpacing: '0.18em' }}>
                   {item.label}
                 </span>
@@ -372,6 +379,7 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const location = useLocation();
+  const navigationPath = location.pathname === COMMUNITY_FEED ? location.pathname + location.search : location.pathname;
   const lastScrollY = useRef(0);
   const { session, isPending } = useSession();
   const unread = useCommunityUnread(!!session);
@@ -395,7 +403,7 @@ export default function Header() {
   useEffect(() => {
     setMobileOpen(false);
     setMobileExpanded(null);
-  }, [location.pathname]);
+  }, [navigationPath]);
 
   return (
     <header
@@ -432,9 +440,9 @@ export default function Header() {
             <DesktopDropdown
               key={item.label}
               item={item}
-              pathname={location.pathname}
+              pathname={navigationPath}
               session={session}
-              unread={(item.label === 'My Coven' || item.label === 'Community') ? unread : 0}
+              unread={(item.label === 'Coven' || item.label === 'Community') ? unread : 0}
             />
           ))}
 
@@ -603,7 +611,7 @@ export default function Header() {
                                     style={{
                                       ...NAV_STYLE,
                                       fontSize: '0.72rem',
-                                      color: location.pathname === child.href ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.6)',
+                                      color: navigationPath === child.href ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.6)',
                                     }}
                                     onClick={() => setMobileOpen(false)}
                                   >
@@ -654,11 +662,11 @@ export default function Header() {
                         style={{
                           ...NAV_STYLE,
                           fontSize: '0.85rem',
-                          color: isActive(item, location.pathname) ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.85)',
+                          color: isActive(item, navigationPath) ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.85)',
                         }}
                       >
                         <span className="flex items-center gap-2">
-                          {(item.label === 'My Coven' || item.label === 'Community') && (
+                          {(item.label === 'Coven' || item.label === 'Community') && (
                             <span className="relative flex items-center">
                               <Users size={14} />
                               {unread > 0 && (
@@ -695,7 +703,7 @@ export default function Header() {
                                   style={{
                                     ...NAV_STYLE,
                                     fontSize: '0.72rem',
-                                    color: location.pathname === child.href ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.6)',
+                                    color: navigationPath === child.href ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.6)',
                                   }}
                                   onClick={() => setMobileOpen(false)}
                                 >

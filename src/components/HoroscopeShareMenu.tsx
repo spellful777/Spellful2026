@@ -1,6 +1,9 @@
 import { Capacitor } from '@capacitor/core';
 import { Directory, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { startSparkReadingDraft } from '@/lib/spark-reading-draft';
+import { horoscopeSnapshot } from '@/lib/spark-reading';
+import { Sparkles } from 'lucide-react';
 /**
  * HoroscopeShareMenu — compact share button for the daily horoscope widget.
  * Platforms: Threads, Bluesky, Facebook, X (pre-typed posts)
@@ -20,7 +23,7 @@ import { Share } from '@capacitor/share';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import type { DailyHoroscope } from '@/lib/horoscope-engine';
 
@@ -460,6 +463,7 @@ interface Props {
 }
 
 export default function HoroscopeShareMenu({ horoscope }: Props) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [generatingStory, setGeneratingStory] = useState(false);
   const [storyError, setStoryError] = useState(false);
@@ -531,6 +535,11 @@ export default function HoroscopeShareMenu({ horoscope }: Props) {
   };
 
   const items = [
+    {
+      label: 'Spark this horoscope',
+      action: () => { setOpen(false); navigate(startSparkReadingDraft(horoscopeSnapshot(horoscope))); },
+      icon: <Sparkles size={14} aria-hidden="true" />,
+    },
     {
       label: 'Threads', action: shareThreads,
       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.589 12c.027 3.086.718 5.496 2.057 7.164 1.43 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.964-.065-1.19.408-2.285 1.33-3.082.88-.76 2.119-1.207 3.583-1.291a13.853 13.853 0 0 1 3.02.142c-.126-.742-.375-1.332-.75-1.757-.513-.586-1.308-.883-2.359-.89h-.029c-.844 0-1.992.232-2.721 1.32L7.734 7.847c.98-1.454 2.568-2.256 4.478-2.256h.044c3.194.02 5.097 1.975 5.287 5.388.108.046.216.094.321.142 1.49.7 2.58 1.761 3.154 3.07.797 1.82.871 4.79-1.548 7.158-1.85 1.81-4.094 2.628-7.284 2.651Z"/></svg>,

@@ -4,7 +4,7 @@
  * Displays a paginated feed of friend_feed_events from followed members,
  * with emoji reactions, hide controls, and privacy settings link.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
@@ -305,8 +305,11 @@ export default function FriendUpdatesFeed() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const revision = useRef(0);
+  const pendingChanges = useRef(0);
 
   const loadPage = useCallback(async (p: number, append = false) => {
+    revision.current += 1;
     if (p === 1) setLoading(true);
     else setLoadingMore(true);
     setError(false);
@@ -327,7 +330,37 @@ export default function FriendUpdatesFeed() {
 
   useEffect(() => { void loadPage(1); }, [loadPage]);
 
+  useEffect(() => {
+    if (page !== 1 || loading || loadingMore || error) return;
+    const controller = new AbortController();
+    let refreshing = false;
+    async function refresh() {
+      if (document.hidden || refreshing || pendingChanges.current) return;
+      const before = revision.current;
+      refreshing = true;
+      try {
+        const response = await fetch('/api/community/friend-updates?page=1&limit=20', {
+          credentials: 'include', signal: controller.signal, cache: 'no-store',
+        });
+        if (!response.ok) return;
+        const next = await response.json() as FeedResponse;
+        if (!controller.signal.aborted && before === revision.current) {
+          setEvents(next.events);
+          setHasMore(next.hasMore);
+        }
+      } catch {
+        // Keep the current updates visible if refreshing fails.
+      } finally {
+        refreshing = false;
+      }
+    }
+    const timer = setInterval(() => { void refresh(); }, 30_000);
+    return () => { controller.abort(); clearInterval(timer); };
+  }, [page, loading, loadingMore, error]);
+
   const handleReact = useCallback(async (eventId: number, emoji: string) => {
+    revision.current += 1;
+    pendingChanges.current += 1;
     // Optimistic update
     setEvents((prev) => prev.map((e) => {
       if (e.id !== eventId) return e;
@@ -348,10 +381,14 @@ export default function FriendUpdatesFeed() {
     } catch {
       // Rollback on failure
       void loadPage(page);
+    } finally {
+      pendingChanges.current -= 1;
     }
   }, [loadPage, page]);
 
   const handleHide = useCallback(async (eventId: number) => {
+    revision.current += 1;
+    pendingChanges.current += 1;
     setEvents((prev) => prev.filter((e) => e.id !== eventId));
     try {
       await fetch('/api/community/friend-updates/hide', {
@@ -362,6 +399,8 @@ export default function FriendUpdatesFeed() {
       });
     } catch {
       // Non-fatal
+    } finally {
+      pendingChanges.current -= 1;
     }
   }, []);
 

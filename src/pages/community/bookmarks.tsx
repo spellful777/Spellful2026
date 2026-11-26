@@ -1,3 +1,5 @@
+import { sparkReplyPath } from '@/lib/spark-comments';
+import { CommunityPostBody } from '@/components/CommunityPostBody';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -16,9 +18,10 @@ import { community_bookmarks } from 'virtual:content';
 
 interface BookmarkedPost {
   bookmarkId: number;
+  replyId?: number;
   bookmarkedAt: string;
   id: number | null;
-  type: 'discussion' | 'question' | null;
+  type: 'discussion' | 'question' | 'spark' | null;
   title: string | null;
   tags: string | null;
   likeCount: number | null;
@@ -38,7 +41,7 @@ function BookmarkRow({
   onRemove,
 }: {
   item: BookmarkedPost;
-  onRemove: (bookmarkId: number) => void;
+  onRemove: (item: BookmarkedPost) => void;
 }) {
   const [removing, setRemoving] = useState(false);
   const tags = item.tags ? item.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
@@ -49,11 +52,17 @@ function BookmarkRow({
   const handleRemove = async () => {
     if (!item.id) return;
     setRemoving(true);
-    await fetch(`/api/community/posts/${item.id}/bookmark`, { method: 'POST' });
-    onRemove(item.bookmarkId);
+    try {
+      const response = await fetch(item.replyId ? `/api/community/replies/${item.replyId}/like` : `/api/community/posts/${item.id}/bookmark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item.replyId ? { favorited: false } : { bookmarked: false }),
+      });
+      if (response.ok) onRemove(item);
+    } catch { /* Keep the item visible so removal can be retried. */ } finally { setRemoving(false); }
   };
 
-  if (!item.id || !item.title) return null;
+  if (!item.id || (!item.title && !item.replyId && item.type !== 'spark')) return null;
 
   return (
     <motion.div
@@ -87,11 +96,15 @@ function BookmarkRow({
           </span>
         </div>
 
+        {item.replyId && <>
+          <div className="line-clamp-2"><CommunityPostBody html={item.title || 'GIF reply'} /></div>
+          <p className="mb-1 text-xs text-muted-foreground">{item.authorName}</p>
+        </>}
         <Link
-          to={`/community/post/${item.id}`}
+          to={item.replyId ? sparkReplyPath(item.id, item.replyId) : `/community/post/${item.id}`}
           className="block text-sm font-semibold text-foreground hover:text-primary transition-colors leading-snug mb-2 line-clamp-2"
         >
-          {item.title}
+          {item.replyId ? "Open reply" : item.title || "Open Spark"}
           {item.type === 'question' && (
             <CheckCircle2 className="inline w-3.5 h-3.5 ml-1.5 text-[hsl(var(--success))] align-middle" />
           )}
@@ -152,8 +165,8 @@ export default function BookmarksPage() {
       .finally(() => setLoading(false));
   }, [isPending, session, navigate]);
 
-  const handleRemove = (bookmarkId: number) => {
-    setBookmarks((prev) => prev.filter((b) => b.bookmarkId !== bookmarkId));
+  const handleRemove = (item: BookmarkedPost) => {
+    setBookmarks((prev) => prev.filter((b) => b.bookmarkId !== item.bookmarkId || b.replyId !== item.replyId));
   };
 
   return (
@@ -212,7 +225,7 @@ export default function BookmarksPage() {
               <AnimatePresence mode="popLayout">
                 <div className="space-y-3">
                   {bookmarks.map((item) => (
-                    <BookmarkRow key={item.bookmarkId} item={item} onRemove={handleRemove} />
+                    <BookmarkRow key={item.replyId ? `reply-${item.replyId}` : `post-${item.bookmarkId}`} item={item} onRemove={handleRemove} />
                   ))}
                 </div>
               </AnimatePresence>

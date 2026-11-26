@@ -1,7 +1,7 @@
 /**
  * POST /api/community/follows
  * Follow or unfollow a user (toggle).
- * Body: { targetUserId: string }
+ * Body: { targetUserId: string, following?: boolean }
  * Returns: { following: boolean, followersCount: number }
  */
 import type { Request, Response } from 'express';
@@ -16,7 +16,10 @@ export default async function handler(req: Request, res: Response) {
   if (!session?.user?.id) return res.status(401).json({ error: 'Unauthorized' });
   const myId = session.user.id;
 
-  const { targetUserId } = req.body as { targetUserId?: string };
+  const { targetUserId, following } = req.body as { targetUserId?: string; following?: boolean };
+  if (following !== undefined && typeof following !== 'boolean') {
+    return res.status(400).json({ error: 'Invalid following state' });
+  }
   if (!targetUserId || targetUserId === myId) {
     return res.status(400).json({ error: 'Valid targetUserId required' });
   }
@@ -41,14 +44,15 @@ export default async function handler(req: Request, res: Response) {
   if (!target) return res.status(404).json({ error: 'User not found' });
 
   try {
-    // Check if already following
-    const existing = await db.execute(sql`
-      SELECT id FROM user_follows WHERE follower_id = ${myId} AND following_id = ${targetUserId} LIMIT 1
-    `) as unknown as [Array<{ id: number }>, unknown];
+    let nextFollowing = following;
+    if (nextFollowing === undefined) {
+      const [existing] = await db.execute(sql`
+        SELECT id FROM user_follows WHERE follower_id = ${myId} AND following_id = ${targetUserId} LIMIT 1
+      `) as unknown as [Array<{ id: number }>, unknown];
+      nextFollowing = existing.length === 0;
+    }
 
-    const alreadyFollowing = (existing[0] as Array<{ id: number }>).length > 0;
-
-    if (alreadyFollowing) {
+    if (!nextFollowing) {
       // Unfollow
       await db.execute(sql`
         DELETE FROM user_follows WHERE follower_id = ${myId} AND following_id = ${targetUserId}
@@ -66,7 +70,7 @@ export default async function handler(req: Request, res: Response) {
     `) as unknown as [Array<{ cnt: number }>, unknown];
     const followersCount = Number((countRow as unknown as Array<{ cnt: number }>)[0]?.cnt ?? 0);
 
-    res.json({ following: !alreadyFollowing, followersCount });
+    res.json({ following: nextFollowing, followersCount });
   } catch {
     // user_follows table may not exist yet
     return res.status(503).json({ error: 'Follow feature not yet available' });

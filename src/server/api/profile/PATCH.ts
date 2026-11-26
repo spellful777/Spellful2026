@@ -1,7 +1,9 @@
+import { getEntitlement } from '@/server/lib/plus-entitlement.js';
+import { parseProfileFeature } from '@/lib/profile-feature';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { user } from '@/server/db/schema.js';
-import { eq } from 'drizzle-orm';
+import { user, communityPosts, profilePlaylists } from '@/server/db/schema.js';
+import { and, eq } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 import { validateUsernameFormat, normalizeUsername, usernameErrorMessage } from '@/server/lib/username-rules.js';
 
@@ -60,6 +62,7 @@ export default async function handler(req: Request, res: Response) {
       avatarFrame?: string;
       practiceLabels?: string[];
       profileStatus?: string;
+      featuredAbout?: unknown;
       profileSections?: { id: string; enabled: boolean; order: number }[];
       hideOnlineStatus?: boolean;
       // Profile 4.0
@@ -71,6 +74,10 @@ export default async function handler(req: Request, res: Response) {
       socialLinksVisibility?: string;
     };
 
+    const featuredAbout = parseProfileFeature(body.featuredAbout);
+    if (body.featuredAbout !== undefined && body.featuredAbout !== null && !featuredAbout)
+      return res.status(400).json({ error: 'Choose a valid featured item.' });
+
     const {
       name, username, bio, location, witchPath, profileVisibility,
       messagePermission, invitePermission, notificationPreferences,
@@ -81,6 +88,25 @@ export default async function handler(req: Request, res: Response) {
       hideOnlineStatus, profileLayout,
       bioVisibility, locationVisibility, zodiacVisibility, socialLinksVisibility,
     } = body;
+
+    if (featuredAbout && featuredAbout.kind !== 'link') {
+      const owner = session.user.id;
+      const [item] = featuredAbout.kind === 'playlist'
+        ? await db.select({ id: profilePlaylists.id }).from(profilePlaylists)
+          .where(and(eq(profilePlaylists.id, featuredAbout.id), eq(profilePlaylists.userId, owner))).limit(1)
+        : await db.select({ id: communityPosts.id }).from(communityPosts)
+          .where(and(eq(communityPosts.id, featuredAbout.id), eq(communityPosts.userId, owner),
+            eq(communityPosts.type, 'spark'), eq(communityPosts.isHidden, false))).limit(1);
+      if (!item) return res.status(400).json({ error: 'Choose one of your available items.' });
+    }
+    if ((avatarFrame && /^frame-\d+$/.test(avatarFrame)) || coverImage) {
+      const [saved] = await db.select({ avatarFrame: user.avatarFrame, coverImage: user.coverImage }).from(user)
+        .where(eq(user.id, session.user.id)).limit(1);
+      const changesPremium = (avatarFrame && /^frame-\d+$/.test(avatarFrame) && avatarFrame !== saved?.avatarFrame) ||
+        (coverImage && coverImage !== saved?.coverImage);
+      if (changesPremium && !(await getEntitlement(session.user.id)).isPlus)
+        return res.status(403).json({ error: 'Spellful Plus is required to apply this frame or cover.' });
+    }
 
     const VALID_MSG_PERMS = ['everyone', 'coven', 'nobody'];
     const VALID_INVITE_PERMS = ['everyone', 'nobody'];
@@ -183,6 +209,7 @@ export default async function handler(req: Request, res: Response) {
       ...(avatarFrame !== undefined ? { avatarFrame } : {}),
       ...(practiceLabels !== undefined ? { practiceLabels } : {}),
       ...(profileStatus !== undefined ? { profileStatus } : {}),
+      ...(body.featuredAbout !== undefined ? { featuredAbout } : {}),
       ...(profileSections !== undefined ? { profileSections } : {}),
       ...(hideOnlineStatus !== undefined ? { hideOnlineStatus } : {}),
       ...(profileLayout !== undefined ? { profileLayout } : {}),

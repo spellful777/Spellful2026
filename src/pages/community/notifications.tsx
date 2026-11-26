@@ -1,4 +1,6 @@
 import { uploadedMediaUrl } from '@/lib/native-api';
+import { COMMUNITY_REQUESTS } from '@/lib/community-navigation';
+import { useSocialSummary } from '@/hooks/useSocialSummary';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -17,11 +19,12 @@ import { community_notifications } from 'virtual:content';
 
 interface CommunityNotification {
   id: number;
-  type: 'reply' | 'like' | 'mention' | 'answer' | 'follow' | 'system';
+  type: 'conversation' | 'direct_reply' | 'reply' | 'like' | 'mention' | 'follow_up' | 'answer' | 'follow' | 'system';
   postId: number | null;
   replyId: number | null;
   message: string | null;
   isRead: boolean;
+  muted?: boolean;
   createdAt: string;
   actorName: string | null;
   actorImage: string | null;
@@ -38,6 +41,9 @@ interface NotifResponse {
 function NotifIcon({ type }: { type: CommunityNotification['type'] }) {
   const cls = 'w-4 h-4 shrink-0';
   switch (type) {
+    case 'conversation':
+    case 'direct_reply':
+    case 'follow_up':
     case 'reply':   return <MessageSquare className={`${cls} text-accent`} />;
     case 'like':    return <Heart className={`${cls} text-destructive`} />;
     case 'mention': return <AtSign className={`${cls} text-primary`} />;
@@ -57,15 +63,18 @@ function NotifRow({
 }: {
   notif: CommunityNotification;
   mutedPostIds: Set<number>;
-  onRead: (id: number) => void;
+  onRead: (notification: CommunityNotification) => void;
   onToggleMute: (postId: number) => void;
 }) {
   const ago = formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true });
   const isMuted = notif.postId ? mutedPostIds.has(notif.postId) : false;
-  const typeLabel = community_notifications.types[notif.type] ?? community_notifications.types.system;
+  const typeLabel = notif.type === 'conversation' ? 'New replies' : notif.type === 'direct_reply' ? 'replied directly to you' : notif.type === 'follow_up'
+    ? 'Follow-up'
+    : community_notifications.types[notif.type] ?? community_notifications.types.system;
 
+  const destination = notif.postId ? `/community/post/${notif.postId}${notif.replyId ? `#reply-${notif.replyId}` : ''}` : null;
   const handleClick = () => {
-    if (!notif.isRead) onRead(notif.id);
+    if (!notif.isRead) onRead(notif);
   };
 
   return (
@@ -115,8 +124,9 @@ function NotifRow({
           <span className="text-muted-foreground">{typeLabel}</span>
         </p>
 
-        {notif.message && (
-          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notif.message}</p>
+        {notif.message && (destination
+          ? <Link className="mt-0.5 block text-sm text-foreground hover:underline" to={destination} onClick={handleClick}>{notif.message}</Link>
+          : <p className="mt-0.5 text-xs text-muted-foreground">{notif.message}</p>
         )}
 
         <div className="flex items-center gap-3 mt-1.5">
@@ -124,7 +134,7 @@ function NotifRow({
 
           {!notif.isRead && (
             <button
-              onClick={() => onRead(notif.id)}
+              onClick={() => onRead(notif)}
               className="text-[10px] text-primary hover:underline"
             >
               Mark read
@@ -147,10 +157,10 @@ function NotifRow({
       {/* Link to post */}
       {notif.postId && (
         <Link
-          to={`/community/post/${notif.postId}`}
+          to={`/community/post/${notif.postId}${notif.replyId ? `#reply-${notif.replyId}` : ''}`}
           onClick={handleClick}
           className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          aria-label="View post"
+          aria-label={notif.replyId ? 'View reply' : 'View post'}
         >
           <MessageSquare className="w-3.5 h-3.5" />
         </Link>
@@ -164,6 +174,7 @@ function NotifRow({
 export default function NotificationsPage() {
   const { session, isPending } = useSession();
   const navigate = useNavigate();
+  const pendingRequests = useSocialSummary()?.pendingRequests ?? 0;
   const [notifications, setNotifications] = useState<CommunityNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -179,6 +190,7 @@ export default function NotificationsPage() {
       const data = await res.json() as NotifResponse;
       setNotifications((prev) => append ? [...prev, ...data.notifications] : data.notifications);
       setUnread(data.unread);
+      setMutedPostIds(previous => new Set([...(append ? previous : []), ...data.notifications.flatMap(row => row.muted && row.postId ? [row.postId] : [])]));
       setHasMore(data.notifications.length === 30);
     }
     setLoading(false);
@@ -190,14 +202,15 @@ export default function NotificationsPage() {
     load(1);
   }, [isPending, session, navigate, load]);
 
-  const markRead = async (id: number) => {
-    await fetch('/api/community/notifications/read', {
+  const markRead = async (notif: CommunityNotification) => {
+    const response = await fetch('/api/community/notifications/read', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: [id] }),
+      body: JSON.stringify(notif.type === 'conversation' ? { conversationPostId: notif.postId, throughId: notif.id } : { ids: [notif.id] }),
     });
+    if (!response.ok) return;
     setNotifications((prev) =>
-      prev.map((n) => n.id === id ? { ...n, isRead: true } : n)
+      prev.map((n) => n.id === notif.id ? { ...n, isRead: true } : n)
     );
     setUnread((u) => Math.max(0, u - 1));
   };
@@ -218,7 +231,7 @@ export default function NotificationsPage() {
     const res = await fetch('/api/community/mute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postId }),
+      body: JSON.stringify({ postId, muted: !mutedPostIds.has(postId) }),
     });
     if (res.ok) {
       const data = await res.json() as { muted: boolean };
@@ -248,6 +261,9 @@ export default function NotificationsPage() {
         {/* Header */}
         <div className="border-b border-border bg-[hsl(var(--card-deep))]">
           <div className="max-w-2xl mx-auto px-4 py-6">
+            <Link to={COMMUNITY_REQUESTS} className="mb-3 flex min-h-11 items-center justify-between rounded-lg border border-border px-3 text-sm">
+              Coven requests {pendingRequests > 0 && <span className="text-primary">{pendingRequests} pending</span>}
+            </Link>
             <Link
               to="/community"
               className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4"

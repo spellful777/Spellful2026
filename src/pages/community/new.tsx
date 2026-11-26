@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -7,10 +7,14 @@ import {
   Eye, PenLine, ChevronDown, Sparkles, BarChart2,
 } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
+import { usePostDetail } from '@/hooks/useCommunityPost';
 import { useCommunityCategories } from '@/hooks/useCommunity';
+import SparkComposer from '@/components/SparkComposer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { CommunityPostBody } from '@/components/CommunityPostBody';
+import { renderSharedReading, sharedReadingSchema } from '@/lib/shared-reading';
 import { community_new } from 'virtual:content';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -240,17 +244,37 @@ function PostPreview({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function NewPostPage() {
+  const [params] = useSearchParams();
+  return params.get('kind') === 'spark' ? <SparkComposer /> : <DiscussionComposer />;
+}
+
+function DiscussionComposer() {
   const { session, isPending } = useSession();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const quote = Number(params.get('quote'));
+  const quotedPostId = Number.isSafeInteger(quote) && quote > 0 ? quote : undefined;
+  const followUp = Number(params.get('followUp'));
+  const followUpPostId = Number.isSafeInteger(followUp) && followUp > 0 ? followUp : null;
+  const { post: originalPost, loading: originalLoading } = usePostDetail(followUpPostId, session?.user.id);
+  const destination = followUpPostId ? `/community/post/${followUpPostId}` : '/community';
+  const canPostFollowUp = originalPost?.id === followUpPostId && originalPost?.userId === session?.user?.id && !originalPost?.isLocked;
   const { categories, loading: catsLoading } = useCommunityCategories();
+
+  const location = useLocation();
+  const initialReading = sharedReadingSchema.safeParse(location.state?.reading);
+  const [reading, setReading] = useState(() => initialReading.success ? initialReading.data : null);
+  const [selectedCards, setSelectedCards] = useState<number[]>(() => reading?.cards.map(card => card.displayOrder) ?? []);
+  const sharedReading = reading ? { ...reading, cards: reading.cards.filter(card => selectedCards.includes(card.displayOrder)) } : null;
+  const selectedPreview = sharedReading?.cards.length ? renderSharedReading(sharedReading) : null;
 
   // Form state
   const [postType, setPostType] = useState<PostType>('discussion');
   const [categoryId, setCategoryId] = useState<number | ''>('');
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
+  const [title, setTitle] = useState(reading ? 'My tarot reading' : '');
+  const [body, setBody] = useState(() => typeof location.state?.discussionBody === 'string' ? location.state.discussionBody : '');
   const [tags, setTags] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState(() => typeof location.state?.discussionImage === 'string' ? location.state.discussionImage : '');
   const [audience, setAudience] = useState<'public' | 'coven'>('public');
   const [showPoll, setShowPoll] = useState(false);
   const [poll, setPoll] = useState<PollDraft>({ question: '', choices: ['', ''], closesAt: '' });
@@ -260,18 +284,27 @@ export default function NewPostPage() {
   const formRef = useRef<HTMLFormElement>(null);
 
   if (!isPending && !session) {
-    navigate('/login?redirect=/community/new');
+    navigate(`/login?redirect=${encodeURIComponent(quotedPostId ? `/community/new?quote=${quotedPostId}` : '/community/new')}`);
     return null;
   }
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
 
   const validate = (): string => {
+    if (followUpPostId) {
+      if (reading && !selectedPreview) return 'Select at least one valid card to share.';
+      if (!canPostFollowUp) return 'This discussion is unavailable for a follow-up.';
+      if (!selectedPreview && !body.trim()) return 'Add a note or select a tarot card.';
+      return '';
+    }
+    if (reading && !selectedPreview) return 'Select at least one valid card to share.';
     if (!categoryId) return community_new.errors.categoryRequired;
     if (!title.trim()) return community_new.errors.titleRequired;
     if (title.trim().length < 5) return community_new.errors.titleTooShort;
-    if (!body.trim()) return community_new.errors.bodyRequired;
-    if (body.trim().length < 20) return community_new.errors.bodyTooShort;
+    if (!reading) {
+      if (!body.trim()) return community_new.errors.bodyRequired;
+      if (body.trim().length < 20) return community_new.errors.bodyTooShort;
+    }
     if (showPoll) {
       if (!poll.question.trim()) return community_new.errors.pollQuestion;
       const validChoices = poll.choices.filter((c) => c.trim());
@@ -294,6 +327,8 @@ export default function NewPostPage() {
       body: body.trim(),
       tags,
       audience,
+      quotedPostId,
+      sharedReading: sharedReading ?? undefined,
       imageUrl: imageUrl.trim() || undefined,
     };
 
@@ -305,20 +340,23 @@ export default function NewPostPage() {
       };
     }
 
-    const res = await fetch('/api/community/posts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    setSubmitting(false);
-
-    if (res.ok) {
-      const data = await res.json() as { id: number };
-      navigate(`/community/post/${data.id}`);
-    } else {
-      const data = await res.json().catch(() => ({})) as { error?: string };
-      setError(data.error ?? community_new.errors.generic);
+    try {
+      const endpoint = followUpPostId ? `/api/community/posts/${followUpPostId}/replies` : '/api/community/posts';
+      const dataToSend = followUpPostId
+        ? { body: body.trim(), followUp: true, sharedReading: sharedReading ?? undefined }
+        : payload;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataToSend),
+      });
+      const data = await res.json().catch(() => ({})) as { id?: number; error?: string };
+      if (!res.ok || !data.id) throw new Error(data.error ?? community_new.errors.generic);
+      navigate(followUpPostId ? `${destination}#reply-${data.id}` : `/community/post/${data.id}`);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : community_new.errors.generic);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -335,19 +373,19 @@ export default function NewPostPage() {
         <div className="border-b border-border bg-[hsl(var(--card-deep))]">
           <div className="max-w-2xl mx-auto px-4 py-6">
             <Link
-              to="/community"
+              to={destination}
               className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> {community_new.backLabel}
             </Link>
-            <h1 className="font-heading text-2xl md:text-3xl text-foreground">{community_new.pageTitle}</h1>
+            <h1 className="font-heading text-2xl md:text-3xl text-foreground">{followUpPostId ? 'Post a reading follow-up' : community_new.pageTitle}</h1>
             <p className="text-sm text-muted-foreground mt-1">{community_new.pageSubtitle}</p>
           </div>
         </div>
 
         <div className="max-w-2xl mx-auto px-4 py-8">
           {/* Preview toggle */}
-          <div className="flex justify-end mb-4">
+          {!followUpPostId && <div className="flex justify-end mb-4">
             <button
               type="button"
               onClick={() => setShowPreview((v) => !v)}
@@ -359,7 +397,7 @@ export default function NewPostPage() {
                 <><Eye className="w-3.5 h-3.5" /> {community_new.previewSection.toggleLabel}</>
               )}
             </button>
-          </div>
+          </div>}
 
           <AnimatePresence mode="wait">
             {showPreview ? (
@@ -378,6 +416,7 @@ export default function NewPostPage() {
                   tags={tags}
                   poll={showPoll ? poll : null}
                 />
+                {selectedPreview && <div className="mt-3 rounded-xl border border-border bg-card p-4"><CommunityPostBody html={selectedPreview} /></div>}
               </motion.div>
             ) : (
               <motion.form
@@ -390,6 +429,49 @@ export default function NewPostPage() {
                 transition={{ duration: 0.18 }}
                 className="space-y-6"
               >
+                {quotedPostId && (
+                  <p className="rounded-xl border border-border bg-card p-3 text-sm">
+                    Your post will link to the <Link className="text-primary underline" to={`/community/post/${quotedPostId}`}>original Coven discussion</Link>.
+                  </p>
+                )}
+
+                {followUpPostId && (
+                  <p className="text-sm">
+                    {originalLoading ? 'Loading the destination…' : canPostFollowUp
+                      ? <>Destination: <Link className="text-primary underline" to={destination}>{originalPost?.title}</Link> · Same audience as the original discussion</>
+                      : 'This discussion is unavailable for a follow-up.'}
+                  </p>
+                )}
+                {reading && (
+                  <fieldset className="space-y-3 rounded-xl border border-border bg-card p-4">
+                    <legend className="px-1 font-semibold">Share a tarot reading</legend>
+                    {!followUpPostId && <p className="text-sm">Destination: Coven feed · {audience === 'coven' ? 'Your Coven' : 'Spellful members'}{selectedCategory ? ` · ${selectedCategory.name}` : ''}</p>}
+                    <p className="text-sm text-muted-foreground">Choose what to include. Your original reading question and private notes stay private. Add your own caption or question in the post body.</p>
+                    <div className="space-y-1">
+                      {reading.cards.map(card => (
+                        <label key={card.displayOrder} className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" checked={selectedCards.includes(card.displayOrder)} onChange={event => {
+                            const checked = event.target.checked;
+                            setSelectedCards(current => checked ? [...current, card.displayOrder] : current.filter(order => order !== card.displayOrder));
+                          }} />
+                          {card.cardId.replaceAll('-', ' ')}{card.reversed ? ' (reversed)' : ''}
+                        </label>
+                      ))}
+                    </div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={reading.includePositions} onChange={event => setReading({ ...reading, includePositions: event.target.checked })} />
+                      Include spread positions
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={reading.includeInterpretations} onChange={event => setReading({ ...reading, includeInterpretations: event.target.checked })} />
+                      Include card interpretations
+                    </label>
+                    {selectedPreview && <CommunityPostBody html={selectedPreview} />}
+                    <Button type="button" variant="outline" size="sm" onClick={() => setReading(null)}>Remove reading</Button>
+                  </fieldset>
+                )}
+
+                {!followUpPostId && <>
                 {/* ── Post type ── */}
                 <fieldset>
                   <legend className="text-xs font-semibold text-foreground/70 mb-2">{community_new.typeSection.label}</legend>
@@ -454,6 +536,8 @@ export default function NewPostPage() {
                   <p className="text-[10px] text-muted-foreground mt-1 text-right">{title.length}/300</p>
                 </div>
 
+                </>}
+
                 {/* ── Body ── */}
                 <div>
                   <label className="block text-xs font-semibold text-foreground/70 mb-1.5">
@@ -469,6 +553,7 @@ export default function NewPostPage() {
                   <p className="text-[10px] text-muted-foreground mt-1 text-right">{body.length} chars</p>
                 </div>
 
+                {!followUpPostId && <>
                 {/* ── Tags ── */}
                 <div>
                   <label className="block text-xs font-semibold text-foreground/70 mb-1.5">
@@ -542,6 +627,8 @@ export default function NewPostPage() {
                   </AnimatePresence>
                 </div>
 
+                </>}
+
                 {/* ── Error ── */}
                 <AnimatePresence>
                   {error && (
@@ -560,13 +647,12 @@ export default function NewPostPage() {
                 <div className="flex items-center gap-3 pt-2">
                   <Button
                     type="submit"
-                    disabled={submitting}
-                    className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                    disabled={submitting || (followUpPostId !== null && !canPostFollowUp)}
                   >
-                    <Sparkles className="w-4 h-4" />
-                    {submitting ? community_new.submittingLabel : community_new.submitLabel}
+                    <Sparkles className="size-4" />
+                    {submitting ? community_new.submittingLabel : followUpPostId ? 'Post follow-up' : community_new.submitLabel}
                   </Button>
-                  <Link to="/community">
+                  <Link to={destination}>
                     <Button type="button" variant="ghost" className="text-muted-foreground">
                       {community_new.cancelLabel}
                     </Button>

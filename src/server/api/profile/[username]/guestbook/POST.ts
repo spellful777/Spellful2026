@@ -1,3 +1,4 @@
+import { profileAudience } from '@/server/lib/profile-audience.js';
 /**
  * POST /api/profile/:username/guestbook
  * Body: { text }
@@ -10,7 +11,6 @@ import {
 } from '@/server/db/schema.js';
 import { eq, and, or, gte, count } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
-import { isBlocked } from '@/server/lib/block-check.js';
 
 const RATE_LIMIT = 3;
 const WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -21,7 +21,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
   if (!session) return res.status(401).json({ error: 'Unauthorized' });
 
   const normalized = req.params.username.toLowerCase();
-  const [profileUser] = await db.select({ id: user.id }).from(user)
+  const [profileUser] = await db.select({ id: user.id, profileVisibility: user.profileVisibility, sections: user.profileSections }).from(user)
     .where(eq(user.usernameNormalized, normalized)).limit(1);
   if (!profileUser) return res.status(404).json({ error: 'Not found' });
 
@@ -30,12 +30,14 @@ export default async function handler(req: Request<{ username: string }>, res: R
   }
 
   // Block check (silent — return 404 to not reveal block status)
-  if (await isBlocked(profileUser.id, session.user.id)) return res.status(404).json({ error: 'Not found' });
+  const access = await profileAudience(profileUser, session.user.id, undefined);
+  if (!access?.allowed || profileUser.sections?.some(section => section.id === 'guestbook' && !section.enabled))
+    return res.status(404).json({ error: 'Not found' });
 
   // Guestbook settings
   const [settings] = await db.select().from(profileGuestbookSettings)
     .where(eq(profileGuestbookSettings.userId, profileUser.id));
-  if (!settings?.enabled) return res.status(403).json({ error: 'Guestbook is not open' });
+  if (!settings?.enabled || !access.allows(settings.visibility ?? 'coven')) return res.status(403).json({ error: 'Guestbook is not open' });
   if (settings.allowedSubmitters === 'nobody') return res.status(403).json({ error: 'Guestbook is not open' });
 
   // Coven check if required

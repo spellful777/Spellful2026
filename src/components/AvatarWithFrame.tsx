@@ -68,7 +68,7 @@ export const FRAME_DEFS: FrameDef[] = [
 
 // ─── Default avatar presets ───────────────────────────────────────────────────
 export const DEFAULT_AVATARS: { key: string; src: string; label: string }[] = [
-  { key: 'hat-black',   src: '/airo-assets/images/avatars/default-hat-black',   label: 'Black Hat'   },
+  { key: 'hat-black',   src: '/airo-assets/images/avatars/default-hat-black',   label: 'White Hat'   },
   { key: 'hat-blue',    src: '/airo-assets/images/avatars/default-hat-blue',    label: 'Blue Hat'    },
   { key: 'hat-green',   src: '/airo-assets/images/avatars/default-hat-green',   label: 'Green Hat'   },
   { key: 'hat-orange',  src: '/airo-assets/images/avatars/default-hat-orange',  label: 'Orange Hat'  },

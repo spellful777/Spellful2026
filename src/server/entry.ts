@@ -1,3 +1,10 @@
+import { sparkShareMeta } from './lib/spark-share-meta';
+import { topicMembers } from './lib/topic-members';
+import sparkChartImage from './api/community/posts/[id]/chart/GET';
+import { commentLinkPreview } from './lib/comment-link-preview';
+import { sparkCollections } from './lib/spark-collections';
+import sparkReshare from './api/community/posts/[id]/reshare/POST';
+import { sparkMediaConfig, uploadSparkMedia, deleteSparkMedia, readSparkMedia, startSparkMediaCleanup } from "./lib/spark-media";
 import { selectRows } from '@/server/db/select-rows';
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import helmet from "helmet";
@@ -22,6 +29,7 @@ import account__email_consent__get from "./api/account/email-consent/GET";
 import account__email_consent__post from "./api/account/email-consent/POST";
 import account__export__get from "./api/account/export/GET";
 import account__password__post from "./api/account/password/POST";
+import account__social_summary__get from "./api/account/social-summary/GET";
 import account__privacy_settings__get from "./api/account/privacy-settings/GET";
 import account__privacy_settings__patch from "./api/account/privacy-settings/PATCH";
 import account__profile__get from "./api/account/profile/GET";
@@ -124,6 +132,7 @@ import community__help__glossary__id__put from "./api/community/help/glossary/[i
 import community__help__rules__get from "./api/community/help/rules/GET";
 import community__help__rules__acknowledge__post from "./api/community/help/rules/acknowledge/POST";
 import community__help__rules__id__put from "./api/community/help/rules/[id]/PUT";
+import getCosmicPulse from "./api/cosmic-pulse/GET";
 import community__mute__post from "./api/community/mute/POST";
 import community__notifications__get from "./api/community/notifications/GET";
 import community__notifications__read__post from "./api/community/notifications/read/POST";
@@ -435,6 +444,11 @@ export function toLogError(err: unknown): Record<string, unknown> {
 	if (typeof fields.code === "string" || typeof fields.code === "number") {
 		shaped.code = fields.code;
 	}
+	const cause = err instanceof Error ? err.cause : undefined;
+	if (cause instanceof Error && "code" in cause && typeof cause.code === "string" &&
+		/^(?:ER_[A-Z0-9_]+|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|PROTOCOL_CONNECTION_LOST)$/.test(cause.code)) {
+		shaped.causeCode = cause.code;
+	}
 	if (typeof fields.status === "number") {
 		shaped.status = fields.status;
 	}
@@ -686,6 +700,7 @@ app.get("/api/account/email-consent", account__email_consent__get);
 app.post("/api/account/email-consent", account__email_consent__post);
 app.get("/api/account/export", account__export__get);
 app.post("/api/account/password", sensitiveAccountLimiter, account__password__post);
+app.get("/api/account/social-summary", account__social_summary__get);
 app.get("/api/account/privacy-settings", account__privacy_settings__get);
 app.patch("/api/account/privacy-settings", account__privacy_settings__patch);
 app.get("/api/account/profile", account__profile__get);
@@ -767,6 +782,8 @@ app.post("/api/circles/:id/join", circles__id__join__post);
 app.get("/api/community/announcements", community__announcements__get);
 app.post("/api/community/appeals", community__appeals__post);
 app.post("/api/community/blocks", community__blocks__post);
+app.get("/api/community/comment-link-preview", uploadLimiter, commentLinkPreview);
+app.get("/api/community/spark-collections", sparkCollections);
 app.get("/api/community/bookmarks", community__bookmarks__get);
 app.get("/api/community/categories", community__categories__get);
 app.get("/api/community/discover", community__discover__get);
@@ -788,16 +805,25 @@ app.put("/api/community/help/glossary/:id", community__help__glossary__id__put);
 app.get("/api/community/help/rules", community__help__rules__get);
 app.post("/api/community/help/rules/acknowledge", community__help__rules__acknowledge__post);
 app.put("/api/community/help/rules/:id", community__help__rules__id__put);
+app.get("/api/cosmic-pulse", getCosmicPulse);
 app.post("/api/community/mute", community__mute__post);
 app.get("/api/community/notifications", community__notifications__get);
 app.post("/api/community/notifications/read", community__notifications__read__post);
+app.get("/api/community/spark-media/config", sparkMediaConfig);
+app.put("/api/community/spark-media/:id", uploadLimiter, uploadSparkMedia);
+app.delete("/api/community/spark-media/:id", deleteSparkMedia);
+app.get(["/api/community/spark-media/:id", "/api/community/spark-media/:id/poster"], readSparkMedia);
+app.get("/api/community/topics/:topic/members", topicMembers);
 app.get("/api/community/posts", community__posts__get);
 app.post("/api/community/posts", community__posts__post);
 app.delete("/api/community/posts/:id", community__posts__id__delete);
+app.get("/api/community/posts/:id/reading-preview", sparkShareMeta);
+app.get("/api/community/posts/:id/chart.svg", sparkChartImage);
 app.get("/api/community/posts/:id", community__posts__id__get);
 app.put("/api/community/posts/:id", community__posts__id__put);
 app.post("/api/community/posts/:id/accept-answer", community__posts__id__accept_answer__post);
 app.post("/api/community/posts/:id/bookmark", community__posts__id__bookmark__post);
+app.post("/api/community/posts/:id/reshare", sparkReshare);
 app.post("/api/community/posts/:id/like", community__posts__id__like__post);
 app.post("/api/community/posts/:id/poll/vote", community__posts__id__poll__vote__post);
 app.get("/api/community/posts/:id/replies", community__posts__id__replies__get);
@@ -1356,7 +1382,7 @@ if (import.meta.env.PROD && _isBuiltBundle && existsSync(_ssrClientDir)) {
 
 	// Run startup migrations to ensure DB schema matches code (safe to re-run).
 	// Wrapped in void+then to avoid top-level await (not supported in the SSR bundle target).
-	void runStartupMigration().catch((e: unknown) => {
+	void runStartupMigration().then(startSparkMediaCleanup).catch((e: unknown) => {
 		console.error(JSON.stringify({ event: 'startup.migration.uncaught', msg: e instanceof Error ? e.message : String(e) }));
 	});
 
