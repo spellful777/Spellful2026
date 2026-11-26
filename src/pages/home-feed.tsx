@@ -4,6 +4,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { Button } from '@/components/ui/button';
 import { useCommunityPosts } from '@/hooks/useCommunity';
 import { COMMUNITY_FEED, HOME_EXPLORE } from '@/lib/community-navigation';
+import SparkItLink from '@/components/SparkItLink';
 import HomeSocialMenu from '@/components/HomeSocialMenu';
 import HomeCovenCard from '@/components/HomeCovenCard';
 import { PostCard } from './community/index';
@@ -17,7 +18,31 @@ export default function HomeFeed({ username }: { username?: string | null }) {
   const [newPosts, setNewPosts] = useState(false);
   const anchor = useRef<{ id: string; top: number; scrollY: number } | null>(null);
   const list = useRef<HTMLDivElement>(null);
+  const headerSpark = useRef<HTMLAnchorElement>(null);
+  const floatingSparkLink = useRef<HTMLAnchorElement>(null);
+  const [floatingSpark, setFloatingSpark] = useState(false);
   const { posts, loading, error, reload, pages, newestId } = useCommunityPosts(filter, undefined, page, 'newest', true, 'spark');
+
+  useEffect(() => {
+    const button = headerSpark.current;
+    if (!button) return;
+    const mobile = window.matchMedia('(max-width: 767px)');
+
+    function update() {
+      const show = mobile.matches && button.getBoundingClientRect().bottom <= 0;
+      if (!show && document.activeElement === floatingSparkLink.current) button.focus({ preventScroll: true });
+      setFloatingSpark(show);
+    }
+
+    const observer = new IntersectionObserver(update);
+    observer.observe(button);
+    mobile.addEventListener('change', update);
+    update();
+    return () => {
+      observer.disconnect();
+      mobile.removeEventListener('change', update);
+    };
+  }, []);
 
   useEffect(() => {
     setNewPosts(false);
@@ -69,9 +94,9 @@ export default function HomeFeed({ username }: { username?: string | null }) {
   const visiblePosts = !error && (!loading || anchor.current) ? posts : [];
 
   return (
-    <main className="home-feed mx-auto max-w-3xl space-y-2 px-3 pb-24 pt-3 sm:px-4">
+    <main className="home-feed mx-auto max-w-3xl space-y-2 px-3 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-3 sm:px-4 md:pb-24">
       <Helmet><title>Home feed | Spellful</title><meta name="robots" content="noindex" /></Helmet>
-      <HomeSocialMenu username={username} />
+      <HomeSocialMenu username={username} sparkRef={headerSpark} floatingSpark={floatingSpark} />
       <nav aria-label="Home feed" className="home-feed-tabs sticky top-0 z-30 grid grid-cols-3 md:top-20">
         <Link to="/" className="home-feed-link coven-press" aria-current={filter === 'following' ? 'page' : undefined}>Following</Link>
         <Link to={HOME_EXPLORE} className="home-feed-link coven-press" aria-current={filter === 'discover' ? 'page' : undefined}>Explore</Link>
@@ -102,6 +127,11 @@ export default function HomeFeed({ username }: { username?: string | null }) {
           <span>Page {page} of {pages}</span>
           <Button variant="outline" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next</Button>
         </nav>
+      )}
+      {floatingSpark && (
+        <div className="home-floating-spark fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-[45] md:hidden">
+          <SparkItLink iconOnly linkRef={floatingSparkLink} />
+        </div>
       )}
     </main>
   );

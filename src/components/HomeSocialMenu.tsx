@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Ref } from 'react';
 import { ChevronRight, Bell, Compass, MessageSquare, Pencil, Star, User } from 'lucide-react';
 import { Link } from 'react-router';
 import { getMoonPhase, moonGlyph, type MoonPhaseName } from '@/lib/moon-phase-engine';
@@ -30,7 +30,13 @@ function HomeMoonLink() {
   );
 }
 
-export default function HomeSocialMenu({ username }: { username?: string | null }) {
+interface HomeSocialMenuProps {
+  username?: string | null;
+  sparkRef: Ref<HTMLAnchorElement>;
+  floatingSpark: boolean;
+}
+
+export default function HomeSocialMenu({ username, sparkRef, floatingSpark }: HomeSocialMenuProps) {
   const pendingRequests = useSocialSummary()?.pendingRequests ?? 0;
   const profile = username ? `/u/${encodeURIComponent(username)}` : '/account/edit-profile';
   return (
@@ -67,7 +73,7 @@ export default function HomeSocialMenu({ username }: { username?: string | null 
               <DropdownMenuItem asChild><Link to="/account/edit-profile"><Pencil aria-hidden="true" />{username ? 'Edit my profile' : 'Set up my profile'}</Link></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <SparkItLink />
+          <SparkItLink iconOnly linkRef={sparkRef} inactive={floatingSpark} />
         </div>
       </div>
 
