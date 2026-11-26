@@ -1,3 +1,4 @@
+import type { SparkMedia, OriginalSpark } from '@/lib/spark-media';
 /**
  * useCommunity — shared data hook for community pages.
  * Fetches categories, posts (with filter/page), and notification count.
@@ -20,6 +21,10 @@ export interface CommunityPost {
   type: 'discussion' | 'question' | 'spark';
   title: string;
   preview?: string;
+  audience?: string | null;
+  sparkMedia?: SparkMedia[] | null;
+  originalSparkId?: number | null;
+  originalSpark?: OriginalSpark | null;
   imageUrl?: string | null;
   tags: string | null;
   isPinned: boolean;

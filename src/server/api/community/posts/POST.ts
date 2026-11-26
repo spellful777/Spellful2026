@@ -1,3 +1,5 @@
+import { isSparkMediaId } from '@/lib/spark-media';
+import { fitsSparkMedia, maxSparkPhotos } from '@/server/lib/spark-media.js';
 import { SPARK_LIMIT, countSparkCharacters, sparkBodyHtml } from '@/lib/sparks';
 import { renderSharedReading, sharedReadingSchema } from '@/lib/shared-reading';
 import { notifyCommunityMentions } from '@/server/lib/community-mention-notifications.js';
@@ -6,8 +8,8 @@ import { notifyCommunityMentions } from '@/server/lib/community-mention-notifica
  */
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { communityPosts, communityCategories, communityPolls } from '@/server/db/schema.js';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { communityPosts, communityCategories, communityPolls, sparkMediaUploads } from '@/server/db/schema.js';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { visiblePostForMember } from '@/server/lib/community-post-access.js';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
@@ -15,7 +17,7 @@ export default async function handler(req: Request, res: Response) {
   const session = await getAuthSession(req);
   if (!session?.user?.id) return res.status(401).json({ error: 'Sign in to post' });
 
-  const { categoryId, type = 'discussion', title, body = '', tags = '', imageUrl, poll, audience = 'public', quotedPostId, sharedReading } = req.body as {
+  const { categoryId, type = 'discussion', title, body = '', tags = '', imageUrl, poll, audience = 'public', quotedPostId, sharedReading, mediaIds = [] } = req.body as {
     categoryId?: number;
     type?: string;
     title?: string;
@@ -25,15 +27,33 @@ export default async function handler(req: Request, res: Response) {
     audience?: string;
     quotedPostId?: number;
     sharedReading?: unknown;
+    mediaIds?: unknown;
     poll?: { question: string; choices: string[]; closesAt?: string };
   };
 
   if (type === 'spark') {
-    if (typeof body !== 'string' || !body.trim() || countSparkCharacters(body) > SPARK_LIMIT) {
-      return res.status(400).json({ error: `A Spark must have 1–${SPARK_LIMIT} characters` });
+    if (!Array.isArray(mediaIds) || mediaIds.length > maxSparkPhotos || !mediaIds.every(isSparkMediaId) ||
+        new Set(mediaIds).size !== mediaIds.length || (mediaIds.length && imageUrl !== undefined)) {
+      return res.status(400).json({ error: `Choose up to ${maxSparkPhotos} photos or one video.` });
     }
-    if (title !== undefined || tags || poll || quotedPostId !== undefined || sharedReading !== undefined) {
-      return res.status(400).json({ error: 'Sparks support short text and an optional image. Use a discussion for other content.' });
+    if (typeof body !== 'string' || countSparkCharacters(body) > SPARK_LIMIT ||
+        (!body.trim() && !mediaIds.length && quotedPostId === undefined)) {
+      return res.status(400).json({ error: `Add text up to ${SPARK_LIMIT} characters or attach media.` });
+    }
+    if (title !== undefined || tags || poll || sharedReading !== undefined) {
+      return res.status(400).json({ error: 'Use a discussion for titles, polls, or readings.' });
+    }
+    let originalSparkId: number | null = null;
+    if (quotedPostId !== undefined) {
+      if (!Number.isSafeInteger(quotedPostId) || quotedPostId < 1) return res.sendStatus(400);
+      const [source] = await db.select({ id: communityPosts.id, original: communityPosts.originalSparkId })
+        .from(communityPosts).where(and(visiblePostForMember(quotedPostId, session.user.id),
+          eq(communityPosts.type, 'spark'), eq(communityPosts.audience, 'public'))).limit(1);
+      if (!source) return res.status(404).json({ error: 'Original Spark unavailable.' });
+      originalSparkId = source.original ?? source.id;
+      if (mediaIds.length || imageUrl !== undefined) {
+        return res.status(400).json({ error: 'Quotes and reshares use the original Spark’s attachments.' });
+      }
     }
     if (imageUrl !== undefined) {
       try {
@@ -54,12 +74,27 @@ export default async function handler(req: Request, res: Response) {
     if (!category) return res.status(503).json({ error: 'Sparks are temporarily unavailable' });
 
     const text = body.trim();
-    const [spark] = await db.insert(communityPosts).values({
-      userId: session.user.id, categoryId: category.id, type, title: text, body: sparkBodyHtml(text), audience, imageUrl: imageUrl ?? null,
-    }).$returningId();
+    const spark = await db.transaction(async tx => {
+      const uploads = mediaIds.length ? await tx.select({ id: sparkMediaUploads.id, kind: sparkMediaUploads.kind })
+        .from(sparkMediaUploads).where(and(inArray(sparkMediaUploads.id, mediaIds),
+          eq(sparkMediaUploads.userId, session.user.id), isNull(sparkMediaUploads.postId)))
+        .orderBy(asc(sparkMediaUploads.id)).for('update') : [];
+      if (uploads.length !== mediaIds.length || !fitsSparkMedia(uploads.map(upload => upload.kind))) return null;
+      const byId = new Map(uploads.map(upload => [upload.id, upload]));
+      const [created] = await tx.insert(communityPosts).values({
+        userId: session.user.id, categoryId: category.id, type, title: text, body: sparkBodyHtml(text),
+        audience, imageUrl: imageUrl ?? null, originalSparkId,
+        sparkMedia: mediaIds.length ? mediaIds.map(id => byId.get(id)!) : null,
+      }).$returningId();
+      if (uploads.length) await tx.update(sparkMediaUploads).set({ postId: created.id })
+        .where(inArray(sparkMediaUploads.id, mediaIds));
+      return created;
+    });
+    if (!spark) return res.status(400).json({ error: 'An attachment expired or exceeds the limits. Remove it and try again.' });
     return res.status(201).json({ id: spark.id });
   }
 
+  if (!Array.isArray(mediaIds) || mediaIds.length) return res.status(400).json({ error: 'Attachments are available for Sparks.' });
   if (!categoryId || typeof title !== 'string' || !title.trim() || typeof body !== 'string' ||
       (!body.trim() && sharedReading === undefined)) {
     return res.status(400).json({ error: 'Category, title, and a body or reading are required' });

@@ -1326,6 +1326,40 @@ export async function runStartupMigration(): Promise<void> {
       console.error(JSON.stringify({ event: 'startup.migration.conversation_user_state.error', msg: msg.slice(0, 120) }));
     }
 
+    for (const statement of [
+      'ALTER TABLE community_replies ADD COLUMN gif_url TEXT NULL',
+      'ALTER TABLE community_posts ADD COLUMN spark_media JSON NULL',
+      'ALTER TABLE community_posts ADD COLUMN original_spark_id INT NULL',
+    ]) {
+      try {
+        await conn.execute(statement);
+      } catch (error) {
+        if ((error as { code?: string }).code !== 'ER_DUP_FIELDNAME') throw error;
+      }
+    }
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS spark_media_uploads (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        post_id INT NULL,
+        kind VARCHAR(10) NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+        FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS community_reply_favorites (
+        user_id VARCHAR(36) NOT NULL,
+        reply_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_reply_favorite (user_id, reply_id),
+        FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+        FOREIGN KEY (reply_id) REFERENCES community_replies(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
   } catch (e) {
     // Non-fatal — log and continue; the server still starts
     const msg = e instanceof Error ? e.message : String(e);

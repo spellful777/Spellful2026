@@ -1,3 +1,4 @@
+import type { SparkMedia } from '@/lib/spark-media';
 import { mysqlTable, bigint, int, tinyint, varchar, text, boolean, timestamp, json, index, uniqueIndex } from 'drizzle-orm/mysql-core';
 // Note: tinyint imported above; used for TINYINT columns
 
@@ -524,6 +525,8 @@ export const communityPosts = mysqlTable('community_posts', {
   title: varchar('title', { length: 300 }).notNull(),
   body: text('body').notNull(),
   imageUrl: text('image_url'),
+  sparkMedia: json('spark_media').$type<SparkMedia[]>(),
+  originalSparkId: int('original_spark_id'),
   tags: varchar('tags', { length: 500 }).default(''),
   isPinned: boolean('is_pinned').default(false),
   isLocked: boolean('is_locked').default(false),
@@ -539,12 +542,20 @@ export const communityPosts = mysqlTable('community_posts', {
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
 
+export const sparkMediaUploads = mysqlTable('spark_media_uploads', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  postId: int('post_id').references(() => communityPosts.id, { onDelete: 'set null' }),
+  kind: varchar('kind', { length: 10 }).$type<SparkMedia['kind']>().notNull(),
+});
+
 export const communityReplies = mysqlTable('community_replies', {
   id: int('id').primaryKey().autoincrement(),
   postId: int('post_id').notNull().references(() => communityPosts.id, { onDelete: 'cascade' }),
   userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
   parentId: int('parent_id'),
   body: text('body').notNull(),
+  gifUrl: text('gif_url'),
   isHidden: boolean('is_hidden').default(false),
   likeCount: int('like_count').default(0),
   depth: int('depth').default(0),
@@ -566,6 +577,12 @@ export const communityBookmarks = mysqlTable('community_bookmarks', {
   postId: int('post_id').notNull().references(() => communityPosts.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+export const communityReplyFavorites = mysqlTable('community_reply_favorites', {
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+  replyId: int('reply_id').notNull().references(() => communityReplies.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (table) => [uniqueIndex('uq_reply_favorite').on(table.userId, table.replyId)]);
 
 export const communityFollows = mysqlTable('community_follows', {
   id: int('id').primaryKey().autoincrement(),

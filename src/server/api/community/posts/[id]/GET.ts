@@ -1,3 +1,4 @@
+import { loadOriginalSparks } from '@/server/lib/original-sparks.js';
 import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
@@ -18,6 +19,8 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     title: communityPosts.title,
     body: communityPosts.body,
     imageUrl: communityPosts.imageUrl,
+      sparkMedia: communityPosts.sparkMedia,
+      originalSparkId: communityPosts.originalSparkId,
     tags: communityPosts.tags,
     isPinned: communityPosts.isPinned,
     isLocked: communityPosts.isLocked,
@@ -77,5 +80,6 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     muted = !!muteRow[0];
   }
 
-  res.json({ ...post, poll, liked, bookmarked, muted, isOwner: myId === post.userId });
+  const originals = await loadOriginalSparks([post.originalSparkId], myId);
+  res.json({ ...post, originalSpark: originals.get(post.originalSparkId ?? 0) ?? null, poll, liked, bookmarked, muted, isOwner: myId === post.userId });
 }

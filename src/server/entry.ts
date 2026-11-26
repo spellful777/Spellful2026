@@ -1,3 +1,4 @@
+import { sparkMediaConfig, uploadSparkMedia, deleteSparkMedia, readSparkMedia, startSparkMediaCleanup } from "./lib/spark-media";
 import { selectRows } from '@/server/db/select-rows';
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import helmet from "helmet";
@@ -728,6 +729,10 @@ app.get("/api/cosmic-pulse", getCosmicPulse);
 app.post("/api/community/mute", community__mute__post);
 app.get("/api/community/notifications", community__notifications__get);
 app.post("/api/community/notifications/read", community__notifications__read__post);
+app.get("/api/community/spark-media/config", sparkMediaConfig);
+app.put("/api/community/spark-media/:id", uploadLimiter, uploadSparkMedia);
+app.delete("/api/community/spark-media/:id", deleteSparkMedia);
+app.get(["/api/community/spark-media/:id", "/api/community/spark-media/:id/poster"], readSparkMedia);
 app.get("/api/community/posts", community__posts__get);
 app.post("/api/community/posts", community__posts__post);
 app.delete("/api/community/posts/:id", community__posts__id__delete);
@@ -1273,7 +1278,7 @@ if (import.meta.env.PROD && _isBuiltBundle && existsSync(_ssrClientDir)) {
 
 	// Run startup migrations to ensure DB schema matches code (safe to re-run).
 	// Wrapped in void+then to avoid top-level await (not supported in the SSR bundle target).
-	void runStartupMigration().catch((e: unknown) => {
+	void runStartupMigration().then(startSparkMediaCleanup).catch((e: unknown) => {
 		console.error(JSON.stringify({ event: 'startup.migration.uncaught', msg: e instanceof Error ? e.message : String(e) }));
 	});
 

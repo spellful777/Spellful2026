@@ -1,8 +1,13 @@
+import { SPARK_COMPOSE } from '@/lib/community-navigation';
+import { OriginalSparkCard, SparkMediaGallery } from '@/components/SparkMediaGallery';
+import { parseFragment } from 'parse5';
+import { SparkCommentActions } from '@/components/SparkCommentActions';
+import { SPARK_COMMENT_LIMIT, COMMENT_GIF_SETTING, commentGifUrl } from '@/lib/spark-comments';
 import SparkFavoriteButton from '@/components/SparkFavoriteButton';
 import { SPARK_LIMIT, countSparkCharacters } from '@/lib/sparks';
 import SparkHeartButton from '@/components/SparkHeartButton';
 import { useState, useRef, useEffect } from 'react';
-import { Link, useParams, useNavigate, useLocation } from 'react-router';
+import { Link, Navigate, useParams, useNavigate, useLocation } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -19,12 +24,12 @@ import { community_post } from 'virtual:content';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function Avatar({ name, image, size = 8 }: { name: string | null; image: string | null; size?: number }) {
-  const s = `w-${size} h-${size}`;
+  const s = size === 7 ? 'size-7' : 'size-8';
   if (image) return <img src={image} alt={name ?? ''} className={`${s} rounded-full object-cover shrink-0`} />;
   return (
     <div className={`${s} rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground shrink-0`}>
@@ -112,11 +117,29 @@ function PollBlock({
 
 // ── Reply card ────────────────────────────────────────────────────────────────
 
+type ReplyTarget = Pick<CommunityReply, 'id' | 'authorName' | 'authorUsername'>;
+const handleName = (author: { authorUsername: string | null; authorName: string | null }) =>
+  author.authorUsername ? `@${author.authorUsername}` : author.authorName ?? 'Unknown member';
+
+function CompactLink({ text }: { text: string }) {
+  const match = text.match(/https?:\/\/[^\s<>"']+/i)?.[0]?.replace(/[.,!?;)]+$/, '');
+  if (!match) return null;
+  try {
+    const url = new URL(match);
+    if (url.username || url.password) return null;
+    return <a className="spark-comment-link" href={url.href} target="_blank" rel="noopener noreferrer">
+      <span>{url.hostname}</span>{url.pathname !== '/' && <span>{url.pathname}</span>}
+    </a>;
+  } catch { return null; }
+}
+
 function ReplyCard({
   reply,
   isAccepted,
   isPostAuthor,
   postType,
+  sparkContext,
+  onUpdate,
   onAccept,
   onLike,
   onReplyTo,
@@ -130,9 +153,11 @@ function ReplyCard({
   isPostAuthor: boolean;
   postType: 'discussion' | 'question' | 'spark';
   postId: number;
+  sparkContext?: { original: string; parent: string; audience: string | null; locked: boolean };
+  onUpdate: (reply: CommunityReply) => void;
   onAccept: (replyId: number) => void;
   onLike: (replyId: number) => void;
-  onReplyTo: (replyId: number, authorName: string | null) => void;
+  onReplyTo: (reply: ReplyTarget) => void;
   onDeleted: (replyId: number) => void;
   currentUserId: string | undefined;
   depth?: number;
@@ -149,16 +174,18 @@ function ReplyCard({
   const isMyReply = currentUserId === reply.userId;
 
   const saveEdit = async () => {
-    if (!editBody.trim() || editSaving) return;
+    if ((!editBody.trim() && !reply.gifUrl) || editSaving || (sparkContext && countSparkCharacters(editBody) > SPARK_COMMENT_LIMIT)) return;
     setEditSaving(true);
-    await fetch(`/api/community/replies/${reply.id}`, {
+    const response = await fetch(`/api/community/replies/${reply.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ body: editBody.trim() }),
     });
     setEditSaving(false);
+    if (!response.ok) return;
+    const { body } = await response.json();
     setEditMode(false);
-    reply.body = editBody.trim();
+    onUpdate({ ...reply, body });
   };
 
   const deleteReply = async () => {
@@ -167,8 +194,9 @@ function ReplyCard({
     setDeleting(false);
     if (res.ok) onDeleted(reply.id);
   };
-  const ago = formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true });
-  const indentClass = depth > 0 ? 'ml-6 md:ml-10 border-l-2 border-border pl-4' : '';
+  const ago = sparkContext ? formatDistanceToNowStrict(new Date(reply.createdAt), { addSuffix: true })
+    : formatDistanceToNow(new Date(reply.createdAt), { addSuffix: true });
+  const indentClass = sparkContext ? "spark-comment-node" : depth > 0 ? 'ml-6 md:ml-10 border-l-2 border-border pl-4' : '';
 
   return (
     <motion.div
@@ -179,7 +207,7 @@ function ReplyCard({
       tabIndex={-1}
       className={`${indentClass} scroll-mt-24 focus:outline focus:outline-2 focus:outline-primary`}
     >
-      <div className={`rounded-xl border p-4 ${isAccepted ? 'border-[hsl(var(--success))] bg-[hsl(var(--success))]/5' : 'border-border bg-card'}`}>
+      <div className={sparkContext ? "spark-comment-row" : `rounded-xl border p-4 ${isAccepted ? 'border-[hsl(var(--success))] bg-[hsl(var(--success))]/5' : 'border-border bg-card'}`}>
         {/* Accepted badge */}
         {isAccepted && (
           <div className="flex items-center gap-1.5 text-[hsl(var(--success))] text-xs font-semibold mb-2">
@@ -199,7 +227,7 @@ function ReplyCard({
                 {reply.authorName ?? 'Unknown'}
               </Link>
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-[10px] text-muted-foreground">{ago}</p>
+                <p className="text-xs text-muted-foreground">{sparkContext && reply.authorUsername && `@${reply.authorUsername} · `}{ago}</p>
                 {reply.authorLocation && (
                   <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
                     <MapPin className="w-2 h-2" />{reply.authorLocation}
@@ -213,6 +241,7 @@ function ReplyCard({
           <div className="relative">
             <button
               onClick={() => setShowActions((v) => !v)}
+              aria-label="Comment options"
               className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
             >
               <MoreHorizontal className="w-4 h-4" />
@@ -227,14 +256,14 @@ function ReplyCard({
                   className="absolute right-0 top-7 z-10 w-36 rounded-lg border border-border bg-popover shadow-lg overflow-hidden"
                 >
                   <button
-                    onClick={() => { onReplyTo(reply.id, reply.authorName); setShowActions(false); }}
+                    onClick={() => { onReplyTo(reply); setShowActions(false); }}
                     className="w-full text-left px-3 py-2 text-xs hover:bg-muted transition-colors"
                   >
                     Reply
                   </button>
                   {isMyReply && (
                     <button
-                      onClick={() => { setEditMode(true); setEditBody(reply.body); setShowActions(false); }}
+                      onClick={() => { setEditMode(true); setEditBody(sparkContext ? parseFragment(reply.body).childNodes.map(node => "value" in node ? node.value : "").join("") || reply.body : reply.body); setShowActions(false); }}
                       className="w-full text-left px-3 py-2 text-xs hover:bg-muted transition-colors flex items-center gap-1.5"
                     >
                       <Pencil className="w-3 h-3" /> Edit
@@ -280,6 +309,7 @@ function ReplyCard({
         </div>
 
         {/* Block sheet */}
+        {sparkContext && <p className="spark-comment-context">Replying to {sparkContext.parent}{sparkContext.parent !== sparkContext.original && ` · Spark by ${sparkContext.original}`}</p>}
         {reply.userId && reply.userId !== currentUserId && (
           <BlockUserSheet
             open={blockSheetOpen}
@@ -344,7 +374,7 @@ function ReplyCard({
               </button>
               <button
                 onClick={saveEdit}
-                disabled={editSaving || !editBody.trim()}
+                disabled={editSaving || (!editBody.trim() && !reply.gifUrl) || Boolean(sparkContext && countSparkCharacters(editBody) > SPARK_COMMENT_LIMIT)}
                 className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {editSaving ? 'Saving…' : 'Save'}
@@ -352,11 +382,15 @@ function ReplyCard({
             </div>
           </div>
         ) : (
-          <CommunityPostBody html={reply.body} />
+          <>
+            <CommunityPostBody html={reply.body} />
+            {sparkContext && reply.gifUrl && <img className="spark-comment-gif" src={reply.gifUrl} alt="GIF attachment" loading="lazy" referrerPolicy="no-referrer" />}
+            {sparkContext && <CompactLink text={reply.body} />}
+          </>
         )}
 
         {/* Footer */}
-        <div className="flex items-center gap-3 mt-3 pt-2 border-t border-border/50">
+        {sparkContext ? <SparkCommentActions reply={reply} onReply={() => onReplyTo(reply)} locked={sparkContext.locked} audience={sparkContext.audience} onUpdate={onUpdate} /> : <div className="flex items-center gap-3 mt-3 pt-2 border-t border-border/50">
           <button
             onClick={() => onLike(reply.id)}
             className={`flex items-center gap-1 text-xs transition-colors ${reply.liked ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
@@ -364,16 +398,16 @@ function ReplyCard({
             <ThumbsUp className="w-3.5 h-3.5" /> {reply.likeCount}
           </button>
           <button
-            onClick={() => onReplyTo(reply.id, reply.authorName)}
+            onClick={() => onReplyTo(reply)}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <MessageSquare className="w-3.5 h-3.5" /> Reply
           </button>
-        </div>
+        </div>}
       </div>
 
       {/* Nested children */}
-      {children && <div className="mt-2 space-y-2">{children}</div>}
+      {children && <div className={sparkContext ? `spark-comment-branch ${depth >= 2 ? "spark-comment-branch-compact" : ""}` : "mt-2 space-y-2"}>{children}</div>}
     </motion.div>
   );
 }
@@ -387,9 +421,11 @@ function ReplyComposer({
   onSubmitted,
   isLocked,
   canFollowUp,
+  sparkAuthor,
 }: {
   postId: number;
-  replyTo: { id: number; authorName: string | null } | null;
+  replyTo: ReplyTarget | null;
+  sparkAuthor?: string;
   onClear: () => void;
   onSubmitted: () => void;
   isLocked: boolean;
@@ -400,23 +436,32 @@ function ReplyComposer({
   const [followUp, setFollowUp] = useState(false);
   const [error, setError] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [gifInput, setGifInput] = useState<string | null>(null);
+  const [gifUrl, setGifUrl] = useState<string | null>(null);
+  const [gifsEnabled, setGifsEnabled] = useState(false);
+  const count = countSparkCharacters(body);
+  const tooLong = !!sparkAuthor && count > SPARK_COMMENT_LIMIT;
+  useEffect(() => { setGifsEnabled(localStorage.getItem(COMMENT_GIF_SETTING) !== 'false'); }, []);
+  useEffect(() => { if (replyTo) textareaRef.current?.focus(); }, [replyTo]);
 
   const submit = async () => {
     const trimmed = body.trim();
-    if (!trimmed || submitting) return;
+    if ((!trimmed && !gifUrl) || submitting || tooLong) return;
     setSubmitting(true);
     setError('');
     try {
       const res = await fetch(`/api/community/posts/${postId}/replies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: trimmed, parentId: replyTo?.id ?? null, followUp: canFollowUp && !replyTo && followUp }),
+        body: JSON.stringify({ body: trimmed, gifUrl: gifUrl ?? undefined, parentId: replyTo?.id ?? null, followUp: canFollowUp && !replyTo && followUp }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(data.error ?? 'Could not post your reply.');
       }
       setBody('');
+      setGifUrl(null);
+      setGifInput(null);
       setFollowUp(false);
       onClear();
       onSubmitted();
@@ -436,11 +481,11 @@ function ReplyComposer({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      {replyTo && (
+    <div className={sparkAuthor ? 'spark-comment-composer' : 'rounded-xl border border-border bg-card p-4'}>
+      {(replyTo || sparkAuthor) && (
         <div className="flex items-center justify-between mb-2 text-xs text-accent">
-          <span>Replying to <strong>{replyTo.authorName ?? 'Unknown'}</strong></span>
-          <button onClick={onClear} className="text-muted-foreground hover:text-foreground transition-colors">✕</button>
+          <span>{replyTo ? `Replying to ${handleName(replyTo)}` : `Replying to ${sparkAuthor}`}{replyTo && sparkAuthor && ` · Spark by ${sparkAuthor}`}</span>
+          {replyTo && <button onClick={onClear} aria-label="Clear reply target" className="text-muted-foreground hover:text-foreground transition-colors">✕</button>}
         </div>
       )}
       {canFollowUp && !replyTo && (
@@ -450,25 +495,37 @@ function ReplyComposer({
         </label>
       )}
       {error && <p role="alert" className="mb-2 text-sm text-destructive">{error}</p>}
+      {gifInput !== null && <div className="mb-2 flex flex-wrap gap-2">
+        <input className="min-w-0 flex-1 rounded border border-border bg-background px-2" aria-label="GIF link" placeholder="Paste a GIPHY or Tenor GIF link" value={gifInput} onChange={event => setGifInput(event.target.value)} />
+        <Button size="sm" disabled={!commentGifUrl(gifInput)} onClick={() => { setGifUrl(commentGifUrl(gifInput)); setGifInput(null); }}>Attach GIF</Button>
+      </div>}
+      {gifUrl && <div className="mb-2"><img className="spark-comment-gif" src={gifUrl} alt="Selected GIF" referrerPolicy="no-referrer" /><button onClick={() => setGifUrl(null)} className="min-h-11 text-xs">Remove GIF</button></div>}
+      {sparkAuthor && <CompactLink text={body} />}
+      <div className={sparkAuthor ? 'spark-comment-input' : undefined}>
       <textarea
         ref={textareaRef}
+        aria-label="Write a reply"
+        aria-describedby={sparkAuthor ? 'spark-comment-count' : undefined}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder={community_post.replyPlaceholder}
-        rows={4}
+        rows={sparkAuthor ? 2 : 4}
         className="w-full bg-muted border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
       />
-      <div className="flex justify-end mt-2">
+      <div className={sparkAuthor ? 'flex items-center gap-2' : 'flex justify-end mt-2'}>
+        {sparkAuthor && gifsEnabled && <Button size="sm" variant="outline" aria-label="Choose a GIF" aria-expanded={gifInput !== null} onClick={() => setGifInput(gifInput === null ? '' : null)}>GIF</Button>}
         <Button
           size="sm"
-          disabled={!body.trim() || submitting}
+          disabled={(!body.trim() && !gifUrl) || submitting || tooLong}
           onClick={submit}
           className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
         >
-          <Send className="w-3.5 h-3.5" />
-          {submitting ? community_post.postingLabel : canFollowUp && !replyTo && followUp ? 'Post follow-up' : community_post.postReplyLabel}
+          {!sparkAuthor && <Send className="w-3.5 h-3.5" />}
+          {submitting ? community_post.postingLabel : canFollowUp && !replyTo && followUp ? 'Post follow-up' : sparkAuthor ? 'Post' : community_post.postReplyLabel}
         </Button>
       </div>
+      </div>
+      {sparkAuthor && <p id="spark-comment-count" className={`text-right text-xs ${tooLong ? 'text-destructive' : 'text-muted-foreground'}`}>{count}/{SPARK_COMMENT_LIMIT}</p>}
     </div>
   );
 }
@@ -483,8 +540,8 @@ export default function PostThreadPage() {
 
   const { post, loading: postLoading, error, reload: reloadPost, setPost } = usePostDetail(postId);
   const [sort, setSort] = useState<'chrono' | 'liked'>('chrono');
-  const { replies, loading: repliesLoading, reload: reloadReplies } = useReplies(postId, sort);
-  const { hash } = useLocation();
+  const { replies, loading: repliesLoading, reload: reloadReplies, setReplies } = useReplies(postId, sort);
+  const { hash, pathname } = useLocation();
   useEffect(() => {
     if (postLoading || repliesLoading || !/^#reply-\d+$/.test(hash)) return;
     const target = document.getElementById(hash.slice(1));
@@ -492,7 +549,7 @@ export default function PostThreadPage() {
     target.focus({ preventScroll: true });
     target.scrollIntoView({ block: 'start' });
   }, [hash, postLoading, repliesLoading]);
-  const [replyTo, setReplyTo] = useState<{ id: number; authorName: string | null } | null>(null);
+  const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [showShareToast, setShowShareToast] = useState(false);
 
   const [postReportOpen, setPostReportOpen] = useState(false);
@@ -505,8 +562,7 @@ export default function PostThreadPage() {
   const [postDeleting, setPostDeleting] = useState(false);
 
   if (!isPending && !session) {
-    navigate('/login?redirect=/community');
-    return null;
+    return <Navigate to={`/login?redirect=${encodeURIComponent(pathname + hash)}`} replace />;
   }
 
   // ── Actions ──────────────────────────────────────────────────────────────
@@ -581,9 +637,13 @@ export default function PostThreadPage() {
 
   // ── Build threaded reply tree ─────────────────────────────────────────────
 
+  const spark = post?.type === 'spark';
+  const sparkAuthor = spark && post ? handleName(post) : undefined;
+  const visibleReplies = new Map(replies.map(reply => [reply.id, reply]));
+  const updateReply = (reply: CommunityReply) => setReplies(items => items.map(item => item.id === reply.id ? reply : item));
   const buildTree = (items: CommunityReply[], parentId: number | null = null, depth = 0): React.ReactNode[] => {
     return items
-      .filter((r) => r.parentId === parentId)
+      .filter((r) => (r.parentId && visibleReplies.has(r.parentId) ? r.parentId : null) === parentId)
       .map((r) => (
         <ReplyCard
           key={r.id}
@@ -592,14 +652,21 @@ export default function PostThreadPage() {
           isPostAuthor={session?.user?.id === post?.userId}
           postType={post?.type ?? 'discussion'}
           postId={post?.id ?? 0}
+          sparkContext={sparkAuthor && post ? {
+            original: sparkAuthor,
+            parent: parentId !== null && visibleReplies.has(parentId) ? handleName(visibleReplies.get(parentId)!) : sparkAuthor,
+            audience: post.audience,
+            locked: post.isLocked,
+          } : undefined}
+          onUpdate={updateReply}
           onAccept={acceptAnswer}
           onLike={likeReply}
-          onReplyTo={(rid, name) => setReplyTo({ id: rid, authorName: name })}
+          onReplyTo={setReplyTo}
           onDeleted={handleReplyDeleted}
           currentUserId={session?.user?.id}
           depth={depth}
         >
-          {buildTree(items, r.id, depth + 1)}
+          {items.some(item => item.parentId === r.id) ? buildTree(items, r.id, depth + 1) : null}
         </ReplyCard>
       ));
   };
@@ -617,9 +684,12 @@ export default function PostThreadPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <main className="min-h-screen">
+      <main className={spark ? "spark-comments min-h-screen" : "min-h-screen"}>
         {/* Top bar */}
-        <div className="border-b border-border bg-[hsl(var(--card-deep))]">
+        {spark ? <div className="spark-comments-header">
+          <Link aria-label="Back to feed" to="/"><ArrowLeft className="size-5" /></Link>
+          <h1>Comments</h1>
+        </div> : <div className="border-b border-border bg-[hsl(var(--card-deep))]">
           <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <Link
               to={post?.categorySlug ? `/community/${post.categorySlug}` : '/community'}
@@ -636,7 +706,7 @@ export default function PostThreadPage() {
               ✦ Spellful Home
             </Link>
           </div>
-        </div>
+        </div>}
 
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
           {/* ── Post ── */}
@@ -652,7 +722,7 @@ export default function PostThreadPage() {
               <Link to="/community"><Button variant="outline" size="sm" className="mt-4">{community_post.backToCommunityLabel}</Button></Link>
             </div>
           ) : post ? (
-            <article className="rounded-xl border border-border bg-card p-5 md:p-6">
+            <article className={spark ? "spark-original" : "rounded-xl border border-border bg-card p-5 md:p-6"}>
               {/* Badges row */}
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 {post.type === 'question' && (
@@ -675,10 +745,10 @@ export default function PostThreadPage() {
               </div>
 
               {/* Title */}
-              <h1 className="font-heading text-xl md:text-2xl text-foreground mb-4 whitespace-pre-wrap break-words leading-snug">{post.title}</h1>
+              {spark ? <p className="spark-original-text">{post.title}</p> : <h1 className="font-heading text-xl md:text-2xl text-foreground mb-4 whitespace-pre-wrap break-words leading-snug">{post.title}</h1>}
 
               {/* Author */}
-              <div className="flex items-center gap-2 mb-4">
+              <div className="spark-original-author flex items-center gap-2 mb-4">
                 <Avatar name={post.authorName} image={post.authorImage} size={8} />
                 <div>
                   <Link
@@ -689,7 +759,7 @@ export default function PostThreadPage() {
                   </Link>
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                      {spark && post.authorUsername && `@${post.authorUsername} · `}{formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
                       {post.updatedAt !== post.createdAt && ' · edited'}
                     </p>
                     {post.authorLocation && (
@@ -702,7 +772,9 @@ export default function PostThreadPage() {
               </div>
 
               {/* Hero image */}
-              {post.imageUrl && (
+              {spark && <SparkMediaGallery media={post.sparkMedia} />}
+              {spark && post.originalSparkId && <OriginalSparkCard spark={post.originalSpark} />}
+              {!post.sparkMedia?.length && post.imageUrl && (
                 <img
                   src={post.imageUrl}
                   alt=""
@@ -720,7 +792,7 @@ export default function PostThreadPage() {
               )}
 
               {/* Tags */}
-              {tags.length > 0 && (
+              {!spark && tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-4">
                   <Tag className="w-3.5 h-3.5 text-muted-foreground mt-0.5" />
                   {tags.map((tag) => (
@@ -732,7 +804,7 @@ export default function PostThreadPage() {
               )}
 
               {/* Action bar */}
-              <div className="flex items-center gap-2 mt-5 pt-4 border-t border-border/50 flex-wrap">
+              <div className="spark-original-actions flex items-center gap-2 mt-5 pt-4 border-t border-border/50 flex-wrap">
                 <SparkHeartButton key={post.id} postId={post.id} liked={post.liked} likeCount={post.likeCount} />
 
                 {post.type === 'spark' ? <SparkFavoriteButton key={post.id} postId={post.id} bookmarked={post.bookmarked} /> : (
@@ -751,10 +823,10 @@ export default function PostThreadPage() {
 
                 {post.audience === 'public' && !post.isHidden && (
                   <Link
-                    to={`/community/new?quote=${post.id}`}
+                    to={(spark ? SPARK_COMPOSE + '&quote=' : '/community/new?quote=') + post.id}
                     className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground"
                   >
-                    <MessageSquare className="w-3.5 h-3.5" /> Quote post
+                    <MessageSquare className="w-3.5 h-3.5" /> {spark ? "Quote or reshare" : "Quote post"}
                   </Link>
                 )}
 
@@ -802,10 +874,10 @@ export default function PostThreadPage() {
                   </button>
                 )}
 
-                <div className="flex items-center gap-3 text-xs text-muted-foreground ml-2">
+                {!spark && <div className="flex items-center gap-3 text-xs text-muted-foreground ml-2">
                   <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {post.viewCount}</span>
                   <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {post.replyCount}</span>
-                </div>
+                </div>}
               </div>
             </article>
           ) : null}
@@ -888,7 +960,7 @@ export default function PostThreadPage() {
                   </button>
                   <button
                     onClick={savePostEdit}
-                    disabled={postEditSaving || !postEditTitle.trim() || (post.type === 'spark' && countSparkCharacters(postEditTitle) > SPARK_LIMIT)}
+                    disabled={postEditSaving || (!postEditTitle.trim() && !post.sparkMedia?.length && !post.originalSparkId) || (post.type === 'spark' && countSparkCharacters(postEditTitle) > SPARK_LIMIT)}
                     className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                   >
                     {postEditSaving ? 'Saving…' : 'Save changes'}
@@ -911,12 +983,12 @@ export default function PostThreadPage() {
           {/* ── Replies ── */}
           {post && (
             <section>
-              <div className="flex items-center justify-between mb-3">
+              <div className={spark ? "sr-only" : "flex items-center justify-between mb-3"}>
                 <h2 className="text-sm font-semibold text-foreground">
                   {post.replyCount} {post.replyCount === 1 ? 'Reply' : 'Replies'}
                 </h2>
                 <div className="flex items-center gap-1">
-                  {(['chrono', 'liked'] as const).map((s) => (
+                  {!spark && (['chrono', 'liked'] as const).map((s) => (
                     <button
                       key={s}
                       onClick={() => setSort(s)}
@@ -940,14 +1012,14 @@ export default function PostThreadPage() {
                   <p className="text-sm text-muted-foreground">{community_post.noRepliesText}</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className={spark ? "spark-comment-thread" : "space-y-3"}>
                   {buildTree(replies)}
                 </div>
               )}
             </section>
           )}
 
-          {post && !post.isLocked && session?.user?.id === post.userId && (
+          {post && !spark && !post.isLocked && session?.user?.id === post.userId && (
             <Link
               to={`/tarot?followUp=${post.id}`}
               className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-primary hover:border-primary"
@@ -959,11 +1031,12 @@ export default function PostThreadPage() {
           {/* ── Composer ── */}
           {post && (
             <ReplyComposer
-              canFollowUp={session?.user?.id === post.userId}
+              sparkAuthor={sparkAuthor}
+              canFollowUp={!spark && session?.user?.id === post.userId}
               postId={post.id}
               replyTo={replyTo}
               onClear={() => setReplyTo(null)}
-              onSubmitted={reloadReplies}
+              onSubmitted={() => { reloadReplies(); setPost(current => current ? { ...current, replyCount: current.replyCount + 1 } : current); }}
               isLocked={post.isLocked}
             />
           )}

@@ -1,3 +1,5 @@
+import { OriginalSparkCard, SparkMediaGallery } from '@/components/SparkMediaGallery';
+import { SPARK_COMPOSE } from '@/lib/community-navigation';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { MessageSquare, MoreHorizontal, Star } from 'lucide-react';
 import { Link } from 'react-router';
@@ -46,15 +48,18 @@ export default function SparkCard({ post }: { post: CommunityPost }) {
               {saved ? 'Remove from Favorites' : 'Add to Favorites'}
             </DropdownMenuItem>
             <DropdownMenuItem asChild><Link to={destination}>View Spark</Link></DropdownMenuItem>
+            {post.audience === 'public' && <DropdownMenuItem asChild><Link to={SPARK_COMPOSE + '&quote=' + post.id}>Quote or reshare</Link></DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
       <Link to={destination} className="mt-2 block whitespace-pre-wrap break-words rounded-md font-heading text-[1.1rem] leading-snug text-foreground hover:underline focus-visible:outline focus-visible:outline-primary">
         {post.title}
-        {post.imageUrl && /^https:\/\//i.test(post.imageUrl) && (
+        {!post.sparkMedia?.length && post.imageUrl && /^https:\/\//i.test(post.imageUrl) && (
           <img src={post.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="mt-2 aspect-video w-full rounded-lg object-cover" />
         )}
       </Link>
+      <SparkMediaGallery media={post.sparkMedia} />
+      {post.originalSparkId && <OriginalSparkCard spark={post.originalSpark} />}
       <div className="-ml-1 mt-1 flex items-center gap-2 text-sm text-muted-foreground">
         <SparkHeartButton postId={post.id} liked={post.liked} likeCount={post.likeCount} />
         <Link to={destination} aria-label={`Open Spark with ${post.replyCount} replies`} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg px-1 hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-primary">

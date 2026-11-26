@@ -1,3 +1,4 @@
+import { COMMENT_GIF_SETTING } from '@/lib/spark-comments';
 /**
  * /account/accessibility — Reduce motion, text size, high contrast
  * Applies and saves immediately on change
@@ -39,6 +40,9 @@ export default function AccessibilityPage() {
   const [highContrast, setHighContrast] = useState(() =>
     typeof window !== 'undefined' ? localStorage.getItem('spellful-high-contrast') === 'true' : false
   );
+
+  const [commentGifs, setCommentGifs] = useState(true);
+  useEffect(() => { setCommentGifs(localStorage.getItem(COMMENT_GIF_SETTING) !== 'false'); }, []);
 
   // Apply on mount
   useEffect(() => {
@@ -113,6 +117,14 @@ export default function AccessibilityPage() {
               }}
             />
           </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
+          <Label htmlFor="comment-gifs">Show the GIF picker in Spark comments on this device</Label>
+          <Switch id="comment-gifs" checked={commentGifs} onCheckedChange={enabled => {
+            setCommentGifs(enabled);
+            localStorage.setItem(COMMENT_GIF_SETTING, String(enabled));
+          }} />
         </div>
 
         {/* Text size */}

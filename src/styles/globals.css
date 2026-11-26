@@ -830,3 +830,122 @@ html.high-contrast {
     }
   }
 }
+
+/* Spark comments use one continuous spine with a branch at each avatar. */
+.spark-comments {
+  --comment-line: #aa87c6;
+  background: linear-gradient(160deg, #1d1022, #120c17 65%);
+  color: #f6ebdc;
+}
+.spark-comments-header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  max-width: 48rem;
+  margin-inline: auto;
+  padding-inline: .75rem;
+  border-bottom: 1px solid #604969;
+}
+.spark-comments-header a, .spark-comment-actions button {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+}
+.spark-comments-header h1 { font-weight: 700; font-size: 1.125rem; }
+.spark-comments > div.max-w-3xl { padding-top: .75rem; }
+.spark-comments > div.max-w-3xl > * + * { margin-top: 0; }
+.spark-original {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 .65rem 2.6rem;
+}
+.spark-original-author { order: -1; margin: 0; }
+.spark-original-author > :first-child { position: absolute; left: 0; top: 0; }
+.spark-original-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: .15rem 0; }
+.spark-original-actions { margin-top: .25rem; padding-top: 0; border: 0; }
+.spark-comments:has(.spark-comment-thread) .spark-original::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 29px;
+  bottom: 0;
+  width: 1px;
+  background: var(--comment-line);
+}
+.spark-comment-thread { margin-left: 15px; }
+.spark-comment-thread, .spark-comment-branch { --branch-width: 16px; }
+.spark-comment-thread > .spark-comment-node, .spark-comment-branch > .spark-comment-node {
+  position: relative;
+  padding-left: var(--branch-width);
+  scroll-margin-top: 6rem;
+}
+.spark-comment-node::before, .spark-comment-node::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  pointer-events: none;
+}
+.spark-comment-node::before { top: 0; bottom: 0; border-left: 1px solid var(--comment-line); }
+.spark-comment-node:last-child::before { bottom: auto; height: 20px; }
+.spark-comment-node::after {
+  top: 20px;
+  width: var(--branch-width);
+  border-bottom: 1px solid var(--comment-line);
+}
+.spark-comment-branch { margin-left: 13px; }
+.spark-comment-row { padding: .35rem 0 .15rem 2.2rem; position: relative; }
+.spark-comment-row > .flex:first-child { margin-bottom: .1rem; }
+.spark-comment-row > .flex:first-child > .flex > :first-child {
+  position: absolute;
+  left: 0;
+  top: .4rem;
+}
+.spark-comment-row :is(.prose, .spark-comment-context) {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.spark-comment-context { color: #cbb0db; font-size: .72rem; margin: .15rem 0; }
+.spark-comment-actions { display: flex; align-items: center; color: #dbc1ec; margin-left: -9px; }
+.spark-comment-actions button { gap: .25rem; font-size: .75rem; }
+.spark-comment-actions svg { width: 16px; height: 16px; }
+.spark-comment-actions button[aria-pressed=true] { color: #f2c869; }
+.spark-comment-actions button[aria-pressed=true] svg { fill: currentColor; }
+.spark-comment-actions button:disabled { opacity: .55; }
+.spark-comment-gif { width: min(100%, 11rem); max-height: 8rem; object-fit: contain; border-radius: .5rem; margin-top: .25rem; }
+.spark-comment-link {
+  display: flex;
+  gap: .4rem;
+  min-width: 0;
+  margin-block: .3rem;
+  padding: .25rem .45rem;
+  border-left: 1px solid var(--comment-line);
+  font-size: .75rem;
+  color: #e3c7f4;
+}
+.spark-comment-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spark-comment-composer { padding-block: .65rem; border-top: 1px solid #604969; }
+.spark-comment-input {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  border: 1px solid #604969;
+  border-radius: .75rem;
+  padding-inline-end: .4rem;
+  background: #25182c;
+}
+.spark-comment-input textarea { min-width: 0; background: transparent; border: 0; }
+.spark-comment-input button { min-height: 44px; }
+@media (max-width: 380px) {
+  .spark-comment-branch { margin-left: 7px; --branch-width: 9px; }
+}
+body:has(.spark-comments) nav[aria-label="Breadcrumb"] { display: none; }
+.spark-comment-branch:empty { display: none; }
+.spark-original > .mb-3:empty { display: none; }
+.spark-comment-actions button:focus-visible { outline: 2px solid currentColor; border-radius: .375rem; }
+.spark-comments > div.max-w-3xl > * { margin-block: 0; }
+.spark-comment-thread { border-top: 1px solid #604969; }
+.spark-comment-branch-compact { margin-left: 0; --branch-width: 4px; }
+.spark-original-text:empty { display: none; }

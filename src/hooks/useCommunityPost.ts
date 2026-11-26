@@ -1,3 +1,4 @@
+import type { SparkMedia, OriginalSpark } from '@/lib/spark-media';
 /**
  * Community post & reply types, plus data hooks for the thread page.
  */
@@ -29,6 +30,8 @@ export interface CommunityReply {
   authorUsername: string | null;
   authorLocation: string | null;
   liked: boolean;
+  favorited?: boolean;
+  gifUrl?: string | null;
 }
 
 export interface CommunityPostDetail {
@@ -36,6 +39,9 @@ export interface CommunityPostDetail {
   type: 'discussion' | 'question' | 'spark';
   title: string;
   body: string;
+  sparkMedia?: SparkMedia[] | null;
+  originalSparkId?: number | null;
+  originalSpark?: OriginalSpark | null;
   imageUrl: string | null;
   tags: string | null;
   isPinned: boolean;

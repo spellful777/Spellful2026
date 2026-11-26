@@ -1,3 +1,4 @@
+import { loadOriginalSparks } from '@/server/lib/original-sparks.js';
 import { followsPostAuthor, postAudienceAllows } from '@/server/lib/community-post-access.js';
 /**
  * GET /api/community/posts
@@ -80,7 +81,10 @@ export default async function handler(req: Request, res: Response) {
       title: communityPosts.title,
       preview: sql<string>`left(${communityPosts.body}, 280)`,
       tags: communityPosts.tags,
+      audience: communityPosts.audience,
       imageUrl: communityPosts.imageUrl,
+      sparkMedia: communityPosts.sparkMedia,
+      originalSparkId: communityPosts.originalSparkId,
       isPinned: communityPosts.isPinned,
       isLocked: communityPosts.isLocked,
       likeCount: communityPosts.likeCount,
@@ -119,9 +123,10 @@ export default async function handler(req: Request, res: Response) {
     bookmarkedIds = new Set(bookmarks.map((b) => b.postId));
   }
 
+  const originals = await loadOriginalSparks(posts.map(post => post.originalSparkId), myId);
   const pages = Math.ceil(total / limit);
   res.json({
-    posts: posts.map((p) => ({ ...p, liked: likedIds.has(p.id), bookmarked: bookmarkedIds.has(p.id) })),
+    posts: posts.map((p) => ({ ...p, originalSpark: originals.get(p.originalSparkId ?? 0) ?? null, liked: likedIds.has(p.id), bookmarked: bookmarkedIds.has(p.id) })),
     total,
     newestId: newestId ?? 0,
     page,
