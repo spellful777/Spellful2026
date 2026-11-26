@@ -63,7 +63,7 @@ export default function HomeSocialMenu({ username }: { username?: string | null 
                 <User aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuContent align="end" className="w-52 [&_[role=menuitem]]:min-h-11 [&_[role=menuitem]:focus]:text-background">
               <DropdownMenuItem asChild><Link to={COMMUNITY_FEED}><MessageSquare aria-hidden="true" />Community</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to={HOME_EXPLORE}><Compass aria-hidden="true" />Explore</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to={COMMUNITY_REQUESTS}><Bell aria-hidden="true" />Coven requests</Link></DropdownMenuItem>
