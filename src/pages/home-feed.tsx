@@ -83,6 +83,18 @@ export default function HomeFeed() {
         <Button asChild variant="outline"><Link to="/community/discover">Find people to follow</Link></Button>
         <Button asChild variant="outline"><Link to="/circles">Community Circles</Link></Button>
       </nav>
+      <details className="rounded-xl border border-border bg-card px-4 py-3 text-sm">
+        <summary className="cursor-pointer font-medium">How your feed works</summary>
+        <p className="mt-2 text-muted-foreground">
+          <strong>Following</strong> shows posts from people you follow, newest first.
+        </p>
+        <p className="mt-2 text-muted-foreground">
+          <strong>Discover</strong> shows posts from people you don’t follow. It gives questions with fewer than three replies
+          first priority, followed by other posts with fewer than three replies, when published in the past two weeks.
+          Within each priority, newer posts appear first.
+        </p>
+        <p className="mt-2 text-muted-foreground">Both views respect post visibility, Circle membership, and blocks.</p>
+      </details>
       {newPosts && <div className="sticky top-16 z-20"><Button onClick={refresh}>New posts</Button></div>}
       {error ? (
         <div role="status" className="rounded-xl border border-border p-4">
