@@ -1,3 +1,5 @@
+import { inboxFlag } from './inbox-flag';
+
 export interface GroupSummary {
   id: number;
   name: string;
@@ -43,9 +45,9 @@ export function parseInboxGroups(payload: unknown): GroupSummary[] {
       role: asText(group.role),
       memberCount: Number(group.memberCount) || 0,
       unreadCount: Number(group.unreadCount) || 0,
-      isArchived: Boolean(group.isArchived),
-      isPinned: Boolean(group.isPinned),
-      isMuted: Boolean(group.isMuted),
+      isArchived: inboxFlag(group.isArchived),
+      isPinned: inboxFlag(group.isPinned),
+      isMuted: inboxFlag(group.isMuted),
       lastMessage: lastMessage ? {
         content: asText(lastMessage.content) || null,
         senderId: asText(lastMessage.senderId),

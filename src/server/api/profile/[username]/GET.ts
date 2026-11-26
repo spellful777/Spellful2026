@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { user, covenConnections, communityFollows } from '@/server/db/schema.js';
-import { eq, and, or, count, sql } from 'drizzle-orm';
+import { user, covenConnections, communityFollows, communityPosts } from '@/server/db/schema.js';
+import { eq, and, or, count, sql, desc, inArray } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 import { isBlocked } from '@/server/lib/block-check.js';
 
@@ -15,6 +15,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
     // Resolve by normalized username — fall back to LOWER(username) for rows
     // where username_normalized hasn't been backfilled yet.
     const normalized = username.toLowerCase();
+    const memberId = username.startsWith('~') ? username.slice(1) : null;
     const [profile] = await db
       .select({
         id: user.id,
@@ -51,7 +52,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
       })
       .from(user)
       .where(
-        or(
+        memberId ? eq(user.id, memberId) : or(
           eq(user.usernameNormalized, normalized),
           sql`(username_normalized IS NULL AND LOWER(username) = ${normalized})`,
         )
@@ -66,7 +67,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
         if (await isBlocked(viewerId, profile.id)) {
           return res.status(404).json({ error: 'Profile unavailable' });
         }
-      } catch { /* non-fatal */ }
+      } catch { return res.status(503).json({ error: 'Profile unavailable' }); }
     }
 
     const visibility = profile.profileVisibility ?? 'private';
@@ -123,7 +124,20 @@ export default async function handler(req: Request<{ username: string }>, res: R
     const covenCount = Number(covenRow?.n ?? 0);
     const followerCount = Number(followerRow?.n ?? 0);
 
-    res.json({ profile, connectionStatus, connectionId, isOwn: profile.id === viewerId, covenCount, followerCount });
+    const isOwn = profile.id === viewerId;
+    const audiences = isOwn || connectionStatus === 'accepted' ? ['public', 'coven'] : ['public'];
+    const latestPosts = await db.select({
+      id: communityPosts.id,
+      title: communityPosts.title,
+      createdAt: communityPosts.createdAt,
+    }).from(communityPosts).where(and(
+      eq(communityPosts.userId, profile.id),
+      eq(communityPosts.isHidden, false),
+      inArray(communityPosts.audience, audiences),
+    )).orderBy(desc(communityPosts.createdAt), desc(communityPosts.id)).limit(4);
+
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ profile, connectionStatus, connectionId, isOwn, covenCount, followerCount, latestPosts });
   } catch (err) {
     console.error(JSON.stringify({ event: 'profile.get.error', msg: String(err).slice(0, 400) }));
     res.status(500).json({ error: 'Failed to load profile' });

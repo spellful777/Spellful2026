@@ -429,6 +429,7 @@ export default function UserProfilePage() {
   // Section data
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [featuredPosts, setFeaturedPosts] = useState<FeaturedPost[]>([]);
+  const [latestPosts, setLatestPosts] = useState<FeaturedPost[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [soundscapes, setSoundscapes] = useState<Soundscape[]>([]);
@@ -481,6 +482,7 @@ export default function UserProfilePage() {
       setIdentity(id?.identity ?? null);
       setGallery(gal?.items ?? []);
       setFeaturedPosts(feat?.posts ?? []);
+      setLatestPosts(pd.latestPosts ?? []);
       setCollections(col?.collections ?? []);
       setMilestones(mil?.milestones ?? []);
       setSoundscapes(snd?.soundscapes ?? []);
@@ -938,6 +940,21 @@ export default function UserProfilePage() {
               {gallery.length > 9 && (
                 <p className="text-xs text-muted-foreground text-center mt-2">+{gallery.length - 9} more photos</p>
               )}
+            </RealmSection>
+          )}
+
+          {latestPosts.length > 0 && (
+            <RealmSection title="Latest Posts" icon={<FileText className="h-4 w-4" />} id="latest-posts">
+              <ul className="space-y-2">
+                {latestPosts.map(post => (
+                  <li key={post.id}>
+                    <Link to={`/community/post/${post.id}`} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-3 py-2.5 hover:border-primary/40">
+                      <span className="min-w-0 truncate text-sm font-medium">{post.title}</span>
+                      {post.createdAt && <span className="shrink-0 text-xs text-muted-foreground">{getTimeAgo(post.createdAt)}</span>}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </RealmSection>
           )}
 
