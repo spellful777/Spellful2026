@@ -163,7 +163,10 @@ function BenefitRow({ icon: Icon, title, desc, accent }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const { session } = useSession();
-  return session ? <HomeFeed key={session.user.id} username={session.user.username} /> : <PublicHomePage />;
+  if (!session) return <PublicHomePage />;
+  const { user } = session;
+  const username = 'username' in user && typeof user.username === 'string' ? user.username : undefined;
+  return <HomeFeed key={user.id} username={username} />;
 }
 
 function PublicHomePage() {
