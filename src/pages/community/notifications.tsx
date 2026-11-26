@@ -62,7 +62,9 @@ function NotifRow({
 }) {
   const ago = formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true });
   const isMuted = notif.postId ? mutedPostIds.has(notif.postId) : false;
-  const typeLabel = community_notifications.types[notif.type] ?? community_notifications.types.system;
+  const typeLabel = notif.type === 'follow_up'
+    ? 'Follow-up'
+    : community_notifications.types[notif.type] ?? community_notifications.types.system;
 
   const handleClick = () => {
     if (!notif.isRead) onRead(notif.id);
