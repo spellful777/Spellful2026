@@ -39,7 +39,7 @@ export interface CommunityPost {
   bookmarked: boolean;
 }
 
-export type PostFilter = 'personalized' | 'chronological' | 'all' | 'latest' | 'popular' | 'unanswered' | 'following' | 'mine';
+export type PostFilter = 'personalized' | 'chronological' | 'all' | 'latest' | 'popular' | 'trending' | 'unanswered' | 'following' | 'mine';
 
 interface PostsResult {
   posts: CommunityPost[];

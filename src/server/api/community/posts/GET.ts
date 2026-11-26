@@ -1,12 +1,12 @@
 import { followsPostAuthor, postAudienceAllows } from '@/server/lib/community-post-access.js';
 /**
  * GET /api/community/posts
- * Query params: filter (all|latest|popular|unanswered|following|mine), category, page, limit
+ * Query params: filter (all|latest|chronological|personalized|popular|trending|unanswered|following|mine), category, page, limit
  */
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityPosts, communityCategories, communityLikes, communityBookmarks, user } from '@/server/db/schema.js';
-import { eq, and, desc, sql, inArray } from 'drizzle-orm';
+import { eq, and, desc, gte, sql, inArray } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -40,6 +40,13 @@ export default async function handler(req: Request, res: Response) {
   if (filter === 'chronological') orderBy = recent;
   if (filter === 'personalized') orderBy = [desc(follows), ...recent];
   if (filter === 'popular') orderBy = [desc(communityPosts.likeCount), desc(communityPosts.replyCount), ...recent];
+
+  if (filter === 'trending') {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const engagement = sql`coalesce(${communityPosts.likeCount}, 0) + 2 * coalesce(${communityPosts.replyCount}, 0)`;
+    conditions.push(gte(communityPosts.createdAt, since), sql`${engagement} > 0`);
+    orderBy = [desc(engagement), ...recent];
+  }
 
   const [posts, [{ total }]] = await Promise.all([
     db.select({

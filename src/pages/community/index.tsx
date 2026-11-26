@@ -112,6 +112,7 @@ const FILTERS: { value: PostFilter; label: string }[] = [
   { value: 'personalized', label: 'For you' },
   { value: 'chronological', label: 'Newest first' },
   { value: 'latest', label: 'Pinned first' },
+  { value: 'trending',   label: 'Trending' },
   { value: 'popular',    label: 'Popular' },
   { value: 'unanswered', label: 'Unanswered' },
   { value: 'following',  label: 'Following' },
@@ -216,8 +217,8 @@ function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'
 }
 
 // ── Trending sidebar ──────────────────────────────────────────────────────────
-function TrendingSidebar() {
-  const { posts, loading } = useCommunityPosts('popular', undefined, 1);
+function TrendingSidebar({ onSelectTrending }: { onSelectTrending: () => void }) {
+  const { posts, loading, error, reload } = useCommunityPosts('trending');
   const top = posts.slice(0, 5);
 
   return (
@@ -226,26 +227,30 @@ function TrendingSidebar() {
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
           <TrendingUp className="w-4 h-4 text-primary" /> {community.sidebar.trendingTitle}
         </h3>
+        <p className="mb-3 text-xs text-muted-foreground">Active discussions started in the past week.</p>
         {loading ? (
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
           </div>
+        ) : error ? (
+          <Button size="sm" variant="outline" onClick={reload}>Retry trending discussions</Button>
         ) : top.length === 0 ? (
           <p className="text-xs text-muted-foreground">{community.sidebar.trendingEmpty}</p>
         ) : (
           <ol className="space-y-2">
-            {top.map((p, i) => (
+            {top.map((p) => (
               <li key={p.id}>
-                <Link to={`/community/post/${p.id}`} className="flex items-start gap-2 group">
-                  <span className="text-xs font-bold text-primary/60 w-4 shrink-0 mt-0.5">{i + 1}</span>
+                <Link to={`/community/post/${p.id}`} className="block rounded p-1 hover:bg-muted focus-visible:outline focus-visible:outline-primary">
                   <span className="text-xs text-foreground/80 group-hover:text-primary transition-colors line-clamp-2 leading-snug">
                     {p.title}
                   </span>
+                  <span className="block text-xs text-muted-foreground">{p.replyCount ?? 0} replies · {p.likeCount ?? 0} likes</span>
                 </Link>
               </li>
             ))}
           </ol>
         )}
+        {top.length > 0 && <Button size="sm" variant="ghost" onClick={onSelectTrending}>See trending discussions</Button>}
       </div>
 
       {/* Quick links */}
@@ -874,7 +879,9 @@ export default function CommunityPage() {
                 <div className="rounded-xl border border-border bg-card p-10 text-center">
                   <Sparkles className="w-8 h-8 text-primary/40 mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">
-                    {filter === 'following'
+                    {filter === 'trending'
+                      ? 'No active discussions started in the past week.'
+                      : filter === 'following'
                       ? community.emptyStates.following
                       : filter === 'mine'
                       ? community.emptyStates.mine
@@ -929,7 +936,10 @@ export default function CommunityPage() {
 
             {/* Sidebar */}
             <div className="lg:w-64 shrink-0">
-              <TrendingSidebar />
+              <TrendingSidebar onSelectTrending={() => {
+                setView('feed');
+                handleFilterChange('trending');
+              }} />
             </div>
           </div>
         </div>
