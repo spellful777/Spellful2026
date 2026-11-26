@@ -19,6 +19,7 @@ import { formatDistanceToNow } from 'date-fns';
 import FriendUpdatesFeed from '@/components/FriendUpdatesFeed';
 import SinceYouWereAwayBanner from '@/components/SinceYouWereAwayBanner';
 import CovenHearth from '@/components/CovenHearth';
+import CosmicPulse from "@/components/CosmicPulse";
 
 // ── Community stats strip ─────────────────────────────────────────────────────
 interface CommunityStats { onlineCount: number; registeredCount: number; }
@@ -108,7 +109,9 @@ function CategoryIcon({ name, className, style }: { name: string; className?: st
 
 // ── Filter tabs ───────────────────────────────────────────────────────────────
 const FILTERS: { value: PostFilter; label: string }[] = [
-  { value: 'latest',     label: 'Latest' },
+  { value: 'personalized', label: 'For you' },
+  { value: 'chronological', label: 'Newest first' },
+  { value: 'latest', label: 'Pinned first' },
   { value: 'popular',    label: 'Popular' },
   { value: 'unanswered', label: 'Unanswered' },
   { value: 'following',  label: 'Following' },
@@ -140,7 +143,7 @@ function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>['posts'
             className="shrink-0 mt-0.5"
           >
             {post.authorImage ? (
-              <img src={post.authorImage} alt={post.authorName ?? ''} className="w-8 h-8 rounded-full object-cover hover:ring-2 hover:ring-primary/50 transition-all" />
+              <img loading="lazy" src={post.authorImage} alt={post.authorName ?? ''} className="w-8 h-8 rounded-full object-cover hover:ring-2 hover:ring-primary/50 transition-all" />
             ) : (
               <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground hover:ring-2 hover:ring-primary/50 transition-all">
                 {(post.authorName ?? '?')[0].toUpperCase()}
@@ -754,6 +757,7 @@ export default function CommunityPage() {
             })()}
           </section>
 
+          <CosmicPulse />
           {/* ── Feed + sidebar ── */}
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Feed */}
@@ -831,6 +835,7 @@ export default function CommunityPage() {
                 {FILTERS.map(({ value, label }) => (
                   <button
                     key={value}
+                    aria-pressed={filter === value}
                     onClick={() => handleFilterChange(value)}
                     className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       filter === value

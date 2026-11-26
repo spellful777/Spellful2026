@@ -1,7 +1,8 @@
+import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityReplies, communityPosts, communityNotifications } from '@/server/db/schema.js';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
 const MAX_DEPTH = 4;
@@ -13,7 +14,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   const postId = parseInt(req.params.id);
   if (isNaN(postId)) return res.status(400).json({ error: 'Invalid id' });
 
-  const [post] = await db.select({ userId: communityPosts.userId, isLocked: communityPosts.isLocked }).from(communityPosts).where(eq(communityPosts.id, postId)).limit(1);
+  const [post] = await db.select({ userId: communityPosts.userId, isLocked: communityPosts.isLocked }).from(communityPosts).where(and(eq(communityPosts.id, postId), eq(communityPosts.isHidden, false), postAudienceAllows(session.user.id))).limit(1);
   if (!post) return res.status(404).json({ error: 'Post not found' });
   if (post.isLocked) return res.status(403).json({ error: 'Post is locked' });
 

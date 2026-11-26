@@ -1,7 +1,8 @@
+import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { communityPosts, communityCategories, communityBlocks, user } from '@/server/db/schema.js';
-import { eq, and, like, or, desc, notInArray } from 'drizzle-orm';
+import { communityPosts, communityCategories, user } from '@/server/db/schema.js';
+import { eq, and, like, or, desc } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -17,21 +18,15 @@ export default async function handler(req: Request, res: Response) {
 
   if (!q) return res.json({ posts: [], total: 0 });
 
-  let blockedIds: string[] = [];
-  if (myId) {
-    const blocks = await db.select({ blockedId: communityBlocks.blockedId }).from(communityBlocks).where(eq(communityBlocks.blockerId, myId));
-    blockedIds = blocks.map((b) => b.blockedId);
-  }
-
   const conditions = [
     eq(communityPosts.isHidden, false),
+    postAudienceAllows(myId),
     or(like(communityPosts.title, `%${q}%`), like(communityPosts.body, `%${q}%`), like(communityPosts.tags, `%${q}%`)),
   ];
   if (category) {
     const [cat] = await db.select({ id: communityCategories.id }).from(communityCategories).where(eq(communityCategories.slug, category)).limit(1);
     if (cat) conditions.push(eq(communityPosts.categoryId, cat.id));
   }
-  if (blockedIds.length) conditions.push(notInArray(communityPosts.userId, blockedIds));
 
   const posts = await db.select({
     id: communityPosts.id,

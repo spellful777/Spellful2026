@@ -1,3 +1,4 @@
+import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityPosts, communityCategories, communityPolls, communityPollVotes, communityLikes, communityBookmarks, communityMutes, user } from '@/server/db/schema.js';
@@ -39,7 +40,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     .from(communityPosts)
     .leftJoin(user, eq(communityPosts.userId, user.id))
     .leftJoin(communityCategories, eq(communityPosts.categoryId, communityCategories.id))
-    .where(eq(communityPosts.id, postId))
+    .where(and(eq(communityPosts.id, postId), postAudienceAllows(myId)))
     .limit(1);
 
   if (!post) return res.status(404).json({ error: 'Post not found' });

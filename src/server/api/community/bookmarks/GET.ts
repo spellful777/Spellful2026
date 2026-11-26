@@ -1,3 +1,4 @@
+import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityBookmarks, communityPosts, communityCategories, user } from '@/server/db/schema.js';
@@ -29,7 +30,7 @@ export default async function handler(req: Request, res: Response) {
     .leftJoin(communityPosts, eq(communityBookmarks.postId, communityPosts.id))
     .leftJoin(user, eq(communityPosts.userId, user.id))
     .leftJoin(communityCategories, eq(communityPosts.categoryId, communityCategories.id))
-    .where(and(eq(communityBookmarks.userId, session.user.id)))
+    .where(and(eq(communityBookmarks.userId, session.user.id), postAudienceAllows(session.user.id), eq(communityPosts.isHidden, false)))
     .orderBy(desc(communityBookmarks.createdAt));
 
   res.json(bookmarks.filter((b) => !b.isHidden));

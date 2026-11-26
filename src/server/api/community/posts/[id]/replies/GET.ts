@@ -1,6 +1,7 @@
+import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { communityReplies, communityLikes, user } from '@/server/db/schema.js';
+import { communityPosts, communityReplies, communityLikes, user } from '@/server/db/schema.js';
 import { eq, and, asc, inArray, notInArray } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
@@ -44,8 +45,9 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     authorLocation: user.location,
   })
     .from(communityReplies)
+    .innerJoin(communityPosts, eq(communityPosts.id, communityReplies.postId))
     .leftJoin(user, eq(communityReplies.userId, user.id))
-    .where(and(...conditions))
+    .where(and(...conditions, eq(communityPosts.isHidden, false), postAudienceAllows(myId)))
     .orderBy(sort === 'liked' ? communityReplies.likeCount : asc(communityReplies.createdAt));
 
   // Liked state

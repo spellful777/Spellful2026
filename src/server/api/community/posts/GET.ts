@@ -1,11 +1,12 @@
+import { followsPostAuthor, postAudienceAllows } from '@/server/lib/community-post-access.js';
 /**
  * GET /api/community/posts
  * Query params: filter (all|latest|popular|unanswered|following|mine), category, page, limit
  */
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
-import { communityPosts, communityCategories, communityLikes, communityBookmarks, communityFollows, communityBlocks, user } from '@/server/db/schema.js';
-import { eq, and, desc, sql, inArray, notInArray } from 'drizzle-orm';
+import { communityPosts, communityCategories, communityLikes, communityBookmarks, user } from '@/server/db/schema.js';
+import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -16,7 +17,7 @@ export default async function handler(req: Request, res: Response) {
   const filter = (req.query.filter as string) || 'latest';
   const categorySlug = req.query.category as string | undefined;
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
+  const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 20));
   const offset = (page - 1) * limit;
 
   // Resolve category id
@@ -27,31 +28,18 @@ export default async function handler(req: Request, res: Response) {
     categoryId = cat.id;
   }
 
-  // Build blocked-user exclusion
-  let blockedIds: string[] = [];
-  if (myId) {
-    const blocks = await db.select({ blockedId: communityBlocks.blockedId }).from(communityBlocks).where(eq(communityBlocks.blockerId, myId));
-    blockedIds = blocks.map((b) => b.blockedId);
-  }
-
-  // Build following list for "following" filter
-  let followingIds: string[] = [];
-  if (filter === 'following' && myId) {
-    const follows = await db.select({ followingId: communityFollows.followingId }).from(communityFollows).where(eq(communityFollows.followerId, myId));
-    followingIds = follows.map((f) => f.followingId);
-  }
-
-  const conditions = [eq(communityPosts.isHidden, false)];
+  const conditions = [eq(communityPosts.isHidden, false), postAudienceAllows(myId)];
   if (categoryId) conditions.push(eq(communityPosts.categoryId, categoryId));
-  if (blockedIds.length) conditions.push(notInArray(communityPosts.userId, blockedIds));
   if (filter === 'unanswered') conditions.push(eq(communityPosts.replyCount, 0));
   if (filter === 'mine' && myId) conditions.push(eq(communityPosts.userId, myId));
-  if (filter === 'following' && followingIds.length) conditions.push(inArray(communityPosts.userId, followingIds));
-  if (filter === 'following' && !followingIds.length) return res.json({ posts: [], total: 0, page, pages: 0 });
+  const follows = followsPostAuthor(myId);
+  if (filter === 'following') conditions.push(follows);
 
-  const orderBy = filter === 'popular'
-    ? [desc(communityPosts.likeCount), desc(communityPosts.replyCount)]
-    : [desc(communityPosts.isPinned), desc(communityPosts.createdAt)];
+  const recent = [desc(communityPosts.createdAt), desc(communityPosts.id)];
+  let orderBy = [desc(communityPosts.isPinned), ...recent];
+  if (filter === 'chronological') orderBy = recent;
+  if (filter === 'personalized') orderBy = [desc(follows), ...recent];
+  if (filter === 'popular') orderBy = [desc(communityPosts.likeCount), desc(communityPosts.replyCount), ...recent];
 
   const [posts, [{ total }]] = await Promise.all([
     db.select({

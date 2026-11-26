@@ -99,6 +99,7 @@ import community__friend_updates__hide__post from "./api/community/friend-update
 import community__friend_updates__react__post from "./api/community/friend-updates/react/POST";
 import community__grimoire_save__post from "./api/community/grimoire-save/POST";
 import community__hearth__get from "./api/community/hearth/GET";
+import getCosmicPulse from "./api/cosmic-pulse/GET";
 import community__mute__post from "./api/community/mute/POST";
 import community__notifications__get from "./api/community/notifications/GET";
 import community__notifications__read__post from "./api/community/notifications/read/POST";
@@ -716,6 +717,7 @@ app.post("/api/community/friend-updates/hide", community__friend_updates__hide__
 app.post("/api/community/friend-updates/react", community__friend_updates__react__post);
 app.post("/api/community/grimoire-save", community__grimoire_save__post);
 app.get("/api/community/hearth", community__hearth__get);
+app.get("/api/cosmic-pulse", getCosmicPulse);
 app.post("/api/community/mute", community__mute__post);
 app.get("/api/community/notifications", community__notifications__get);
 app.post("/api/community/notifications/read", community__notifications__read__post);
