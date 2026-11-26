@@ -805,10 +805,6 @@ html.high-contrast {
 }
 
 @media (max-width: 767px) {
-  body:has(.home-floating-spark) nav[data-home-palette] {
-    padding-inline-end: 4.5rem;
-  }
-
   body:has([role='dialog'][aria-modal='true']) .home-floating-spark {
     visibility: hidden;
   }
@@ -818,13 +814,19 @@ html.high-contrast {
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .home-floating-spark {
-    animation: home-spark-enter 140ms ease-out both;
-  }
+.home-floating-spark[data-scrolling='true'] {
+  opacity: 0;
+  pointer-events: none;
 }
 
-@keyframes home-spark-enter {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .home-floating-spark {
+    transition: opacity 140ms ease-out;
+  }
+
+  @starting-style {
+    .home-floating-spark {
+      opacity: 0;
+    }
+  }
 }

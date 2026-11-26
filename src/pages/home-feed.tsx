@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Button } from '@/components/ui/button';
@@ -21,12 +21,28 @@ export default function HomeFeed({ username }: { username?: string | null }) {
   const headerSpark = useRef<HTMLAnchorElement>(null);
   const floatingSparkLink = useRef<HTMLAnchorElement>(null);
   const [floatingSpark, setFloatingSpark] = useState(false);
+  const [scrolling, setScrolling] = useState(false);
+  const [navHeight, setNavHeight] = useState(0);
   const { posts, loading, error, reload, pages, newestId } = useCommunityPosts(filter, undefined, page, 'newest', true, 'spark');
 
   useEffect(() => {
     const button = headerSpark.current;
     if (!button) return;
     const mobile = window.matchMedia('(max-width: 767px)');
+    let stopTimer: ReturnType<typeof setTimeout> | undefined;
+    const nav = document.querySelector('nav[data-home-palette]');
+    const navObserver = nav ? new ResizeObserver(() => setNavHeight(nav.getBoundingClientRect().height)) : null;
+    if (nav && navObserver) {
+      setNavHeight(nav.getBoundingClientRect().height);
+      navObserver.observe(nav);
+    }
+
+    const onScroll = () => {
+      if (!mobile.matches) return;
+      setScrolling(true);
+      clearTimeout(stopTimer);
+      stopTimer = setTimeout(() => setScrolling(false), 180);
+    };
 
     const update = () => {
       const show = mobile.matches && button.getBoundingClientRect().bottom <= 0;
@@ -37,9 +53,13 @@ export default function HomeFeed({ username }: { username?: string | null }) {
     const observer = new IntersectionObserver(update);
     observer.observe(button);
     mobile.addEventListener('change', update);
+    window.addEventListener('scroll', onScroll, { passive: true });
     update();
     return () => {
       observer.disconnect();
+      navObserver?.disconnect();
+      clearTimeout(stopTimer);
+      window.removeEventListener('scroll', onScroll);
       mobile.removeEventListener('change', update);
     };
   }, []);
@@ -94,7 +114,10 @@ export default function HomeFeed({ username }: { username?: string | null }) {
   const visiblePosts = !error && (!loading || anchor.current) ? posts : [];
 
   return (
-    <main className="home-feed mx-auto max-w-3xl space-y-2 px-3 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-3 sm:px-4 md:pb-24">
+    <main
+      className="home-feed mx-auto max-w-3xl space-y-2 px-3 pb-[calc(var(--home-mobile-nav-height)+4.75rem)] pt-3 sm:px-4 md:pb-24"
+      style={{ '--home-mobile-nav-height': navHeight ? `${navHeight}px` : 'calc(57px + env(safe-area-inset-bottom))' } as CSSProperties}
+    >
       <Helmet><title>Home feed | Spellful</title><meta name="robots" content="noindex" /></Helmet>
       <HomeSocialMenu username={username} sparkRef={headerSpark} floatingSpark={floatingSpark} />
       <nav aria-label="Home feed" className="home-feed-tabs sticky top-0 z-30 grid grid-cols-3 md:top-20">
@@ -129,8 +152,11 @@ export default function HomeFeed({ username }: { username?: string | null }) {
         </nav>
       )}
       {floatingSpark && (
-        <div className="home-floating-spark fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-[51] md:hidden">
-          <SparkItLink iconOnly linkRef={floatingSparkLink} />
+        <div
+          data-scrolling={scrolling || undefined}
+          className="home-floating-spark fixed bottom-[calc(var(--home-mobile-nav-height)+0.75rem)] right-4 z-[45] md:hidden"
+        >
+          <SparkItLink iconOnly linkRef={floatingSparkLink} inactive={scrolling} />
         </div>
       )}
     </main>
