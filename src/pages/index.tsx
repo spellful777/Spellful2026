@@ -12,7 +12,7 @@ import AstroFeed from '@/components/AstroFeed';
 import CommandCenter from '@/components/CommandCenter';
 import { useSession } from '@/lib/auth/auth-client.tsx';
 import { getMoonPhase } from '@/lib/moon-phase-engine';
-import { COMMUNITY_FEED } from '@/lib/community-navigation';
+import HomeCovenCard from '@/components/HomeCovenCard';
 import { InstallBanner } from '@/components/InstallSpellful';
 
 // ─── Seeded stars (SSR-safe) ──────────────────────────────────────────────────
@@ -417,17 +417,6 @@ function PublicHomePage() {
           </section>
         )}
 
-        <section aria-labelledby="home-coven-heading" className="coven-entry border-y px-6 py-6">
-          <div className="mx-auto max-w-6xl">
-            <h2 id="home-coven-heading" className="font-heading text-3xl font-bold text-white">
-              <Link to={COMMUNITY_FEED} className="inline-flex min-h-11 items-center gap-2 rounded-sm underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-                My Coven <ArrowRight className="size-4 text-primary" aria-hidden="true" />
-              </Link>
-            </h2>
-            <p className="mt-1 text-sm text-white/75">{home.communityBanner.body}</p>
-          </div>
-        </section>
-
         {/* ══════════════════════════════════════════════════════════════
             2. TRY SOMETHING MAGICAL — guests only
         ══════════════════════════════════════════════════════════════ */}
@@ -634,6 +623,10 @@ function PublicHomePage() {
             <AstroFeed />
           </section>
         )}
+
+        <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
+          <HomeCovenCard description="Follow members and join the conversation." />
+        </div>
 
         {/* ══════════════════════════════════════════════════════════════
             5. WHY JOIN SPELLFUL — guests only

@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowRight } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Button } from '@/components/ui/button';
 import { useCommunityPosts } from '@/hooks/useCommunity';
-import { COMMUNITY_FEED } from '@/lib/community-navigation';
+import HomeCovenCard from '@/components/HomeCovenCard';
 import { PostCard } from './community/index';
 
 export default function HomeFeed() {
@@ -62,6 +61,8 @@ export default function HomeFeed() {
     else reload();
   }
 
+  const visiblePosts = !error && (!loading || anchor.current) ? posts : [];
+
   return (
     <main className="mx-auto max-w-3xl space-y-5 px-4 pb-24 pt-8">
       <Helmet><title>Home feed | Spellful</title><meta name="robots" content="noindex" /></Helmet>
@@ -69,14 +70,6 @@ export default function HomeFeed() {
         <h1 className="font-heading text-3xl">Home</h1>
         <Button asChild><Link to="/community/new">Create post</Link></Button>
       </div>
-      <section aria-labelledby="home-coven-heading" className="coven-entry rounded-xl border p-4">
-        <h2 id="home-coven-heading" className="font-heading text-2xl font-bold text-white">
-          <Link to={COMMUNITY_FEED} className="inline-flex min-h-11 items-center gap-2 rounded-sm underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-            My Coven <ArrowRight className="size-4 text-primary" aria-hidden="true" />
-          </Link>
-        </h2>
-        <p className="text-sm text-white/75">Catch up with your circle.</p>
-      </section>
       <nav aria-label="Home feed" className="flex flex-wrap gap-2">
         {(['following', 'discover'] as const).map(option => (
           <Button key={option} variant={filter === option ? 'default' : 'outline'} aria-pressed={filter === option} onClick={() => {
@@ -89,20 +82,24 @@ export default function HomeFeed() {
         <Button asChild variant="ghost"><Link to="/community/discover">Find members</Link></Button>
       </nav>
       {newPosts && <div className="sticky top-16 z-20"><Button onClick={refresh}>New posts</Button></div>}
-      {error ? (
-        <div role="status" className="rounded-xl border border-border p-4">
-          <p>Couldn’t load your feed.</p>
-          <Button className="mt-2" variant="outline" onClick={reload}>Try again</Button>
-        </div>
-      ) : (
-        <div ref={list} className="space-y-3" aria-busy={loading}>
-          {(!loading || anchor.current) && posts.map(post => <PostCard key={post.id} post={post} />)}
-          {loading && !anchor.current && <p role="status">Loading posts…</p>}
-          {!loading && !posts.length && (
-            <p role="status">{filter === 'following' ? 'Follow members to see their posts here.' : 'No new conversations to discover yet.'}</p>
-          )}
-        </div>
-      )}
+      <div ref={list} className="space-y-3" aria-busy={loading}>
+        {error ? (
+          <div role="status" className="rounded-xl border border-border p-4">
+            <p>Couldn’t load your feed.</p>
+            <Button className="mt-2" variant="outline" onClick={reload}>Try again</Button>
+          </div>
+        ) : (
+          <>
+            {visiblePosts.slice(0, 2).map(post => <PostCard key={post.id} post={post} />)}
+            {loading && !anchor.current && <p role="status">Loading posts…</p>}
+            {!loading && !posts.length && (
+              <p role="status">{filter === 'following' ? 'Follow members to see their posts here.' : 'No new conversations to discover yet.'}</p>
+            )}
+          </>
+        )}
+        <HomeCovenCard />
+        {visiblePosts.slice(2).map(post => <PostCard key={post.id} post={post} />)}
+      </div>
       {!loading && !error && pages > 1 && (
         <nav aria-label="Feed pages" className="flex items-center gap-3">
           <Button variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
