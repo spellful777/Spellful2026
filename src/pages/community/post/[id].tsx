@@ -1,3 +1,4 @@
+import SparkHeartButton from '@/components/SparkHeartButton';
 import { useState, useRef, useEffect } from 'react';
 import { Link, useParams, useNavigate, useLocation } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -507,12 +508,6 @@ export default function PostThreadPage() {
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
-  const toggleLikePost = async () => {
-    if (!post) return;
-    await fetch(`/api/community/posts/${post.id}/like`, { method: 'POST' });
-    setPost((p) => p ? { ...p, liked: !p.liked, likeCount: p.liked ? p.likeCount - 1 : p.likeCount + 1 } : p);
-  };
-
   const toggleBookmark = async () => {
     if (!post) return;
     await fetch(`/api/community/posts/${post.id}/bookmark`, { method: 'POST' });
@@ -727,16 +722,7 @@ export default function PostThreadPage() {
 
               {/* Action bar */}
               <div className="flex items-center gap-2 mt-5 pt-4 border-t border-border/50 flex-wrap">
-                <button
-                  onClick={toggleLikePost}
-                  className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-                    post.liked
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
-                  }`}
-                >
-                  <ThumbsUp className="w-3.5 h-3.5" /> {post.likeCount}
-                </button>
+                <SparkHeartButton key={post.id} postId={post.id} liked={post.liked} likeCount={post.likeCount} />
 
                 <button
                   onClick={toggleBookmark}

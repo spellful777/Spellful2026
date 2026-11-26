@@ -7,9 +7,10 @@ import { motion } from 'motion/react';
 import {
   Wand2, Layers, Moon, Leaf, Heart, BookOpen, Sparkles, Globe,
   Bell, Bookmark, TrendingUp, MessageSquare, HelpCircle,
-  Pin, Lock, ThumbsUp, Eye, ChevronRight, Search, Users, Star, Building2,
+  Pin, Lock, Eye, ChevronRight, Search, Users, Star, Building2,
 } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
+import SparkHeartButton from '@/components/SparkHeartButton';
 import SparkIcon from '@/components/SparkIcon';
 import SparkItLink from '@/components/SparkItLink';
 import MyCoven from '@/components/MyCoven';
@@ -217,9 +218,7 @@ export function PostCard({ post }: { post: ReturnType<typeof useCommunityPosts>[
 
       {/* Stats row */}
       <div className="flex items-center gap-4 mt-2.5 pl-11 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <ThumbsUp className="w-3 h-3" /> {post.likeCount}
-        </span>
+        <SparkHeartButton postId={post.id} liked={post.liked} likeCount={post.likeCount} />
         <span className="flex items-center gap-1">
           <MessageSquare className="w-3 h-3" /> {post.replyCount}
         </span>
