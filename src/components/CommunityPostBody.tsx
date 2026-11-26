@@ -6,7 +6,7 @@ import { allowsMentionsInTag, COMMUNITY_DISCARDED_TAGS, communityMentionsInText 
 
 const ALLOWED = new Set([
   'p', 'br', 'strong', 'em', 'u', 's', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-  'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'hr', 'a', 'span', 'div',
+  'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'hr', 'a', 'span', 'div', 'section', 'details', 'summary',
 ]);
 function renderMentions(text: string): ReactNode {
   const parts: ReactNode[] = [];

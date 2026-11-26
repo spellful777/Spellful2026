@@ -12,6 +12,9 @@
 import { useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, Copy, Check, ExternalLink, Download, Share2 } from 'lucide-react';
+import { Link } from 'react-router';
+import { useSession } from '@/lib/auth/auth-client';
+import type { SharedReading } from '@/lib/shared-reading';
 import { shareContent } from '@/lib/share-studio';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -474,6 +477,14 @@ async function generateTarotStory(
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ShareTarotModal({ payload, onClose }: Props) {
+  const { session } = useSession();
+  const reading: SharedReading = {
+    type: 'tarot',
+    spreadType: payload.spreadType,
+    cards: payload.cards.map(({ cardId, reversed, displayOrder }) => ({ cardId, reversed, displayOrder })),
+    includePositions: true,
+    includeInterpretations: false,
+  };
   // Simplified single-screen flow: choose link or image, done.
   const [publicId, setPublicId] = useState<string | null>(null);
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
@@ -578,7 +589,7 @@ export default function ShareTarotModal({ payload, onClose }: Props) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 40 }}
           transition={{ duration: 0.22 }}
-          className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
+          className="w-full max-w-md max-h-[90dvh] rounded-2xl overflow-y-auto shadow-2xl"
           style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
         >
           {/* Header */}
@@ -639,6 +650,16 @@ export default function ShareTarotModal({ payload, onClose }: Props) {
                 </div>
               )}
             </div>
+
+            {session && (
+              <Link
+                to="/community/new"
+                state={{ reading }}
+                className="block rounded-lg border border-primary px-4 py-2 text-center text-sm font-semibold text-primary focus-visible:outline focus-visible:outline-primary"
+              >
+                Share to Coven feed
+              </Link>
+            )}
 
             {/* ── Privacy note ───────────────────────────────────────── */}
             <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>

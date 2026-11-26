@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -11,6 +11,8 @@ import { useCommunityCategories } from '@/hooks/useCommunity';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { CommunityPostBody } from '@/components/CommunityPostBody';
+import { renderSharedReading, sharedReadingSchema } from '@/lib/shared-reading';
 import { community_new } from 'virtual:content';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -247,10 +249,17 @@ export default function NewPostPage() {
   const quotedPostId = Number.isSafeInteger(quote) && quote > 0 ? quote : undefined;
   const { categories, loading: catsLoading } = useCommunityCategories();
 
+  const location = useLocation();
+  const initialReading = sharedReadingSchema.safeParse(location.state?.reading);
+  const [reading, setReading] = useState(() => initialReading.success ? initialReading.data : null);
+  const [selectedCards, setSelectedCards] = useState<number[]>(() => reading?.cards.map(card => card.displayOrder) ?? []);
+  const sharedReading = reading ? { ...reading, cards: reading.cards.filter(card => selectedCards.includes(card.displayOrder)) } : null;
+  const selectedPreview = sharedReading?.cards.length ? renderSharedReading(sharedReading) : null;
+
   // Form state
   const [postType, setPostType] = useState<PostType>('discussion');
   const [categoryId, setCategoryId] = useState<number | ''>('');
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(reading ? 'My tarot reading' : '');
   const [body, setBody] = useState('');
   const [tags, setTags] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -270,11 +279,14 @@ export default function NewPostPage() {
   const selectedCategory = categories.find((c) => c.id === categoryId);
 
   const validate = (): string => {
+    if (reading && !selectedPreview) return 'Select at least one valid card to share.';
     if (!categoryId) return community_new.errors.categoryRequired;
     if (!title.trim()) return community_new.errors.titleRequired;
     if (title.trim().length < 5) return community_new.errors.titleTooShort;
-    if (!body.trim()) return community_new.errors.bodyRequired;
-    if (body.trim().length < 20) return community_new.errors.bodyTooShort;
+    if (!reading) {
+      if (!body.trim()) return community_new.errors.bodyRequired;
+      if (body.trim().length < 20) return community_new.errors.bodyTooShort;
+    }
     if (showPoll) {
       if (!poll.question.trim()) return community_new.errors.pollQuestion;
       const validChoices = poll.choices.filter((c) => c.trim());
@@ -298,6 +310,7 @@ export default function NewPostPage() {
       tags,
       audience,
       quotedPostId,
+      sharedReading: sharedReading ?? undefined,
       imageUrl: imageUrl.trim() || undefined,
     };
 
@@ -398,6 +411,35 @@ export default function NewPostPage() {
                   <p className="rounded-xl border border-border bg-card p-3 text-sm">
                     Your post will link to the <Link className="text-primary underline" to={`/community/post/${quotedPostId}`}>original Coven discussion</Link>.
                   </p>
+                )}
+
+                {reading && (
+                  <fieldset className="space-y-3 rounded-xl border border-border bg-card p-4">
+                    <legend className="px-1 font-semibold">Share a tarot reading</legend>
+                    <p className="text-sm">Destination: Coven feed · {audience === 'coven' ? 'Your Coven' : 'Spellful members'}{selectedCategory ? ` · ${selectedCategory.name}` : ''}</p>
+                    <p className="text-sm text-muted-foreground">Choose what to include. Your original reading question and private notes stay private. Add your own caption or question in the post body.</p>
+                    <div className="space-y-1">
+                      {reading.cards.map(card => (
+                        <label key={card.displayOrder} className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" checked={selectedCards.includes(card.displayOrder)} onChange={event => {
+                            const checked = event.target.checked;
+                            setSelectedCards(current => checked ? [...current, card.displayOrder] : current.filter(order => order !== card.displayOrder));
+                          }} />
+                          {card.cardId.replaceAll('-', ' ')}{card.reversed ? ' (reversed)' : ''}
+                        </label>
+                      ))}
+                    </div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={reading.includePositions} onChange={event => setReading({ ...reading, includePositions: event.target.checked })} />
+                      Include spread positions
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={reading.includeInterpretations} onChange={event => setReading({ ...reading, includeInterpretations: event.target.checked })} />
+                      Include card interpretations
+                    </label>
+                    {selectedPreview && <CommunityPostBody html={selectedPreview} />}
+                    <Button type="button" variant="outline" size="sm" onClick={() => setReading(null)}>Remove reading</Button>
+                  </fieldset>
                 )}
 
                 {/* ── Post type ── */}

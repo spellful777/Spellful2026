@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Link, useParams, useNavigate } from 'react-router';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useParams, useNavigate, useLocation } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -172,7 +172,9 @@ function ReplyCard({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: 'easeOut' as const }}
-      className={indentClass}
+      id={`reply-${reply.id}`}
+      tabIndex={-1}
+      className={`${indentClass} scroll-mt-24 focus:outline focus:outline-2 focus:outline-primary`}
     >
       <div className={`rounded-xl border p-4 ${isAccepted ? 'border-[hsl(var(--success))] bg-[hsl(var(--success))]/5' : 'border-border bg-card'}`}>
         {/* Accepted badge */}
@@ -459,6 +461,14 @@ export default function PostThreadPage() {
   const { post, loading: postLoading, error, reload: reloadPost, setPost } = usePostDetail(postId);
   const [sort, setSort] = useState<'chrono' | 'liked'>('chrono');
   const { replies, loading: repliesLoading, reload: reloadReplies } = useReplies(postId, sort);
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (postLoading || repliesLoading || !/^#reply-\d+$/.test(hash)) return;
+    const target = document.getElementById(hash.slice(1));
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: 'start' });
+  }, [hash, postLoading, repliesLoading]);
   const [replyTo, setReplyTo] = useState<{ id: number; authorName: string | null } | null>(null);
   const [showShareToast, setShowShareToast] = useState(false);
 

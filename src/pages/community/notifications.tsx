@@ -146,10 +146,10 @@ function NotifRow({
       {/* Link to post */}
       {notif.postId && (
         <Link
-          to={`/community/post/${notif.postId}`}
+          to={`/community/post/${notif.postId}${notif.replyId ? `#reply-${notif.replyId}` : ''}`}
           onClick={handleClick}
           className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          aria-label="View post"
+          aria-label={notif.replyId ? 'View reply' : 'View post'}
         >
           <MessageSquare className="w-3.5 h-3.5" />
         </Link>

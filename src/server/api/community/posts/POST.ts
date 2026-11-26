@@ -1,3 +1,4 @@
+import { renderSharedReading, sharedReadingSchema } from '@/lib/shared-reading';
 import { notifyCommunityMentions } from '@/server/lib/community-mention-notifications.js';
 /**
  * POST /api/community/posts — create a new post (auth required)
@@ -13,7 +14,7 @@ export default async function handler(req: Request, res: Response) {
   const session = await getAuthSession(req);
   if (!session?.user?.id) return res.status(401).json({ error: 'Sign in to post' });
 
-  const { categoryId, type = 'discussion', title, body, tags = '', imageUrl, poll, audience = 'public', quotedPostId } = req.body as {
+  const { categoryId, type = 'discussion', title, body = '', tags = '', imageUrl, poll, audience = 'public', quotedPostId, sharedReading } = req.body as {
     categoryId?: number;
     type?: string;
     title?: string;
@@ -22,11 +23,13 @@ export default async function handler(req: Request, res: Response) {
     imageUrl?: string;
     audience?: string;
     quotedPostId?: number;
+    sharedReading?: unknown;
     poll?: { question: string; choices: string[]; closesAt?: string };
   };
 
-  if (!categoryId || !title?.trim() || !body?.trim()) {
-    return res.status(400).json({ error: 'categoryId, title, and body are required' });
+  if (!categoryId || typeof title !== 'string' || !title.trim() || typeof body !== 'string' ||
+      (!body.trim() && sharedReading === undefined)) {
+    return res.status(400).json({ error: 'Category, title, and a body or reading are required' });
   }
   if (!['discussion', 'question'].includes(type)) {
     return res.status(400).json({ error: 'Invalid post type' });
@@ -37,6 +40,12 @@ export default async function handler(req: Request, res: Response) {
   }
 
   let postBody = body.trim();
+  if (sharedReading !== undefined) {
+    const parsed = sharedReadingSchema.safeParse(sharedReading);
+    const preview = parsed.success ? renderSharedReading(parsed.data) : null;
+    if (!preview) return res.status(400).json({ error: 'Invalid shared reading' });
+    postBody += preview;
+  }
   if (quotedPostId !== undefined) {
     if (!Number.isSafeInteger(quotedPostId) || quotedPostId < 1) {
       return res.status(400).json({ error: 'Invalid original post' });
