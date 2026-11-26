@@ -43,7 +43,19 @@ jobs:
           umask 077
           key="$RUNNER_TEMP/AuthKey_$ASC_KEY.p8"
           trap 'rm -f "$key"' EXIT
-          printf '%s\n' "$ASC_P8" > "$key"
+          python3 - "$key" <<'PY'
+          import os, sys
+          from pathlib import Path
+          pem = os.environ["ASC_P8"].strip().strip("\"'").replace("\\r\\n", "\n").replace("\\n", "\n")
+          pem = pem.replace("\r\n", "\n").strip()
+          if not pem.startswith("-----BEGIN PRIVATE KEY-----\n") or not pem.endswith("\n-----END PRIVATE KEY-----"):
+              raise SystemExit("ASC_PRIVATE_KEY must contain the complete Apple AuthKey .p8 file.")
+          Path(sys.argv[1]).write_text(pem + "\n", encoding="ascii")
+          PY
+          if ! openssl pkey -in "$key" -noout >/dev/null 2>&1; then
+            echo "::error::ASC_PRIVATE_KEY is not a readable Apple .p8 private key."
+            exit 1
+          fi
           unset ASC_P8
           auth=(-allowProvisioningUpdates -authenticationKeyPath "$key" -authenticationKeyID "$ASC_KEY" -authenticationKeyIssuerID "$ASC_ISSUER")
           archive="$RUNNER_TEMP/Spellful.xcarchive"
