@@ -452,11 +452,10 @@ export default function CommunityPage() {
         <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
       </Helmet>
 
-      <main className="min-h-screen">
+      <main className="coven-community min-h-screen">
         {/* ── Magical Hero header ── */}
         <section
-          className="relative overflow-hidden border-b border-border"
-          style={{ background: `linear-gradient(160deg, hsl(var(--hero-midnight)) 0%, hsl(var(--hero-plum)) 50%, hsl(var(--hero-midnight)) 100%)` }}
+          className="coven-hero relative overflow-hidden border-b border-border"
         >
           {/* Radial glow behind logo */}
           <div
@@ -693,16 +692,14 @@ export default function CommunityPage() {
         )}
 
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-10">
-          <nav aria-label="Community navigation" className="mb-6 flex flex-wrap items-center gap-2">
+          <nav aria-label="Community navigation" className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card p-2.5 shadow-md">
             {COMMUNITY_VIEWS.map(({ view: itemView, label, to, icon: Icon }) => (
               <Link
                 key={itemView}
                 to={to}
                 preventScrollReset
                 aria-current={view === itemView ? 'page' : undefined}
-                className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium focus-visible:outline focus-visible:outline-primary ${
-                  view === itemView ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
+                className="coven-nav-link inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors"
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />
                 {label}
@@ -710,7 +707,7 @@ export default function CommunityPage() {
             ))}
             <Link
               to="/community/discover"
-              className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-muted px-3 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-primary"
+              className="coven-nav-link inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors"
             >
               <Search className="h-4 w-4" aria-hidden="true" />
               Discover

@@ -868,7 +868,7 @@ export default function UserProfilePage() {
                       Accept Coven Request
                     </Button>
                   ) : !connectionStatus && canRequestCoven && (
-                    <Button size="sm" variant="outline" className="min-h-10" onClick={handleCovenAction} disabled={covenActionLoading}>
+                    <Button size="sm" variant="outline" className="coven-action min-h-10" onClick={handleCovenAction} disabled={covenActionLoading}>
                       <Users className="h-4 w-4" aria-hidden="true" /> Send Coven Request
                     </Button>
                   )}

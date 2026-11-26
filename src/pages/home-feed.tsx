@@ -68,13 +68,13 @@ export default function HomeFeed() {
         <h1 className="font-heading text-3xl">Home</h1>
         <Button asChild><Link to="/community/new">Create post</Link></Button>
       </div>
-      <section aria-labelledby="home-coven-heading" className="rounded-xl border border-border bg-card p-4">
-        <h2 id="home-coven-heading" className="font-heading text-xl">My Coven</h2>
+      <section aria-labelledby="home-coven-heading" className="coven-entry rounded-2xl border p-5 shadow-lg">
+        <h2 id="home-coven-heading" className="font-heading text-2xl">My Coven</h2>
         <p className="mt-1 text-sm text-muted-foreground">Catch up with people you follow or join a group discussion.</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button asChild size="sm"><Link to={COMMUNITY_FEED}>Open My Coven feed</Link></Button>
-          <Button asChild size="sm" variant="outline"><Link to={COMMUNITY_UPDATES}>See updates</Link></Button>
-          <Button asChild size="sm" variant="outline"><Link to={COMMUNITY_GROUPS}>Browse groups</Link></Button>
+          <Button asChild size="sm" className="coven-action"><Link to={COMMUNITY_FEED}>Open My Coven feed</Link></Button>
+          <Button asChild size="sm" variant="outline" className="bg-transparent hover:bg-white/10 hover:text-white"><Link to={COMMUNITY_UPDATES}>See updates</Link></Button>
+          <Button asChild size="sm" variant="outline" className="bg-transparent hover:bg-white/10 hover:text-white"><Link to={COMMUNITY_GROUPS}>Browse groups</Link></Button>
         </div>
       </section>
       <nav aria-label="Home feed" className="flex flex-wrap gap-2">

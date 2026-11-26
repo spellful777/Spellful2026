@@ -526,3 +526,77 @@ html.high-contrast {
 @media (prefers-reduced-motion: reduce) {
   .cosmic-star { animation: none !important; }
 }
+
+/* My Coven shares Spellful's gold actions and uses teal surfaces for social navigation. */
+:root {
+  --coven-teal: 163 66% 74%;
+  --coven-teal-ink: 177 53% 11%;
+  --coven-teal-border: 172 34% 35%;
+}
+
+.coven-community {
+  --background: 181 43% 10%;
+  --card: 179 36% 17%;
+  --muted: 181 32% 15%;
+  --muted-foreground: 166 17% 74%;
+  --border: 177 24% 31%;
+  --accent: var(--coven-teal);
+  --card-deep: 182 43% 11%;
+  --hero-midnight: 183 52% 9%;
+  --hero-plum: 177 39% 22%;
+  --hero-surface: 181 39% 13%;
+  --hero-lavender: 167 30% 65%;
+  --hero-lavender-soft: 164 30% 83%;
+  background-color: hsl(var(--background));
+}
+
+.coven-hero {
+  background:
+    radial-gradient(ellipse at 50% 0%, hsl(169 49% 32% / 0.46), transparent 73%),
+    linear-gradient(160deg, hsl(var(--hero-midnight)), hsl(var(--hero-plum)) 57%, hsl(var(--hero-midnight)));
+}
+
+.coven-entry {
+  --border: var(--coven-teal-border);
+  --muted-foreground: 163 24% 83%;
+  border-color: hsl(var(--coven-teal-border));
+  background:
+    radial-gradient(ellipse at 92% 0%, hsl(167 48% 31% / 0.56), transparent 72%),
+    linear-gradient(130deg, hsl(181 49% 13%), hsl(179 40% 20%));
+  color: hsl(162 43% 97%);
+}
+
+.coven-action {
+  background-color: hsl(var(--coven-teal));
+  border: 1px solid hsl(var(--coven-teal));
+  color: hsl(var(--coven-teal-ink));
+}
+
+.coven-action:hover {
+  background-color: hsl(160 65% 84%);
+  color: hsl(var(--coven-teal-ink));
+}
+
+.coven-action:focus-visible,
+.coven-nav-link:focus-visible {
+  outline: 2px solid hsl(var(--coven-teal));
+  outline-offset: 3px;
+}
+
+.coven-nav-link {
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+.coven-nav-link:hover {
+  border-color: hsl(var(--coven-teal));
+  color: hsl(var(--foreground));
+}
+
+.coven-nav-link[aria-current='page'] {
+  border-color: hsl(var(--coven-teal));
+  background-color: hsl(var(--coven-teal));
+  color: hsl(var(--coven-teal-ink));
+  font-weight: 600;
+}

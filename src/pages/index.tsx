@@ -707,7 +707,7 @@ function PublicHomePage() {
         {/* ══════════════════════════════════════════════════════════════
             6. MY COVEN
         ══════════════════════════════════════════════════════════════ */}
-        <section className="py-xxl px-6 relative overflow-hidden" style={{ background: 'hsl(var(--card))' }}>
+        <section className="coven-entry relative overflow-hidden border-y px-6 py-xxl">
           <div className="max-w-5xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
               <motion.div
@@ -726,8 +726,7 @@ function PublicHomePage() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
                     to={COMMUNITY_FEED}
-                    className="inline-flex items-center gap-2 px-7 py-3 rounded-full text-sm transition-all duration-200 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontFamily: 'var(--font-sans)', letterSpacing: '0.04em' }}
+                    className="coven-action inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold transition-colors"
                   >
                     <Users size={14} />
                     {home.communityBanner.cta}

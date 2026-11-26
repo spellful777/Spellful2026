@@ -168,24 +168,7 @@ export default function Footer() {
       >
         <Link
           to={COMMUNITY_FEED}
-          className="group relative inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-sm font-medium transition-all duration-300"
-          style={{
-            fontFamily: 'var(--font-sans)',
-            background: 'linear-gradient(135deg, hsl(var(--footer-lavender) / 0.8) 0%, hsl(var(--accent) / 0.7) 100%)',
-            border: '1px solid hsl(var(--footer-gold) / 0.4)',
-            color: 'hsl(var(--footer-ivory))',
-            boxShadow: '0 0 18px hsl(var(--footer-lavender) / 0.2), inset 0 1px 0 hsl(var(--footer-ivory) / 0.1)',
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLAnchorElement).style.boxShadow =
-              '0 0 32px hsl(var(--footer-lavender) / 0.4), 0 0 60px hsl(var(--footer-gold) / 0.2), inset 0 1px 0 hsl(var(--footer-ivory) / 0.15)';
-            (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-2px)';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLAnchorElement).style.boxShadow =
-              '0 0 18px hsl(var(--footer-lavender) / 0.2), inset 0 1px 0 hsl(var(--footer-ivory) / 0.1)';
-            (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)';
-          }}
+          className="coven-action group inline-flex items-center gap-2 rounded-full px-8 py-3.5 text-sm font-semibold shadow-lg transition-colors"
         >
           Open My Coven
           <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">
