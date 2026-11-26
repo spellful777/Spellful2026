@@ -12,7 +12,7 @@ permissions:
 jobs:
   simulator:
     if: github.event.action != 'labeled' || (github.event.label.name == 'ios-live-qa' && github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: macos-26-intel
+    runs-on: macos-26
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -40,19 +40,25 @@ jobs:
           path: ${{ runner.temp }}/Spellful-simulator.zip
           retention-days: 14
       - name: Provision accounts for explicitly requested live checks
+        timeout-minutes: 15
         id: provision
         if: (github.event_name == 'push' && contains(github.event.head_commit.message, '[ios-live-qa]')) || (github.event.action == 'labeled' && github.event.label.name == 'ios-live-qa')
         env:
           SPELLFUL_QA_FIXTURES: ${{ runner.temp }}/spellful-qa-accounts.json
         run: python3 qa/ios/provision.py
-      - name: Test purchases and restoration with Xcode StoreKit
+      - name: Install Xcode project tooling
+        timeout-minutes: 5
+        id: xcodeproj
         if: success() || (failure() && steps.provision.outcome == 'failure')
+        run: ruby -e "require 'xcodeproj'" || gem install --user-install xcodeproj -v 1.27.0 --no-document
+      - name: Test purchases and restoration with Xcode StoreKit
+        timeout-minutes: 30
+        if: (success() || failure()) && steps.xcodeproj.outcome == 'success'
         env:
           SPELLFUL_QA_FIXTURES: ${{ runner.temp }}/spellful-qa-accounts.json
         run: |
           set -euo pipefail
           trap 'rm -f "$SPELLFUL_QA_FIXTURES" ios/App/SpellfulIntegration/accounts.json' EXIT
-          ruby -e "require 'xcodeproj'" || gem install --user-install xcodeproj -v 1.27.0 --no-document
           ruby qa/ios/add-test-target.rb
           device=$(xcrun simctl list devices booted -j | python3 -c 'import json,sys; print(next(d["udid"] for devices in json.load(sys.stdin)["devices"].values() for d in devices if d["name"].startswith("iPhone")))')
           flags=(-configuration Release -parallel-testing-enabled NO)
