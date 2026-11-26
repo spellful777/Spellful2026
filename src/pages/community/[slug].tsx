@@ -1,3 +1,4 @@
+import { COMMUNITY_GROUPS } from '@/lib/community-navigation';
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -135,8 +136,8 @@ export default function CategoryPage() {
         {/* Header */}
         <section className="border-b border-border bg-[hsl(var(--card-deep))]">
           <div className="max-w-4xl mx-auto px-4 py-8">
-            <Link to="/community" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4">
-              <ArrowLeft className="w-3.5 h-3.5" /> {community_category.backLabel}
+            <Link to={COMMUNITY_GROUPS} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4">
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to groups
             </Link>
 
             {catsLoading ? (

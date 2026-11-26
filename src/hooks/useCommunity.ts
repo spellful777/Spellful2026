@@ -63,7 +63,7 @@ export function useCommunityCategories() {
   return { categories, loading };
 }
 
-export function useCommunityPosts(filter: PostFilter, category?: string, page = 1) {
+export function useCommunityPosts(filter: PostFilter, category?: string, page = 1, enabled = true) {
   const [result, setResult] = useState<PostsResult>({ posts: [], total: 0, page: 1, pages: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -101,9 +101,10 @@ export function useCommunityPosts(filter: PostFilter, category?: string, page = 
   }, [filter, category, page]);
 
   useEffect(() => {
+    if (!enabled) return;
     load();
     return () => pending.current?.abort();
-  }, [load]);
+  }, [enabled, load]);
 
   return { ...result, loading, error, reload: load };
 }

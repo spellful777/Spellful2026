@@ -1,3 +1,4 @@
+import { COMMUNITY_FEED, COMMUNITY_GROUPS } from '@/lib/community-navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router';
 import { Menu, X, User, BookOpen, ChevronDown, Users, Bookmark, Bell, Sparkles, Star, PenLine, MessageCircle, Moon } from 'lucide-react';
@@ -73,7 +74,8 @@ const NAV: NavItem[] = [
     mobileLabel: 'My Coven',
     authOnly: true,
     children: [
-      { label: 'Discussions', href: '/community', authRequired: true, icon: 'discussions' },
+      { label: 'Feed', href: COMMUNITY_FEED, authRequired: true, icon: 'discussions' },
+      { label: 'Groups', href: COMMUNITY_GROUPS, authRequired: true, icon: 'discussions' },
       { label: 'New Post', href: '/community/new', authRequired: true, icon: 'newpost' },
       { label: 'Messages', href: '/messages', authRequired: true, icon: 'messages' },
       { label: 'Bookmarks', href: '/community/bookmarks', authRequired: true, icon: 'bookmark' },
@@ -124,6 +126,10 @@ function useCommunityUnread(loggedIn: boolean) {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isActive(item: NavItem, pathname: string): boolean {
+  if (item.label === 'My Coven') {
+    const path = pathname.split('?')[0];
+    if (path === COMMUNITY_FEED || path.startsWith('/community/')) return true;
+  }
   if (item.href) return pathname === item.href;
   return item.children?.some((c) => pathname === c.href) ?? false;
 }
@@ -174,7 +180,7 @@ const DROPDOWN_SECTIONS: Record<string, SectionConfig[]> = {
     { label: 'Tools', hrefs: ['/grimoire', '/reminders'] },
   ],
   'My Coven': [
-    { label: 'Community', hrefs: ['/community', '/community/new'] },
+    { label: 'Community', hrefs: [COMMUNITY_FEED, COMMUNITY_GROUPS, '/community/new'] },
     { label: 'Inbox', hrefs: ['/messages', '/community/bookmarks', '/community/notifications'] },
   ],
 };
@@ -372,6 +378,7 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const location = useLocation();
+  const navigationPath = location.pathname === COMMUNITY_FEED ? location.pathname + location.search : location.pathname;
   const lastScrollY = useRef(0);
   const { session, isPending } = useSession();
   const unread = useCommunityUnread(!!session);
@@ -395,7 +402,7 @@ export default function Header() {
   useEffect(() => {
     setMobileOpen(false);
     setMobileExpanded(null);
-  }, [location.pathname]);
+  }, [navigationPath]);
 
   return (
     <header
@@ -432,7 +439,7 @@ export default function Header() {
             <DesktopDropdown
               key={item.label}
               item={item}
-              pathname={location.pathname}
+              pathname={navigationPath}
               session={session}
               unread={(item.label === 'My Coven' || item.label === 'Community') ? unread : 0}
             />
@@ -603,7 +610,7 @@ export default function Header() {
                                     style={{
                                       ...NAV_STYLE,
                                       fontSize: '0.72rem',
-                                      color: location.pathname === child.href ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.6)',
+                                      color: navigationPath === child.href ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.6)',
                                     }}
                                     onClick={() => setMobileOpen(false)}
                                   >
@@ -654,7 +661,7 @@ export default function Header() {
                         style={{
                           ...NAV_STYLE,
                           fontSize: '0.85rem',
-                          color: isActive(item, location.pathname) ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.85)',
+                          color: isActive(item, navigationPath) ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.85)',
                         }}
                       >
                         <span className="flex items-center gap-2">
@@ -695,7 +702,7 @@ export default function Header() {
                                   style={{
                                     ...NAV_STYLE,
                                     fontSize: '0.72rem',
-                                    color: location.pathname === child.href ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.6)',
+                                    color: navigationPath === child.href ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.6)',
                                   }}
                                   onClick={() => setMobileOpen(false)}
                                 >

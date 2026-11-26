@@ -96,7 +96,7 @@ const TABS: Tab[] = [
     matchPaths: ['/grimoire', '/dashboard', '/sanctuary', '/reminders', '/dream-journal', '/timeline'],
   },
   {
-    label: 'Coven',
+    label: 'My Coven',
     icon: <Users size={22} strokeWidth={1.6} />,
     href: '/community',
     authRequired: true,

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { useSession } from '@/lib/auth/auth-client';
+import { COMMUNITY_FEED, COMMUNITY_GROUPS } from '@/lib/community-navigation';
 import { getMoonPhase } from '@/lib/moon-phase-engine';
 
 // ─── Seeded star field (SSR-safe) ────────────────────────────────────────────
@@ -56,7 +57,6 @@ export default function Footer() {
     setMoonIllum(Math.round(data.illumination));
   }, []);
 
-  const communityDest = isAuthenticated ? '/community' : '/login?redirect=/community';
   const grimDest = isAuthenticated ? '/grimoire' : '/login?redirect=/grimoire';
   const glyph = PHASE_GLYPHS[moonPhase] ?? '\u{1F315}';
 
@@ -167,7 +167,7 @@ export default function Footer() {
         transition={{ duration: 0.6, delay: 0.15, ease: 'easeOut' as const }}
       >
         <Link
-          to={communityDest}
+          to={COMMUNITY_FEED}
           className="group relative inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-sm font-medium transition-all duration-300"
           style={{
             fontFamily: 'var(--font-sans)',
@@ -187,7 +187,7 @@ export default function Footer() {
             (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)';
           }}
         >
-          Enter the Community
+          Open My Coven
           <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">
             &#x2192;
           </span>
@@ -224,7 +224,8 @@ export default function Footer() {
         <nav aria-label="Footer navigation" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           {[
             { label: 'Explore', href: '/spells' },
-            { label: 'Community', href: communityDest },
+            { label: 'My Coven', href: COMMUNITY_FEED },
+            { label: 'Groups', href: COMMUNITY_GROUPS },
             { label: 'My Grimoire', href: grimDest },
           ].map((l) => (
             <Link

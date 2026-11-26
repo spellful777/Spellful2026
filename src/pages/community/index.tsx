@@ -1,6 +1,6 @@
 import { getTrendingTopics } from '@/lib/community-trending-topics';
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { community } from 'virtual:content';
 import { motion } from 'motion/react';
@@ -20,6 +20,7 @@ import { formatDistanceToNow } from 'date-fns';
 import FriendUpdatesFeed from '@/components/FriendUpdatesFeed';
 import SinceYouWereAwayBanner from '@/components/SinceYouWereAwayBanner';
 import CovenHearth from '@/components/CovenHearth';
+import { COMMUNITY_FEED, COMMUNITY_GROUPS } from '@/lib/community-navigation';
 import CosmicPulse from "@/components/CosmicPulse";
 
 // ── Community stats strip ─────────────────────────────────────────────────────
@@ -315,19 +316,36 @@ function TrendingSidebar({ onSelectTrending }: { onSelectTrending: () => void })
   );
 }
 
+const COMMUNITY_VIEWS = [
+  { view: 'feed', label: 'Feed', to: COMMUNITY_FEED, icon: Heart },
+  { view: 'updates', label: 'Updates', to: '/community?view=updates', icon: Bell },
+  { view: 'groups', label: 'Groups', to: COMMUNITY_GROUPS, icon: MessageSquare },
+  { view: 'coven', label: 'My Coven', to: '/community?view=coven', icon: Users },
+  { view: 'hearth', label: 'Hearth', to: '/community?view=hearth', icon: Sparkles },
+] as const;
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CommunityPage() {
   const { session, isPending } = useSession();
   const navigate = useNavigate();
+  const location = useLocation();
   const [filter, setFilter] = useState<PostFilter>('latest');
   const [activeCategory, setActiveCategory] = useState<string | undefined>(undefined);
-  const [page, setPage] = useState(1);
+  const [groupPage, setGroupPage] = useState(1);
+  const [feedPage, setFeedPage] = useState(1);
   const [search, setSearch] = useState('');
   const [catExpanded, setCatExpanded] = useState(false);
-  const [view, setView] = useState<'feed' | 'coven' | 'friends' | 'hearth'>('feed');
+  const requestedView = new URLSearchParams(location.search).get('view');
+  const view = COMMUNITY_VIEWS.find((item) => item.view === requestedView)?.view ?? 'feed';
 
+  const isFeed = view === 'feed';
+  const showPosts = isFeed || view === 'groups';
+  const postFilter = isFeed ? 'following' : filter;
+  const page = isFeed ? feedPage : groupPage;
+  const setPage = isFeed ? setFeedPage : setGroupPage;
   const { categories, loading: catsLoading } = useCommunityCategories();
-  const { posts, total, pages, loading: postsLoading, error: postsError, reload: reloadPosts } = useCommunityPosts(filter, activeCategory, page);
+  const { posts, total, pages, loading: postsLoading, error: postsError, reload: reloadPosts } =
+    useCommunityPosts(postFilter, isFeed ? undefined : activeCategory, page, showPosts && !!session);
   const unread = useCommunityNotifications();
 
   // Presence heartbeat — registers this user as online so the live count is accurate.
@@ -356,8 +374,8 @@ export default function CommunityPage() {
 
   // Auth gate — redirect to login
   if (!isPending && !session) {
-    navigate('/login?redirect=/community');
-    return null;
+    const destination = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?redirect=${destination}`} replace />;
   }
 
   // Username gate — must choose a username before participating
@@ -370,12 +388,12 @@ export default function CommunityPage() {
 
   const handleFilterChange = (f: PostFilter) => {
     setFilter(f);
-    setPage(1);
+    setGroupPage(1);
   };
 
   const handleCategoryChange = (slug: string | undefined) => {
     setActiveCategory(slug);
-    setPage(1);
+    setGroupPage(1);
   };
 
   return (
@@ -552,7 +570,7 @@ export default function CommunityPage() {
                 The Spellful Community
               </h1>
               <p className="text-sm md:text-base max-w-md mx-auto leading-relaxed" style={{ color: `hsl(var(--hero-lavender-soft))` }}>
-                A sacred space to share wisdom, ask questions, and walk the path together.
+                Catch up with people you follow and join group discussions about your practice.
               </p>
             </motion.div>
 
@@ -641,18 +659,42 @@ export default function CommunityPage() {
         )}
 
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-10">
+          <nav aria-label="Community navigation" className="mb-6 flex flex-wrap items-center gap-2">
+            {COMMUNITY_VIEWS.map(({ view: itemView, label, to, icon: Icon }) => (
+              <Link
+                key={itemView}
+                to={to}
+                preventScrollReset
+                aria-current={view === itemView ? 'page' : undefined}
+                className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium focus-visible:outline focus-visible:outline-primary ${
+                  view === itemView ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                {label}
+              </Link>
+            ))}
+            <Link
+              to="/community/discover"
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-muted px-3 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-primary"
+            >
+              <Search className="h-4 w-4" aria-hidden="true" />
+              Discover
+            </Link>
+          </nav>
+
           {/* ── Magical Category Navigation ── */}
-          <section className="mb-8" aria-label="Browse by category">
+          {view === 'groups' && <section className="mb-8" aria-label="Browse discussion groups">
             {/* Section header */}
             <div className="text-center mb-5">
               <p className="text-[10px] tracking-widest uppercase mb-1.5" style={{ color: 'hsl(var(--primary))', fontFamily: 'var(--font-sans)' }}>
                 {community.categorySection.eyebrow}
               </p>
               <h2 className="text-2xl md:text-3xl mb-1" style={{ fontFamily: 'var(--font-heading)', color: 'hsl(var(--foreground))' }}>
-                {community.categorySection.heading}
+                Discussion groups
               </h2>
               <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
-                {community.categorySection.subheading}
+                Choose a group to browse its conversations.
               </p>
             </div>
 
@@ -782,67 +824,13 @@ export default function CommunityPage() {
                 </>
               );
             })()}
-          </section>
+          </section>}
 
           <CosmicPulse />
           {/* ── Feed + sidebar ── */}
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Feed */}
             <div className="flex-1 min-w-0">
-              {/* View toggle: Feed / Friend Updates / My Coven / Discover */}
-              <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
-                <button
-                  onClick={() => setView('feed')}
-                  className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: view === 'feed' ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
-                    color: view === 'feed' ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
-                  }}
-                >
-                  Feed
-                </button>
-                <button
-                  onClick={() => setView('friends')}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: view === 'friends' ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
-                    color: view === 'friends' ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
-                  }}
-                >
-                  <Heart className="w-3 h-3" />
-                  Friend Updates
-                </button>
-                <button
-                  onClick={() => setView('coven')}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: view === 'coven' ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
-                    color: view === 'coven' ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
-                  }}
-                >
-                  <Users className="w-3 h-3" />
-                  My Coven
-                </button>
-                <button
-                  onClick={() => setView('hearth')}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: view === 'hearth' ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
-                    color: view === 'hearth' ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
-                  }}
-                >
-                  🔥 Hearth
-                </button>
-                <Link
-                  to="/community/discover"
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }}
-                >
-                  <Sparkles className="w-3 h-3" />
-                  Discover
-                </Link>
-              </div>
-
               {/* My Coven view */}
               {view === 'coven' && session?.user?.id && (
                 <MyCoven currentUserId={session.user.id} />
@@ -851,13 +839,12 @@ export default function CommunityPage() {
               {/* Coven Hearth view */}
               {view === 'hearth' && <CovenHearth />}
 
-              {/* Friend Updates view */}
-              {view === 'friends' && (
-                <FriendUpdatesFeed />
-              )}
+              {view === 'updates' && session && <FriendUpdatesFeed />}
 
-              {/* Filter tabs + feed — only shown in feed view */}
-              {view === 'feed' && (<>
+              {showPosts && session && (<>
+              {isFeed ? (
+                <h2 className="mb-3 font-heading text-xl">Posts from people you follow</h2>
+              ) : (
               <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1 scrollbar-none">
                 {FILTERS.map(({ value, label }) => (
                   <button
@@ -887,6 +874,7 @@ export default function CommunityPage() {
                   </span>
                 )}
               </div>
+              )}
 
               {/* Post list */}
               {postsLoading ? (
@@ -902,15 +890,15 @@ export default function CommunityPage() {
                 <div className="rounded-xl border border-border bg-card p-10 text-center">
                   <Sparkles className="w-8 h-8 text-primary/40 mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">
-                    {filter === 'trending'
+                    {postFilter === 'trending'
                       ? 'No active discussions started in the past week.'
-                      : filter === 'following'
+                      : postFilter === 'following'
                       ? community.emptyStates.following
-                      : filter === 'mine'
+                      : postFilter === 'mine'
                       ? community.emptyStates.mine
                       : community.emptyStates.default}
                   </p>
-                  {filter === 'following' ? (
+                  {postFilter === 'following' ? (
                     <Link to="/community/discover" className="mt-4 inline-block">
                       <Button size="sm" variant="outline" className="gap-2 mt-3">
                         <Users className="w-3.5 h-3.5" /> Discover Members
@@ -960,7 +948,8 @@ export default function CommunityPage() {
             {/* Sidebar */}
             <div className="lg:w-64 shrink-0">
               <TrendingSidebar onSelectTrending={() => {
-                setView('feed');
+                navigate(COMMUNITY_GROUPS, { preventScrollReset: true });
+                handleCategoryChange(undefined);
                 handleFilterChange('trending');
               }} />
             </div>
