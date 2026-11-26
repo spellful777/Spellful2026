@@ -161,6 +161,60 @@ export default function Footer() {
         </p>
       </motion.div>
 
+      <nav
+        aria-labelledby="footer-coven-heading"
+        className="relative z-10 mx-auto mb-5 flex w-fit flex-col items-center"
+      >
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-x-7 -inset-y-3"
+          style={{ background: 'radial-gradient(ellipse at 50% 32%, hsl(var(--footer-gold) / 0.13), transparent 72%)' }}
+        />
+        <Link
+          to={COMMUNITY_FEED}
+          className="coven-press group relative inline-flex flex-col items-center gap-1 rounded-lg px-2 pb-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <motion.h2
+            id="footer-coven-heading"
+            className="coven-footer-wordmark relative"
+            data-shimmer={wordmarkVisible ? 'true' : undefined}
+            style={{ '--coven-wordmark-image': `url("${myCovenWordmark}")` } as CSSProperties}
+            viewport={{ once: true, amount: 0.6 }}
+            onViewportEnter={() => setWordmarkVisible(true)}
+          >
+            <span className="sr-only">My Coven</span>
+            <img
+              src={myCovenWordmark}
+              alt=""
+              width={640}
+              height={211}
+              loading="lazy"
+              className="block h-auto w-32"
+            />
+          </motion.h2>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[hsl(var(--footer-gold))] px-3 py-1.5 text-xs font-semibold text-[hsl(var(--coven-lilac-ink))] transition-colors group-hover:bg-[hsl(44_80%_78%)]">
+            Open feed
+            <ArrowRight className="size-3.5" aria-hidden="true" />
+          </span>
+        </Link>
+        <ul className="relative flex flex-wrap items-center justify-center gap-x-4">
+          {[
+            { label: 'Updates', to: COMMUNITY_UPDATES, icon: Bell },
+            { label: 'Groups', to: COMMUNITY_GROUPS, icon: MessageSquare },
+          ].map(({ label, to, icon: Icon }) => (
+            <li key={to}>
+              <Link
+                to={to}
+                className="coven-press inline-flex min-h-11 items-center gap-1.5 rounded-sm text-sm text-[hsl(var(--footer-lavender))] transition-colors hover:text-[hsl(var(--footer-gold))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                <Icon className="size-3.5 shrink-0 text-[hsl(var(--footer-gold))]" aria-hidden="true" />
+                {label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
       {/* Thin separator */}
       <div
         className="relative z-10 mx-auto max-w-lg h-px mb-8"
@@ -187,62 +241,6 @@ export default function Footer() {
             }}
           />
         </Link>
-
-        <nav
-          aria-labelledby="footer-coven-heading"
-          className="relative flex shrink-0 flex-col items-center"
-        >
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute -inset-x-7 -inset-y-3"
-            style={{ background: 'radial-gradient(ellipse at 50% 32%, hsl(var(--footer-gold) / 0.13), transparent 72%)' }}
-          />
-          <Link
-            to={COMMUNITY_FEED}
-            className="coven-press group relative inline-flex flex-col items-center gap-1 rounded-lg px-2 pb-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            <motion.h2
-              id="footer-coven-heading"
-              className="coven-footer-wordmark relative"
-              data-shimmer={wordmarkVisible ? 'true' : undefined}
-              style={{ '--coven-wordmark-image': `url("${myCovenWordmark}")` } as CSSProperties}
-              viewport={{ once: true, amount: 0.6 }}
-              onViewportEnter={() => setWordmarkVisible(true)}
-            >
-              <span className="sr-only">My Coven</span>
-              <img
-                src={myCovenWordmark}
-                alt=""
-                width={640}
-                height={211}
-                loading="lazy"
-                className="block h-auto w-52"
-              />
-            </motion.h2>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[hsl(var(--footer-gold))] px-3 py-1.5 text-xs font-semibold text-[hsl(var(--coven-lilac-ink))] transition-colors group-hover:bg-[hsl(44_80%_78%)]">
-              Open feed
-              <ArrowRight className="size-3.5" aria-hidden="true" />
-            </span>
-          </Link>
-          <ul className="relative flex flex-wrap items-center justify-center gap-x-3 sm:justify-start">
-            {[
-              { label: 'Updates', to: COMMUNITY_UPDATES, icon: Bell },
-              { label: 'Groups', to: COMMUNITY_GROUPS, icon: MessageSquare },
-            ].map(({ label, to, icon: Icon }) => (
-              <li key={to}>
-                <Link
-                  to={to}
-                  className="coven-press inline-flex min-h-11 items-center gap-1.5 rounded-sm text-sm text-[hsl(var(--footer-lavender))] transition-colors hover:text-[hsl(var(--footer-gold))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
-                  <Icon className="size-3.5 shrink-0 text-[hsl(var(--footer-gold))]" aria-hidden="true" />
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <span aria-hidden="true" className="hidden h-10 w-px bg-[hsl(var(--footer-gold)/0.2)] sm:block" />
 
         <nav aria-label="Footer navigation" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           {[
