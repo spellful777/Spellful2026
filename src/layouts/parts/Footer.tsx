@@ -134,45 +134,15 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* 2. Main Message */}
-      <motion.div
-        className="relative z-10 flex flex-col items-center text-center px-6 pt-8 pb-6"
-        initial={{ opacity: 0, y: 18 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.7, ease: 'easeOut' as const }}
-      >
-        <h2
-          className="text-3xl sm:text-4xl md:text-5xl mb-4 leading-tight"
-          style={{ fontFamily: 'var(--font-heading)', color: 'hsl(var(--footer-ivory))', letterSpacing: '0.01em' }}
-        >
-          Your{' '}
-          <em style={{ fontStyle: 'italic', color: 'hsl(var(--footer-gold))', textShadow: '0 0 18px hsl(var(--footer-gold) / 0.4)' }}>
-            magic
-          </em>{' '}
-          continues here.
-        </h2>
-        <p
-          className="text-sm sm:text-base max-w-sm"
-          style={{ color: 'hsl(var(--footer-lavender))', fontFamily: 'var(--font-sans)', fontWeight: 300, lineHeight: 1.7 }}
-        >
-          Return to your rituals, explore the stars,
-          <br className="hidden sm:block" /> and find your circle.
-        </p>
-      </motion.div>
-
       <nav
         aria-labelledby="footer-coven-heading"
-        className="relative z-10 mx-auto mb-5 flex w-fit flex-col items-center"
+        className="relative z-10 mx-auto flex w-fit max-w-full flex-col items-center px-5 pb-5 pt-4 text-center"
       >
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -inset-x-7 -inset-y-3"
-          style={{ background: 'radial-gradient(ellipse at 50% 32%, hsl(var(--footer-gold) / 0.13), transparent 72%)' }}
-        />
         <Link
           to={COMMUNITY_FEED}
-          className="coven-press group relative inline-flex flex-col items-center gap-1 rounded-lg px-2 pb-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          aria-label="Open My Coven feed"
+          aria-describedby="footer-coven-invitation"
+          className="coven-press group inline-flex flex-col items-center gap-1.5 rounded-md px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           <motion.h2
             id="footer-coven-heading"
@@ -192,7 +162,10 @@ export default function Footer() {
               className="block h-auto w-32"
             />
           </motion.h2>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[hsl(var(--footer-gold))] px-3 py-1.5 text-xs font-semibold text-[hsl(var(--coven-lilac-ink))] transition-colors group-hover:bg-[hsl(44_80%_78%)]">
+          <p id="footer-coven-invitation" className="text-sm text-[hsl(var(--footer-lavender))]">
+            Catch up with your circle.
+          </p>
+          <span className="inline-flex items-center gap-1.5 py-1 text-sm font-semibold text-[hsl(var(--footer-gold))] underline-offset-4 group-hover:underline">
             Open feed
             <ArrowRight className="size-3.5" aria-hidden="true" />
           </span>
@@ -221,7 +194,7 @@ export default function Footer() {
         style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--footer-gold) / 0.3), transparent)' }}
       />
 
-      {/* 4. Minimal Navigation */}
+      {/* Site and legal links */}
       <motion.div
         className="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 px-6 pb-8"
         initial={{ opacity: 0 }}
