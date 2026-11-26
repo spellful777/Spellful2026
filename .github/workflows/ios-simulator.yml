@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths: ['src/**', 'ios/**', 'package*.json', 'capacitor.config.json', 'qa/ios/**', '.github/workflows/ios-simulator.yml']
   pull_request:
-    paths: ['ios/App/App/Assets.xcassets/**']
+    paths: ['src/**', 'ios/**', 'package*.json', 'capacitor.config.json', 'qa/ios/**', '.github/workflows/ios-simulator.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -44,7 +44,7 @@ jobs:
           SPELLFUL_QA_FIXTURES: ${{ runner.temp }}/spellful-qa-accounts.json
         run: python3 qa/ios/provision.py
       - name: Test purchases and restoration with Xcode StoreKit
-        if: github.event_name != 'pull_request' && (success() || (failure() && steps.provision.outcome == 'failure'))
+        if: success() || (failure() && steps.provision.outcome == 'failure')
         env:
           SPELLFUL_QA_FIXTURES: ${{ runner.temp }}/spellful-qa-accounts.json
         run: |
