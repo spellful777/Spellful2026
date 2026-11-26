@@ -612,7 +612,8 @@ html.high-contrast {
 }
 
 .home-feed,
-.home-social-menu {
+.home-social-menu,
+[data-home-palette] {
   --background: 258 27% 9%;
   --card: 264 26% 17%;
   --muted: 261 24% 13%;
@@ -675,7 +676,7 @@ html.high-contrast {
   inset: 0;
   pointer-events: none;
   content: '';
-  background: linear-gradient(112deg, transparent 42%, hsl(43 100% 78% / 0.9) 50%, transparent 58%) 100% 0 / 260% 100%;
+  background: linear-gradient(112deg, transparent 42%, hsl(44 65% 85% / 0.84) 50%, transparent 58%) 100% 0 / 260% 100%;
   mask: url('/airo-assets/images/logo/official-white') center / contain no-repeat;
   opacity: 0;
 }

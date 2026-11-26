@@ -325,6 +325,7 @@ export default function MobileBottomNav() {
 
       <nav
         aria-label="Mobile bottom navigation"
+        data-home-palette={session && location.pathname === '/' ? true : undefined}
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch"
         style={{
           background: 'hsl(var(--background) / 0.96)',
