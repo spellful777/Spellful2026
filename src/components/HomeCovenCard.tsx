@@ -5,18 +5,21 @@ import { COMMUNITY_FEED } from '@/lib/community-navigation';
 
 export default function HomeCovenCard({ description = 'Catch up with your circle.' }: { description?: string }) {
   return (
-    <section
+    <motion.section
       aria-labelledby="home-coven-heading"
+      initial="waiting"
+      whileInView="shimmer"
+      viewport={{ once: true, amount: 0.55 }}
       className="coven-entry relative isolate overflow-hidden rounded-xl border shadow-md shadow-black/30"
     >
       <motion.span
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 motion-reduce:hidden"
         style={{ background: 'linear-gradient(112deg, transparent 34%, hsl(var(--coven-lilac) / 0.15) 50%, transparent 66%)' }}
-        initial={{ x: '-110%' }}
-        whileInView={{ x: '110%' }}
-        viewport={{ once: true, amount: 0.55 }}
-        transition={{ duration: 3.6, delay: 0.35, ease: 'easeInOut' }}
+        variants={{
+          waiting: { x: '-110%' },
+          shimmer: { x: '110%', transition: { duration: 3.6, delay: 0.35, ease: 'easeInOut' } },
+        }}
       />
       <Link
         to={COMMUNITY_FEED}
@@ -30,6 +33,6 @@ export default function HomeCovenCard({ description = 'Catch up with your circle
         </div>
         <ArrowRight className="size-4 shrink-0 text-primary" aria-hidden="true" />
       </Link>
-    </section>
+    </motion.section>
   );
 }
