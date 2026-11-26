@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpRight, Bell, Compass, MessageSquare, Moon, Pencil, User } from 'lucide-react';
+import { ArrowUpRight, Bell, Compass, MessageSquare, Pencil, User } from 'lucide-react';
 import { Link } from 'react-router';
-import { getMoonPhase, type MoonPhaseResult } from '@/lib/moon-phase-engine';
+import { getMoonPhase, moonGlyph, type MoonPhaseResult } from '@/lib/moon-phase-engine';
 import SparkItLink from '@/components/SparkItLink';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -23,7 +23,7 @@ function HomeMoonLink() {
 
   return (
     <Link to="/moon-calendar" className="home-social-surface coven-press flex min-h-11 items-center gap-2 rounded-lg px-3 py-1.5 text-xs focus-visible:outline focus-visible:outline-primary">
-      <Moon className="size-4 shrink-0 text-primary" aria-hidden="true" />
+      <span className="flex size-6 shrink-0 items-center justify-center text-xl leading-none" aria-hidden="true">{moonGlyph(moon?.phase)}</span>
       <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <span className="font-semibold text-foreground">{moon?.phase ?? 'Moon calendar'}</span>
         {moon && <span className="text-muted-foreground">{moon.illumination}% illuminated</span>}

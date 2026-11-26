@@ -11,7 +11,7 @@ import { ContentListContext } from '@airo/content';
 import AstroFeed from '@/components/AstroFeed';
 import CommandCenter from '@/components/CommandCenter';
 import { useSession } from '@/lib/auth/auth-client.tsx';
-import { getMoonPhase } from '@/lib/moon-phase-engine';
+import { getMoonPhase, moonGlyph } from '@/lib/moon-phase-engine';
 import HomeCovenCard from '@/components/HomeCovenCard';
 import { InstallBanner } from '@/components/InstallSpellful';
 
@@ -30,17 +30,6 @@ const STARS = Array.from({ length: 60 }, (_, i) => ({
   color: i % 7 === 0 ? 'hsl(var(--primary))' : i % 5 === 0 ? 'hsl(var(--accent))' : 'hsl(var(--foreground))',
   glow: i % 9 === 0,
 }));
-
-// ─── Moon phase glyph ─────────────────────────────────────────────────────────
-function moonGlyph(phase: string) {
-  const map: Record<string, string> = {
-    'New Moon': '🌑', 'Waxing Crescent': '🌒', 'First Quarter': '🌓',
-    'Waxing Gibbous': '🌔', 'Full Moon': '🌕', 'Waning Gibbous': '🌖',
-    'Last Quarter': '🌗', 'Waning Crescent': '🌘',
-  };
-  // eslint-disable-next-line security/detect-object-injection
-  return map[phase] ?? '🌙';
-}
 
 // ─── Feature accent map ───────────────────────────────────────────────────────
 const FEATURE_ACCENTS: Record<string, string> = {
