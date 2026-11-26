@@ -8,6 +8,7 @@ import {
   Eye, Tag, Share2, Sparkles, Send, MapPin, Pencil, Trash2,
 } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
+import { CommunityPostBody } from '@/components/CommunityPostBody';
 import { BlockUserSheet } from '@/components/BlockUserSheet';
 import { ReportModal } from '@/components/ReportModal';
 import { usePostDetail, useReplies, type CommunityReply } from '@/hooks/useCommunityPost';
@@ -26,54 +27,6 @@ function Avatar({ name, image, size = 8 }: { name: string | null; image: string 
     <div className={`${s} rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground shrink-0`}>
       {(name ?? '?')[0].toUpperCase()}
     </div>
-  );
-}
-
-function RichBody({ html }: { html: string }) {
-  // Allowlist-based sanitizer: strip every tag not in the safe set,
-  // and strip every attribute that could carry executable content.
-  const ALLOWED_TAGS = new Set([
-    'p','br','strong','em','u','s','h1','h2','h3','h4','h5','h6',
-    'ul','ol','li','blockquote','pre','code','hr','a','span','div',
-  ]);
-  const ALLOWED_ATTRS: Record<string, string[]> = {
-    a: ['href', 'target', 'rel'],
-    span: ['class'],
-    div: ['class'],
-    code: ['class'],
-    pre: ['class'],
-  };
-
-  const safe = html
-    // Remove script, style, iframe, object, embed, form, input entirely
-    .replace(/<(script|style|iframe|object|embed|form|input|svg|math)[\s\S]*?<\/\1>/gi, '')
-    .replace(/<(script|style|iframe|object|embed|form|input|svg|math)[^>]*\/?>/gi, '')
-    // Strip on* event handlers and javascript: hrefs on any tag
-    .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '')
-    .replace(/href\s*=\s*["']\s*javascript:[^"']*/gi, 'href="#"')
-    // Strip any tag not in the allowlist
-    .replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g, (match, tag: string) => {
-      const lower = tag.toLowerCase();
-      if (!ALLOWED_TAGS.has(lower)) return '';
-      // For allowed tags, strip disallowed attributes
-      // eslint-disable-next-line security/detect-object-injection
-      const allowed = ALLOWED_ATTRS[lower] ?? [];
-      if (allowed.length === 0) return match.replace(/\s+[a-zA-Z][\w-]*\s*=\s*["'][^"']*["']/g, '');
-      return match.replace(/\s+([a-zA-Z][\w-]*)\s*=\s*["'][^"']*["']/g, (attrMatch, attr: string) =>
-        allowed.includes(attr.toLowerCase()) ? attrMatch : ''
-      );
-    });
-
-  return (
-    <div
-      className="prose prose-invert prose-sm max-w-none text-foreground/90 leading-relaxed
-        prose-headings:font-heading prose-headings:text-foreground
-        prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-        prose-code:bg-muted prose-code:px-1 prose-code:rounded prose-code:text-accent
-        prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground"
-      dangerouslySetInnerHTML={{ __html: safe }}
-    />
   );
 }
 
@@ -394,7 +347,7 @@ function ReplyCard({
             </div>
           </div>
         ) : (
-          <RichBody html={reply.body} />
+          <CommunityPostBody html={reply.body} />
         )}
 
         {/* Footer */}
@@ -723,7 +676,7 @@ export default function PostThreadPage() {
               )}
 
               {/* Body */}
-              <RichBody html={post.body} />
+              <CommunityPostBody html={post.body} />
 
               {/* Poll */}
               {post.poll && (

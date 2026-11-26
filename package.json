@@ -106,6 +106,7 @@
     "motion": "^12.29.2",
     "mysql2": "^3.24.6",
     "otpauth": "^9.6.0",
+    "parse5": "8.0.1",
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-day-picker": "^9.9.0",
