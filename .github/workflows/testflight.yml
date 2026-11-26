@@ -43,7 +43,7 @@ jobs:
           VITE_IOS_API_ORIGIN: ${{ vars.VITE_IOS_API_ORIGIN }}
       - name: Sign archive and upload to App Store Connect
         env:
-          BUILD_NUMBER: ${{ inputs.build_number || '2' }}
+          BUILD_NUMBER: ${{ inputs.build_number || '3' }}
           ASC_TEAM: ${{ secrets.ASC_TEAM_ID }}
           ASC_KEY: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER: ${{ secrets.ASC_ISSUER_ID }}

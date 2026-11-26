@@ -1,5 +1,6 @@
 import { tarot } from 'virtual:content';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import MoonNightSky from '@/components/MoonNightSky';
@@ -1160,6 +1161,10 @@ function GuestInvitePanel() {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function TarotPage() {
+  const { hash, key } = useLocation();
+  useEffect(() => {
+    if (hash === '#reading') document.getElementById('reading')?.scrollIntoView();
+  }, [hash, key]);
   const { isAuthenticated } = useSession();
   const [selectedSpread, setSelectedSpread] = useState<SpreadDefinition>(SPREADS[0]);
   const [phase, setPhase] = useState<'select' | 'shuffle' | 'draw' | 'reading'>('select');

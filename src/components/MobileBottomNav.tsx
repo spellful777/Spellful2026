@@ -22,7 +22,7 @@ const EXPLORE_CATEGORIES: ExploreCategory[] = [
   {
     label: 'Divination',
     tools: [
-      { label: 'Tarot', href: '/resources', icon: <Star size={16} strokeWidth={1.5} />, desc: '78-card readings & spreads' },
+      { label: 'Tarot', href: '/tarot#reading', icon: <Star size={16} strokeWidth={1.5} />, desc: '78-card readings & spreads' },
       { label: 'Runes', href: '/runes', icon: <Layers size={16} strokeWidth={1.5} />, desc: 'Elder Futhark readings' },
       { label: 'Numerology', href: '/numerology', icon: <Scroll size={16} strokeWidth={1.5} />, desc: 'Life path & destiny numbers' },
     ],

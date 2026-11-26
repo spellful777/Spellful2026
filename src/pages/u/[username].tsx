@@ -20,6 +20,7 @@
  *
  * Preview mode: ?preview=guest|member|blocked  (owner-only; forwarded to API)
  */
+import { uploadedMediaUrl } from '@/lib/native-api';
 import { useState, useEffect, useRef, useCallback, type CSSProperties } from 'react';
 import { useParams, useNavigate, Link, useLoaderData, useSearchParams } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -318,7 +319,7 @@ function Lightbox({ items, startIndex, onClose }: {
         onClick={e => e.stopPropagation()}
       >
         <img
-          src={item.imageUrl}
+          src={uploadedMediaUrl(item.imageUrl)}
           alt={item.caption ?? 'Sacred space photo'}
           className="w-full rounded-2xl object-contain max-h-[70vh]"
         />
@@ -580,7 +581,7 @@ export default function UserProfilePage() {
   const showSocialLinks = canSeeField(profile.socialLinksVisibility) && !!profile.socialLinks && Object.keys(profile.socialLinks).length > 0;
 
   const coverStyle: React.CSSProperties = profile.coverImage
-    ? { backgroundImage: `url(${profile.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    ? { backgroundImage: `url(${uploadedMediaUrl(profile.coverImage)})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : { backgroundImage: `url(${COVER_PRESET_IMAGES[profile.coverPreset ?? 'spellful-default'] ?? DEFAULT_COVER})`, backgroundSize: 'cover', backgroundPosition: 'center' };
 
   // Section navigator tiles — only show tiles for sections that have data
@@ -921,7 +922,7 @@ export default function UserProfilePage() {
                     aria-label={item.caption ?? `Sacred space photo ${i + 1}`}
                   >
                     <img
-                      src={item.imageUrl}
+                      src={uploadedMediaUrl(item.imageUrl)}
                       alt={item.caption ?? ''}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"

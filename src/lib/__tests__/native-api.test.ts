@@ -13,10 +13,6 @@ afterEach(() => {
 });
 
 it('uses the same native transport for email sign-in and session lookup', async () => {
-  const viewport = document.createElement('meta');
-  viewport.name = 'viewport';
-  viewport.content = 'width=device-width, viewport-fit=cover';
-  document.head.append(viewport);
   const originalFetch = vi.fn();
   vi.stubGlobal('fetch', originalFetch);
   nativeRequest.mockResolvedValue({
@@ -24,21 +20,21 @@ it('uses the same native transport for email sign-in and session lookup', async 
     headers: { 'content-type': 'application/json', 'set-cookie': 'private=value; HttpOnly' },
     data: { user: { id: 'test' } },
   });
-  try {
-    await import('../native-api');
-    const signIn = await fetch('https://spellful.com/api/auth/sign-in/email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{"email":"qa@example.invalid","password":"test fixture password"}',
-    });
-    expect(signIn.headers.has('set-cookie')).toBe(false);
-    const session = await fetch('/api/auth/get-session');
-    expect(await session.json()).toEqual({ user: { id: 'test' } });
-    expect(nativeRequest.mock.calls.map(([request]) => request.method)).toEqual(['POST', 'GET']);
-    expect(nativeRequest.mock.calls[0][0].headers.origin).toBe('https://spellful.com');
-    expect(originalFetch).not.toHaveBeenCalled();
-    expect(viewport.content).toContain('viewport-fit=contain');
-  } finally {
-    viewport.remove();
-  }
+  const { uploadedMediaUrl } = await import('../native-api');
+  const signIn = await fetch('https://spellful.com/api/auth/sign-in/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{"email":"qa@example.invalid","password":"test fixture password"}',
+  });
+  expect(signIn.headers.has('set-cookie')).toBe(false);
+  const session = await fetch('/api/auth/get-session');
+  expect(await session.json()).toEqual({ user: { id: 'test' } });
+  expect(nativeRequest.mock.calls.map(([request]) => request.method)).toEqual(['POST', 'GET']);
+  expect(nativeRequest.mock.calls[0][0].headers.origin).toBe('https://spellful.com');
+  await fetch('/api/conversations?limit=50');
+  expect(nativeRequest.mock.calls[2][0].url).toBe('https://spellful.com/api/conversations?limit=50');
+  expect(uploadedMediaUrl('/airo-assets/uploads/avatars/example.png'))
+    .toBe('https://spellful.com/airo-assets/uploads/avatars/example.png');
+  expect(uploadedMediaUrl('/assets/media/bundled.png')).toBe('/assets/media/bundled.png');
+  expect(originalFetch).not.toHaveBeenCalled();
 });

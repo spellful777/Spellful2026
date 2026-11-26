@@ -1357,6 +1357,7 @@ export default function MessagesPage() {
         const data = await res.json() as { conversations?: ConversationSummary[]; hasMore?: boolean } | ConversationSummary[];
         // Handle both plain-array and { conversations, hasMore } shapes
         const convList = Array.isArray(data) ? data : (data.conversations ?? []);
+        setIsOffline(false);
         setConversations(convList);
         setConvLoadError(false);
 
@@ -1394,7 +1395,10 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!myId) return;
     void loadConversations(true);
-    const handleOnline = () => setIsOffline(false);
+    const handleOnline = () => {
+      setIsOffline(false);
+      void loadConversations(true);
+    };
     const handleOffline = () => setIsOffline(true);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -1692,7 +1696,7 @@ export default function MessagesPage() {
         })();
       }
     },
-    onDisconnect: () => setIsOffline(true),
+    onDisconnect: () => { void loadConversations(false); },
     onEvent: (event) => {
       setIsOffline(false);
       switch (event.type) {
@@ -2447,7 +2451,7 @@ export default function MessagesPage() {
                   Your messages are safe. Check your connection and we'll reconnect automatically.
                 </p>
                 <button
-                  onClick={() => { if (navigator.onLine) { setIsOffline(false); setConvLoadError(false); setLoadingConvs(true); void loadConversations(true); } }}
+                  onClick={() => { setConvLoadError(false); setLoadingConvs(true); void loadConversations(true); }}
                   className="mt-1 px-6 py-2.5 rounded-full text-sm font-medium transition-opacity active:opacity-70"
                   style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }}>
                   Check connection
@@ -3694,7 +3698,7 @@ export default function MessagesPage() {
                     Check your connection — we'll reconnect automatically.
                   </p>
                   <button
-                    onClick={() => { if (navigator.onLine) { setIsOffline(false); setConvLoadError(false); setLoadingConvs(true); void loadConversations(true); } }}
+                    onClick={() => { setConvLoadError(false); setLoadingConvs(true); void loadConversations(true); }}
                     className="text-xs underline mt-1"
                     style={{ color: 'hsl(var(--primary))' }}>
                     Check connection

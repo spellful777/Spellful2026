@@ -1,3 +1,4 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -727,7 +728,7 @@ export default function ProfileStudioPage() {
   // ── Derived ────────────────────────────────────────────────────────────────
   const accent = accentCss(form.accentColor);
   const coverBg = form.coverImage
-    ? { backgroundImage: `url(${form.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    ? { backgroundImage: `url(${uploadedMediaUrl(form.coverImage)})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : { backgroundImage: `url(${COVER_PRESETS.find(p => p.key === form.coverPreset)?.image ?? COVER_PRESETS[0].image})`, backgroundSize: 'cover', backgroundPosition: 'center' };
   const displayName = form.name || session?.user?.name || 'Your Name';
   const initials = displayName.slice(0, 2).toUpperCase();

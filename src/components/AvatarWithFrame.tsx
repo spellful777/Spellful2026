@@ -1,3 +1,4 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
 /**
  * AvatarWithFrame — shared component used by Profile Studio AND the live
  * /u/[username] public profile. Renders a circular avatar with an optional
@@ -155,7 +156,7 @@ export default function AvatarWithFrame({
       >
         {avatarSrc ? (
           <img
-            src={avatarSrc}
+            src={uploadedMediaUrl(avatarSrc)}
             alt={alt}
             width={size}
             height={size}
