@@ -916,6 +916,16 @@ export async function runStartupMigration(): Promise<void> {
       console.error(JSON.stringify({ event: 'startup.migration.spellful_circles.error', msg: msg.slice(0, 120) }));
     }
 
+    for (const column of ['rules TEXT NULL', 'welcome_post_id INT NULL']) {
+      try {
+        await conn.execute(`ALTER TABLE spellful_circles ADD COLUMN ${column}`);
+      } catch (error) {
+        if (typeof error !== 'object' || error === null || !('code' in error) || error.code !== 'ER_DUP_FIELDNAME') {
+          console.error('startup.migration.circle_settings.failed');
+        }
+      }
+    }
+
     // ── circle_memberships table ──────────────────────────────────────────────
     try {
       await conn.execute(`
