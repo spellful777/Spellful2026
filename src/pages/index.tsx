@@ -12,7 +12,7 @@ import AstroFeed from '@/components/AstroFeed';
 import CommandCenter from '@/components/CommandCenter';
 import { useSession } from '@/lib/auth/auth-client.tsx';
 import { getMoonPhase } from '@/lib/moon-phase-engine';
-import { COMMUNITY_FEED, COMMUNITY_GROUPS } from '@/lib/community-navigation';
+import { COMMUNITY_FEED } from '@/lib/community-navigation';
 import { InstallBanner } from '@/components/InstallSpellful';
 
 // ─── Seeded stars (SSR-safe) ──────────────────────────────────────────────────
@@ -417,6 +417,17 @@ function PublicHomePage() {
           </section>
         )}
 
+        <section aria-labelledby="home-coven-heading" className="coven-entry border-y px-6 py-6">
+          <div className="mx-auto max-w-6xl">
+            <h2 id="home-coven-heading" className="font-heading text-3xl font-bold text-white">
+              <Link to={COMMUNITY_FEED} className="inline-flex min-h-11 items-center gap-2 rounded-sm underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                My Coven <ArrowRight className="size-4 text-primary" aria-hidden="true" />
+              </Link>
+            </h2>
+            <p className="mt-1 text-sm text-white/75">{home.communityBanner.body}</p>
+          </div>
+        </section>
+
         {/* ══════════════════════════════════════════════════════════════
             2. TRY SOMETHING MAGICAL — guests only
         ══════════════════════════════════════════════════════════════ */}
@@ -703,69 +714,6 @@ function PublicHomePage() {
             </div>
           </section>
         )}
-
-        {/* ══════════════════════════════════════════════════════════════
-            6. MY COVEN
-        ══════════════════════════════════════════════════════════════ */}
-        <section className="coven-entry relative overflow-hidden border-y px-6 py-xxl">
-          <div className="max-w-5xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.7 }}
-              >
-                <SectionLabel>{home.communityBanner.eyebrow}</SectionLabel>
-                <h2 className="mb-5" style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 400, color: 'hsl(var(--foreground))', lineHeight: 1.15 }}>
-                  {home.communityBanner.heading}
-                </h2>
-                <p className="text-sm leading-relaxed mb-8" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)', fontWeight: 300 }}>
-                  {home.communityBanner.body}
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Link
-                    to={COMMUNITY_FEED}
-                    className="coven-action inline-flex items-center gap-2 rounded-full px-7 py-3 text-sm font-semibold transition-colors"
-                  >
-                    <Users size={14} />
-                    {home.communityBanner.cta}
-                  </Link>
-                  <Link
-                    to={COMMUNITY_GROUPS}
-                    className="inline-flex items-center gap-2 px-7 py-3 rounded-full text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    style={{ background: 'transparent', border: '1px solid hsl(var(--border))', color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)', letterSpacing: '0.04em' }}
-                  >
-                    {home.communityBanner.ctaSecondary}
-                  </Link>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.7, delay: 0.15 }}
-                className="relative"
-              >
-                <div
-                  className="rounded-2xl overflow-hidden aspect-[4/3]"
-                  style={{ border: '1px solid hsl(var(--border))' }}
-                >
-                  <img
-                    src="/airo-assets/images/pages/home/community-banner"
-                    alt="Spellful community — witches and seekers gathered together"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    width={600}
-                    height={450}
-                  />
-                  <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to top, hsl(var(--card) / 0.6) 0%, transparent 50%)' }} />
-                </div>
-              </motion.div>
-            </div>
-          </div>
-        </section>
 
         {/* ══════════════════════════════════════════════════════════════
             7. EXPLORE THE CRAFT — all users (editorial cards)

@@ -1,11 +1,10 @@
-import { useState, useEffect, type CSSProperties } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
-import { ArrowRight, Bell, MessageSquare } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
-import { COMMUNITY_FEED, COMMUNITY_GROUPS, COMMUNITY_UPDATES } from '@/lib/community-navigation';
+import { COMMUNITY_FEED } from '@/lib/community-navigation';
 import { getMoonPhase } from '@/lib/moon-phase-engine';
-import myCovenWordmark from '@/assets/my-coven-wordmark.png';
 
 // ─── Seeded star field (SSR-safe) ────────────────────────────────────────────
 function seededRand(seed: number) {
@@ -51,7 +50,6 @@ export default function Footer() {
   const [moonPhase, setMoonPhase] = useState('Full Moon');
   const [moonIllum, setMoonIllum] = useState(100);
   const [mounted, setMounted] = useState(false);
-  const [wordmarkVisible, setWordmarkVisible] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -102,8 +100,21 @@ export default function Footer() {
         ))}
       </div>
 
+      <nav aria-labelledby="footer-coven-heading" className="relative z-10 mx-auto px-5 pt-8 text-center">
+        <h2 id="footer-coven-heading" className="font-heading text-3xl font-bold leading-tight sm:text-4xl">
+          <Link
+            to={COMMUNITY_FEED}
+            className="coven-press inline-flex min-h-11 items-center gap-2 rounded-sm text-[hsl(var(--footer-ivory))] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            My Coven
+            <ArrowRight className="size-4 shrink-0 text-[hsl(var(--footer-gold))]" aria-hidden="true" />
+          </Link>
+        </h2>
+        <p className="mt-1.5 text-sm text-[hsl(var(--footer-ivory)/0.76)]">Catch up with your circle.</p>
+      </nav>
+
       {/* 1. Celestial Divider */}
-      <div className="relative flex flex-col items-center pt-10 pb-2" aria-hidden="true">
+      <div className="relative flex flex-col items-center pt-5 pb-6" aria-hidden="true">
         <div
           className="relative mb-3 text-3xl select-none"
           style={{
@@ -133,66 +144,6 @@ export default function Footer() {
           </svg>
         </div>
       </div>
-
-      <nav
-        aria-labelledby="footer-coven-heading"
-        className="coven-footer-panel relative isolate z-10 mx-5 mb-6 flex max-w-xs flex-col items-center px-5 pb-2 pt-4 text-center min-[362px]:mx-auto"
-      >
-        <Link
-          to={COMMUNITY_FEED}
-          aria-label="Open My Coven feed"
-          aria-describedby="footer-coven-invitation"
-          className="coven-press group inline-flex flex-col items-center gap-1.5 rounded-md px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          <motion.h2
-            id="footer-coven-heading"
-            className="coven-footer-wordmark relative"
-            data-shimmer={wordmarkVisible ? 'true' : undefined}
-            style={{ '--coven-wordmark-image': `url("${myCovenWordmark}")` } as CSSProperties}
-            viewport={{ once: true, amount: 0.6 }}
-            onViewportEnter={() => setWordmarkVisible(true)}
-          >
-            <span className="sr-only">My Coven</span>
-            <img
-              src={myCovenWordmark}
-              alt=""
-              width={640}
-              height={211}
-              loading="lazy"
-              className="block h-auto w-32"
-            />
-          </motion.h2>
-          <p id="footer-coven-invitation" className="text-sm text-[hsl(var(--footer-lavender))]">
-            Catch up with your circle.
-          </p>
-          <span className="inline-flex items-center gap-1.5 py-1 text-sm font-semibold text-[hsl(var(--footer-gold))] underline-offset-4 group-hover:underline">
-            Open feed
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </span>
-        </Link>
-        <ul className="relative flex flex-wrap items-center justify-center gap-x-4">
-          {[
-            { label: 'Updates', to: COMMUNITY_UPDATES, icon: Bell },
-            { label: 'Groups', to: COMMUNITY_GROUPS, icon: MessageSquare },
-          ].map(({ label, to, icon: Icon }) => (
-            <li key={to}>
-              <Link
-                to={to}
-                className="coven-press inline-flex min-h-11 items-center gap-1.5 rounded-sm text-sm text-[hsl(var(--footer-lavender))] transition-colors hover:text-[hsl(var(--footer-gold))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              >
-                <Icon className="size-3.5 shrink-0 text-[hsl(var(--footer-gold))]" aria-hidden="true" />
-                {label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      {/* Thin separator */}
-      <div
-        className="relative z-10 mx-auto max-w-lg h-px mb-8"
-        style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--footer-gold) / 0.3), transparent)' }}
-      />
 
       {/* Site and legal links */}
       <motion.div

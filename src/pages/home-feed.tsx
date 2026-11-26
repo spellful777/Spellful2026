@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
+import { ArrowRight } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Button } from '@/components/ui/button';
 import { useCommunityPosts } from '@/hooks/useCommunity';
-import { COMMUNITY_FEED, COMMUNITY_GROUPS, COMMUNITY_UPDATES } from '@/lib/community-navigation';
+import { COMMUNITY_FEED } from '@/lib/community-navigation';
 import { PostCard } from './community/index';
 
 export default function HomeFeed() {
@@ -68,14 +69,13 @@ export default function HomeFeed() {
         <h1 className="font-heading text-3xl">Home</h1>
         <Button asChild><Link to="/community/new">Create post</Link></Button>
       </div>
-      <section aria-labelledby="home-coven-heading" className="coven-entry rounded-2xl border p-5 shadow-lg">
-        <h2 id="home-coven-heading" className="font-heading text-2xl">My Coven</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Catch up with people you follow or join a group discussion.</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button asChild size="sm" className="coven-action"><Link to={COMMUNITY_FEED}>Open My Coven feed</Link></Button>
-          <Button asChild size="sm" variant="outline" className="bg-transparent hover:bg-white/10 hover:text-white"><Link to={COMMUNITY_UPDATES}>See updates</Link></Button>
-          <Button asChild size="sm" variant="outline" className="bg-transparent hover:bg-white/10 hover:text-white"><Link to={COMMUNITY_GROUPS}>Browse groups</Link></Button>
-        </div>
+      <section aria-labelledby="home-coven-heading" className="coven-entry rounded-xl border p-4">
+        <h2 id="home-coven-heading" className="font-heading text-2xl font-bold text-white">
+          <Link to={COMMUNITY_FEED} className="inline-flex min-h-11 items-center gap-2 rounded-sm underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+            My Coven <ArrowRight className="size-4 text-primary" aria-hidden="true" />
+          </Link>
+        </h2>
+        <p className="text-sm text-white/75">Catch up with your circle.</p>
       </section>
       <nav aria-label="Home feed" className="flex flex-wrap gap-2">
         {(['following', 'discover'] as const).map(option => (
