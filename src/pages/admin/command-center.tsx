@@ -975,37 +975,144 @@ interface RequestRow {
 interface ThreadsResponse  { threads:  ThreadRow[];  hasMore: boolean; total: number; }
 interface RequestsResponse { requests: RequestRow[]; hasMore: boolean; total: number; }
 
-type MessagingView = 'threads' | 'requests';
+interface MsgAnalytics {
+  kpis: {
+    totalConversations: number;
+    totalGroups: number;
+    totalGroupMembers: number;
+    totalMessages: number;
+    messagesLast7d: number;
+    messagesLast30d: number;
+    pendingReports: number;
+    resolvedReports: number;
+  };
+  sparklines: { dailyMessages: number[]; days: string[] };
+  topReported: { userId: string; username: string | null; name: string | null; reportCount: number }[];
+}
+
+interface MsgReport {
+  id: number;
+  messageId: number;
+  conversationId: number;
+  reason: string;
+  details: string | null;
+  status: string;
+  createdAt: string;
+  reviewedAt: string | null;
+  reporterUsername: string | null;
+  reporterName: string | null;
+  reportedUsername: string | null;
+  reportedName: string | null;
+  reviewerUsername: string | null;
+  convP1Username: string | null;
+  convP2Username: string | null;
+  totalReportsOnUser: number;
+}
+
+interface MsgReportsResponse { reports: MsgReport[]; hasMore: boolean; total: number; }
+
+interface MsgConfig {
+  maxMessageLength: number;
+  maxAttachmentSizeMb: number;
+  maxGroupSize: number;
+  maxGroupsPerUser: number;
+  dmEnabled: boolean;
+  groupsEnabled: boolean;
+  richCardsEnabled: boolean;
+  pushNotificationsEnabled: boolean;
+  blockedRoles: string[];
+  minAccountAgeDays: number;
+  updatedAt: string | null;
+}
+
+type MessagingView = 'analytics' | 'threads' | 'requests' | 'reports' | 'config';
 
 const MESSAGING_PAGE = 25;
 
 function MessagingTab() {
-  const [view, setView]               = useState<MessagingView>('threads');
+  const { data: msgSession } = useSession();
+  const msgRole = (msgSession?.user as { platformRole?: string } | undefined)?.platformRole;
+  const isOwnerActor = msgRole === 'owner';
+
+  const [view, setView]               = useState<MessagingView>('analytics');
   const [offset, setOffset]           = useState(0);
   const [threadsData, setThreadsData] = useState<ThreadsResponse | null>(null);
   const [reqData, setReqData]         = useState<RequestsResponse | null>(null);
+  const [analytics, setAnalytics]     = useState<MsgAnalytics | null>(null);
+  const [reports, setReports]         = useState<MsgReportsResponse | null>(null);
+  const [reportsStatus, setReportsStatus] = useState<'pending' | 'resolved' | 'all'>('pending');
+  const [config, setConfig]           = useState<MsgConfig | null>(null);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
+  const [actionMsg, setActionMsg]     = useState<string | null>(null);
+  const [configDraft, setConfigDraft] = useState<Partial<MsgConfig>>({});
+  const [configSaving, setConfigSaving] = useState(false);
 
-  const load = useCallback((v: MessagingView, off: number) => {
+  const load = useCallback((v: MessagingView, off: number, rStatus?: 'pending' | 'resolved' | 'all') => {
     setLoading(true);
     setError(null);
-    fetch(`/api/admin/command-center/messaging?view=${v}&limit=${MESSAGING_PAGE}&offset=${off}`)
+    let url = '';
+    if (v === 'analytics') url = '/api/admin/messaging/analytics';
+    else if (v === 'threads') url = `/api/admin/command-center/messaging?view=threads&limit=${MESSAGING_PAGE}&offset=${off}`;
+    else if (v === 'requests') url = `/api/admin/command-center/messaging?view=requests&limit=${MESSAGING_PAGE}&offset=${off}`;
+    else if (v === 'reports') url = `/api/admin/messaging/reports?status=${rStatus ?? reportsStatus}&limit=${MESSAGING_PAGE}&offset=${off}`;
+    else if (v === 'config') url = '/api/admin/messaging/config';
+    fetch(url)
       .then(r => r.json())
-      .then((d: (ThreadsResponse | RequestsResponse) & { error?: string }) => {
+      .then((d: (MsgAnalytics | ThreadsResponse | RequestsResponse | MsgReportsResponse | MsgConfig) & { error?: string }) => {
         if (d.error) { setError(d.error); return; }
-        if (v === 'threads') setThreadsData(d as ThreadsResponse);
-        else setReqData(d as RequestsResponse);
+        if (v === 'analytics') setAnalytics(d as MsgAnalytics);
+        else if (v === 'threads') setThreadsData(d as ThreadsResponse);
+        else if (v === 'requests') setReqData(d as RequestsResponse);
+        else if (v === 'reports') setReports(d as MsgReportsResponse);
+        else if (v === 'config') { setConfig(d as MsgConfig); setConfigDraft({}); }
       })
       .catch(() => setError('Failed to load'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [reportsStatus]);
 
   useEffect(() => { load(view, offset); }, [load, view, offset]);
 
-  function switchView(v: MessagingView) { setView(v); setOffset(0); }
+  function switchView(v: MessagingView) { setView(v); setOffset(0); setError(null); setActionMsg(null); }
 
-  const currentData = view === 'threads' ? threadsData : reqData;
+  async function resolveReport(id: number, action: string) {
+    setActionMsg(null);
+    const res = await fetch(`/api/admin/messaging/reports/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    });
+    const json = await res.json() as { error?: string };
+    if (json.error) { setActionMsg(`Error: ${json.error}`); return; }
+    setActionMsg(`Report #${id} marked as ${action}`);
+    load('reports', offset);
+  }
+
+  async function saveConfig() {
+    if (!Object.keys(configDraft).length) return;
+    setConfigSaving(true);
+    setActionMsg(null);
+    const res = await fetch('/api/admin/messaging/config', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(configDraft),
+    });
+    const json = await res.json() as { error?: string; config?: MsgConfig };
+    setConfigSaving(false);
+    if (json.error) { setActionMsg(`Error: ${json.error}`); return; }
+    setConfig(json.config ?? null);
+    setConfigDraft({});
+    setActionMsg('Configuration saved');
+  }
+
+
+  const VIEWS: { id: MessagingView; label: string }[] = [
+    { id: 'analytics', label: 'Analytics' },
+    { id: 'threads',   label: `Threads${threadsData ? ` (${threadsData.total.toLocaleString()})` : ''}` },
+    { id: 'requests',  label: `Requests${reqData ? ` (${reqData.total})` : ''}` },
+    { id: 'reports',   label: `Reports${reports ? ` (${reports.total})` : ''}` },
+    { id: 'config',    label: 'Config' },
+  ];
 
   return (
     <div className="space-y-4">
@@ -1014,45 +1121,124 @@ function MessagingTab() {
         <h2 className="text-xl font-bold" style={{ color: 'hsl(var(--foreground))', fontFamily: 'var(--font-heading)' }}>
           Messaging
         </h2>
-        <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: 'hsl(var(--muted))' }}>
-          {(['threads', 'requests'] as MessagingView[]).map(v => (
+        <div className="flex items-center gap-1 p-1 rounded-lg flex-wrap" style={{ background: 'hsl(var(--muted))' }}>
+          {VIEWS.map(({ id, label }) => (
             <button
-              key={v}
-              onClick={() => switchView(v)}
+              key={id}
+              onClick={() => switchView(id)}
               className="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
               style={{
-                background: view === v ? 'hsl(var(--card))' : 'transparent',
-                color: view === v ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+                background: view === id ? 'hsl(var(--card))' : 'transparent',
+                color: view === id ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
                 fontFamily: 'var(--font-sans)',
-                boxShadow: view === v ? '0 1px 3px hsl(var(--background) / 0.5)' : 'none',
+                boxShadow: view === id ? '0 1px 3px hsl(var(--background) / 0.5)' : 'none',
               }}
             >
-              {v === 'threads'
-                ? `Threads${threadsData ? ` (${threadsData.total.toLocaleString()})` : ''}`
-                : `Requests${reqData ? ` (${reqData.total})` : ''}`}
+              {label}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
-            {currentData ? `${currentData.total.toLocaleString()} total` : '—'}
-          </span>
-          <Button size="sm" variant="outline" onClick={() => load(view, offset)} disabled={loading} className="gap-1.5 text-xs">
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
+        <Button size="sm" variant="outline" onClick={() => load(view, offset)} disabled={loading} className="gap-1.5 text-xs">
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       {/* E2E notice */}
       <div className="flex items-start gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))', fontFamily: 'var(--font-sans)' }}>
         <Shield className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: 'hsl(var(--accent))' }} />
-        <span>Messages are end-to-end encrypted. Only metadata (participants, count, timestamps) is visible here — message content is never accessible to admins.</span>
+        <span>DMs are end-to-end encrypted — only metadata is visible. Group messages are plaintext and visible to moderators reviewing reports.</span>
       </div>
 
+      {/* Action / error feedback */}
+      {actionMsg && (
+        <div className="px-3 py-2 rounded-lg text-xs flex items-center gap-2" style={{ background: actionMsg.startsWith('Error') ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--success) / 0.1)', color: actionMsg.startsWith('Error') ? 'hsl(var(--destructive))' : 'hsl(var(--success))', border: `1px solid ${actionMsg.startsWith('Error') ? 'hsl(var(--destructive) / 0.3)' : 'hsl(var(--success) / 0.3)'}`, fontFamily: 'var(--font-sans)' }}>
+          {actionMsg.startsWith('Error') ? <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> : <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+          {actionMsg}
+        </div>
+      )}
       {error && (
         <div className="px-3 py-2 rounded-lg text-xs flex items-center gap-2" style={{ background: 'hsl(var(--destructive) / 0.1)', color: 'hsl(var(--destructive))', border: '1px solid hsl(var(--destructive) / 0.3)', fontFamily: 'var(--font-sans)' }}>
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{error}
+        </div>
+      )}
+
+      {/* ── Analytics view ── */}
+      {view === 'analytics' && (
+        <div className="space-y-4">
+          {loading && !analytics && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+            </div>
+          )}
+          {analytics && (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { label: 'DM Conversations', value: analytics.kpis.totalConversations },
+                  { label: 'Group Chats',       value: analytics.kpis.totalGroups },
+                  { label: 'Group Members',     value: analytics.kpis.totalGroupMembers },
+                  { label: 'Total Messages',    value: analytics.kpis.totalMessages },
+                  { label: 'Messages (7d)',     value: analytics.kpis.messagesLast7d },
+                  { label: 'Messages (30d)',    value: analytics.kpis.messagesLast30d },
+                  { label: 'Pending Reports',   value: analytics.kpis.pendingReports,  alert: analytics.kpis.pendingReports > 0 },
+                  { label: 'Resolved Reports',  value: analytics.kpis.resolvedReports },
+                ].map(({ label, value, alert }) => (
+                  <KpiCard key={label} label={label} value={value.toLocaleString()} alert={alert} />
+                ))}
+              </div>
+
+              {/* Daily message sparkline */}
+              <Card className="p-4" style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+                <p className="text-xs font-medium mb-3" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
+                  Daily messages — last 14 days
+                </p>
+                <div className="flex items-end gap-1 h-16">
+                  {analytics.sparklines.dailyMessages.map((n, i) => {
+                    const max = Math.max(...analytics.sparklines.dailyMessages, 1);
+                    const pct = (n / max) * 100;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group relative">
+                        <div
+                          className="w-full rounded-sm transition-all"
+                          style={{ height: `${Math.max(pct, 4)}%`, background: 'hsl(var(--primary) / 0.7)' }}
+                        />
+                        <span className="text-[9px] hidden group-hover:block absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap px-1 rounded" style={{ background: 'hsl(var(--card))', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' }}>
+                          {analytics.sparklines.days[i]?.slice(5)}: {n}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+
+              {/* Top reported users */}
+              {analytics.topReported.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold mb-2" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
+                    Most-reported users
+                  </p>
+                  <div className="space-y-1.5">
+                    {analytics.topReported.map(u => (
+                      <div key={u.userId} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate" style={{ color: 'hsl(var(--foreground))', fontFamily: 'var(--font-sans)' }}>
+                            @{u.username ?? '?'}{u.name ? ` · ${u.name}` : ''}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="text-xs shrink-0" style={{ color: u.reportCount >= 3 ? 'hsl(var(--destructive))' : 'hsl(var(--warning))', borderColor: u.reportCount >= 3 ? 'hsl(var(--destructive) / 0.4)' : 'hsl(var(--warning) / 0.4)', fontFamily: 'var(--font-sans)' }}>
+                          {u.reportCount} report{u.reportCount !== 1 ? 's' : ''}
+                        </Badge>
+                        <Button size="sm" variant="outline" className="text-xs h-7 px-2" onClick={() => { setReportsStatus('all'); switchView('reports'); }}>
+                          View
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
@@ -1077,9 +1263,7 @@ function MessagingTab() {
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
                   {Number(thread.messageCount ?? 0).toLocaleString()} messages
-                  {thread.updatedAt && (
-                    <span className="ml-2">· last {new Date(thread.updatedAt).toLocaleDateString()}</span>
-                  )}
+                  {thread.updatedAt && <span className="ml-2">· last {new Date(thread.updatedAt).toLocaleDateString()}</span>}
                 </p>
               </div>
               <Badge variant="outline" className="text-xs px-1.5 py-0 shrink-0" style={{ color: 'hsl(var(--muted-foreground))', borderColor: 'hsl(var(--border))', fontFamily: 'var(--font-sans)' }}>
@@ -1087,6 +1271,19 @@ function MessagingTab() {
               </Badge>
             </div>
           ))}
+          {threadsData && (threadsData.hasMore || offset > 0) && (
+            <div className="flex items-center justify-between pt-2">
+              <Button size="sm" variant="outline" onClick={() => setOffset(Math.max(0, offset - MESSAGING_PAGE))} disabled={offset === 0 || loading} className="gap-1.5 text-xs">
+                <ChevronLeft className="w-3.5 h-3.5" />Previous
+              </Button>
+              <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
+                {offset + 1}–{Math.min(offset + MESSAGING_PAGE, threadsData.total)} of {threadsData.total.toLocaleString()}
+              </span>
+              <Button size="sm" variant="outline" onClick={() => setOffset(offset + MESSAGING_PAGE)} disabled={!threadsData.hasMore || loading} className="gap-1.5 text-xs">
+                Next<ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1121,21 +1318,212 @@ function MessagingTab() {
               </Badge>
             </div>
           ))}
+          {reqData && (reqData.hasMore || offset > 0) && (
+            <div className="flex items-center justify-between pt-2">
+              <Button size="sm" variant="outline" onClick={() => setOffset(Math.max(0, offset - MESSAGING_PAGE))} disabled={offset === 0 || loading} className="gap-1.5 text-xs">
+                <ChevronLeft className="w-3.5 h-3.5" />Previous
+              </Button>
+              <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
+                {offset + 1}–{Math.min(offset + MESSAGING_PAGE, reqData.total)} of {reqData.total.toLocaleString()}
+              </span>
+              <Button size="sm" variant="outline" onClick={() => setOffset(offset + MESSAGING_PAGE)} disabled={!reqData.hasMore || loading} className="gap-1.5 text-xs">
+                Next<ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Pagination */}
-      {currentData && (currentData.hasMore || offset > 0) && (
-        <div className="flex items-center justify-between pt-2">
-          <Button size="sm" variant="outline" onClick={() => setOffset(Math.max(0, offset - MESSAGING_PAGE))} disabled={offset === 0 || loading} className="gap-1.5 text-xs">
-            <ChevronLeft className="w-3.5 h-3.5" />Previous
-          </Button>
-          <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
-            {offset + 1}–{Math.min(offset + MESSAGING_PAGE, currentData.total)} of {currentData.total.toLocaleString()}
-          </span>
-          <Button size="sm" variant="outline" onClick={() => setOffset(offset + MESSAGING_PAGE)} disabled={!currentData.hasMore || loading} className="gap-1.5 text-xs">
-            Next<ChevronRight className="w-3.5 h-3.5" />
-          </Button>
+      {/* ── Reports view ── */}
+      {view === 'reports' && (
+        <div className="space-y-3">
+          {/* Status filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {(['pending', 'resolved', 'all'] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => { setReportsStatus(s); setOffset(0); load('reports', 0, s); }}
+                className="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+                style={{
+                  background: reportsStatus === s ? 'hsl(var(--primary) / 0.15)' : 'hsl(var(--muted))',
+                  color: reportsStatus === s ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                  border: `1px solid ${reportsStatus === s ? 'hsl(var(--primary) / 0.4)' : 'hsl(var(--border))'}`,
+                  fontFamily: 'var(--font-sans)',
+                }}
+              >
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+            <span className="text-xs ml-auto" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
+              {reports ? `${reports.total} total` : '—'}
+            </span>
+          </div>
+
+          {loading && !reports && Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="px-4 py-3 rounded-lg" style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+              <Skeleton className="h-3 w-3/4 mb-2" /><Skeleton className="h-2.5 w-1/2" />
+            </div>
+          ))}
+
+          {!loading && reports?.reports.length === 0 && (
+            <div className="flex flex-col items-center gap-2 py-10">
+              <CheckCircle2 className="w-8 h-8" style={{ color: 'hsl(var(--success))' }} />
+              <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>No {reportsStatus === 'all' ? '' : reportsStatus} reports</p>
+            </div>
+          )}
+
+          {(reports?.reports ?? []).map(r => (
+            <div key={r.id} className="rounded-xl p-4 space-y-2" style={{ background: 'hsl(var(--card))', border: `1px solid ${r.status === 'pending' ? 'hsl(var(--warning) / 0.4)' : 'hsl(var(--border))'}` }}>
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))', fontFamily: 'var(--font-sans)' }}>
+                    Report #{r.id} — <span style={{ color: 'hsl(var(--destructive))' }}>{r.reason.replace(/_/g, ' ')}</span>
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
+                    @{r.reporterUsername ?? '?'} reported @{r.reportedUsername ?? '?'}
+                    {r.totalReportsOnUser > 1 && (
+                      <span className="ml-1.5 font-semibold" style={{ color: 'hsl(var(--warning))' }}>
+                        ({r.totalReportsOnUser} total reports on this user)
+                      </span>
+                    )}
+                  </p>
+                  {r.details && (
+                    <p className="text-xs mt-1 italic" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
+                      "{r.details}"
+                    </p>
+                  )}
+                  <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
+                    Conversation #{r.conversationId} · @{r.convP1Username ?? '?'} ↔ @{r.convP2Username ?? '?'}
+                    {' · '}{new Date(r.createdAt).toLocaleDateString()}
+                  </p>
+                  {r.reviewedAt && (
+                    <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
+                      Reviewed by @{r.reviewerUsername ?? '?'} on {new Date(r.reviewedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                <Badge
+                  variant="outline"
+                  className="text-xs shrink-0"
+                  style={{
+                    color: r.status === 'pending' ? 'hsl(var(--warning))' : r.status === 'resolve' ? 'hsl(var(--success))' : 'hsl(var(--muted-foreground))',
+                    borderColor: r.status === 'pending' ? 'hsl(var(--warning) / 0.4)' : 'hsl(var(--border))',
+                    fontFamily: 'var(--font-sans)',
+                  }}
+                >
+                  {r.status}
+                </Badge>
+              </div>
+              {r.status === 'pending' && (
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <Button size="sm" variant="outline" className="text-xs h-7 px-2 gap-1" style={{ color: 'hsl(var(--success))', borderColor: 'hsl(var(--success) / 0.4)' }} onClick={() => void resolveReport(r.id, 'resolve')}>
+                    <CheckCircle2 className="w-3 h-3" />Resolve
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs h-7 px-2 gap-1" style={{ color: 'hsl(var(--warning))', borderColor: 'hsl(var(--warning) / 0.4)' }} onClick={() => void resolveReport(r.id, 'warn')}>
+                    <AlertTriangle className="w-3 h-3" />Warn user
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs h-7 px-2 gap-1" style={{ color: 'hsl(var(--destructive))', borderColor: 'hsl(var(--destructive) / 0.4)' }} onClick={() => void resolveReport(r.id, 'restrict')}>
+                    <XCircle className="w-3 h-3" />Restrict
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-xs h-7 px-2" style={{ color: 'hsl(var(--muted-foreground))' }} onClick={() => void resolveReport(r.id, 'dismiss')}>
+                    Dismiss
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {reports && (reports.hasMore || offset > 0) && (
+            <div className="flex items-center justify-between pt-2">
+              <Button size="sm" variant="outline" onClick={() => setOffset(Math.max(0, offset - MESSAGING_PAGE))} disabled={offset === 0 || loading} className="gap-1.5 text-xs">
+                <ChevronLeft className="w-3.5 h-3.5" />Previous
+              </Button>
+              <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
+                {offset + 1}–{Math.min(offset + MESSAGING_PAGE, reports.total)} of {reports.total.toLocaleString()}
+              </span>
+              <Button size="sm" variant="outline" onClick={() => setOffset(offset + MESSAGING_PAGE)} disabled={!reports.hasMore || loading} className="gap-1.5 text-xs">
+                Next<ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Config view (owner-only) ── */}
+      {view === 'config' && (
+        <div className="space-y-4">
+          {!isOwnerActor && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: 'hsl(var(--warning) / 0.1)', color: 'hsl(var(--warning))', border: '1px solid hsl(var(--warning) / 0.3)', fontFamily: 'var(--font-sans)' }}>
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              Config changes require owner role. You can view but not save.
+            </div>
+          )}
+          {loading && !config && <Skeleton className="h-48 rounded-xl" />}
+          {config && (
+            <div className="space-y-3">
+              {/* Toggle controls */}
+              {([
+                { key: 'dmEnabled',               label: 'DM messaging enabled' },
+                { key: 'groupsEnabled',            label: 'Group messaging enabled' },
+                { key: 'richCardsEnabled',         label: 'Rich message cards enabled' },
+                { key: 'pushNotificationsEnabled', label: 'Push notifications enabled' },
+              ] as { key: keyof MsgConfig; label: string }[]).map(({ key, label }) => {
+                const current = key in configDraft ? configDraft[key] : config[key];
+                return (
+                  <div key={key} className="flex items-center justify-between px-4 py-3 rounded-lg" style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+                    <p className="text-sm" style={{ color: 'hsl(var(--foreground))', fontFamily: 'var(--font-sans)' }}>{label}</p>
+                    <button
+                      disabled={!isOwnerActor}
+                      onClick={() => setConfigDraft(d => ({ ...d, [key]: !current }))}
+                      className="relative w-10 h-5 rounded-full transition-colors"
+                      style={{ background: current ? 'hsl(var(--primary))' : 'hsl(var(--muted))', opacity: isOwnerActor ? 1 : 0.5 }}
+                    >
+                      <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform" style={{ left: current ? '1.25rem' : '0.125rem' }} />
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* Numeric controls */}
+              {([
+                { key: 'maxMessageLength',    label: 'Max message length (chars)', min: 100,  max: 10000 },
+                { key: 'maxAttachmentSizeMb', label: 'Max attachment size (MB)',   min: 1,    max: 100   },
+                { key: 'maxGroupSize',        label: 'Max group size (members)',   min: 2,    max: 500   },
+                { key: 'maxGroupsPerUser',    label: 'Max groups per user',        min: 1,    max: 200   },
+                { key: 'minAccountAgeDays',   label: 'Min account age to message (days, 0 = none)', min: 0, max: 365 },
+              ] as { key: keyof MsgConfig; label: string; min: number; max: number }[]).map(({ key, label, min, max }) => {
+                const current = (key in configDraft ? configDraft[key] : config[key]) as number;
+                return (
+                  <div key={key} className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg" style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+                    <p className="text-sm flex-1" style={{ color: 'hsl(var(--foreground))', fontFamily: 'var(--font-sans)' }}>{label}</p>
+                    <input
+                      type="number"
+                      min={min}
+                      max={max}
+                      value={current}
+                      disabled={!isOwnerActor}
+                      onChange={e => setConfigDraft(d => ({ ...d, [key]: Number(e.target.value) }))}
+                      className="w-24 px-2 py-1 rounded text-sm text-right focus:outline-none focus:ring-2"
+                      style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))', fontFamily: 'var(--font-sans)', opacity: isOwnerActor ? 1 : 0.6 }}
+                    />
+                  </div>
+                );
+              })}
+
+              {config.updatedAt && (
+                <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)' }}>
+                  Last updated: {new Date(config.updatedAt).toLocaleString()}
+                </p>
+              )}
+
+              {isOwnerActor && Object.keys(configDraft).length > 0 && (
+                <Button onClick={() => void saveConfig()} disabled={configSaving} className="gap-1.5 text-sm">
+                  {configSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  Save configuration
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -2382,6 +2770,7 @@ function EmailMarketingTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pauseLoading, setPauseLoading] = useState(false);
+  const [runLoading, setRunLoading] = useState(false);
   const [sortCol, setSortCol] = useState<'total' | 'sent' | 'deliveryRate'>('total');
 
   const load = useCallback(async (d: EmailDays) => {
@@ -2410,6 +2799,15 @@ function EmailMarketingTab() {
       await load(days);
     } catch { /* non-fatal */ }
     setPauseLoading(false);
+  }
+
+  async function runNow() {
+    setRunLoading(true);
+    try {
+      await fetch('/api/moments/run', { method: 'POST' });
+      await load(days);
+    } catch { /* non-fatal */ }
+    setRunLoading(false);
   }
 
   const cardStyle = { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem', padding: '1.25rem' } as const;
@@ -2477,9 +2875,23 @@ function EmailMarketingTab() {
                 <p style={labelStyle}>Scheduler Status</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="inline-block w-2.5 h-2.5 rounded-full"
-                    style={{ background: data.scheduler?.paused ? 'hsl(var(--warning))' : 'hsl(var(--success))' }} />
+                    style={{
+                      background: !data.scheduler
+                        ? 'hsl(var(--muted-foreground))'
+                        : data.scheduler.paused
+                          ? 'hsl(var(--warning))'
+                          : (data.scheduler.consecutiveFailDays > 0 || data.scheduler.lastRunErrorDetail)
+                            ? 'hsl(var(--destructive))'
+                            : 'hsl(var(--success))',
+                    }} />
                   <span className="text-sm font-semibold" style={{ color: 'hsl(var(--foreground))', fontFamily: 'var(--font-sans)' }}>
-                    {data.scheduler ? (data.scheduler.paused ? 'Paused' : 'Running') : 'No state yet'}
+                    {!data.scheduler
+                      ? 'No state yet'
+                      : data.scheduler.paused
+                        ? 'Paused'
+                        : (data.scheduler.consecutiveFailDays > 0 || data.scheduler.lastRunErrorDetail)
+                          ? 'Error'
+                          : 'Healthy'}
                   </span>
                 </div>
                 {data.scheduler && (
@@ -2502,10 +2914,16 @@ function EmailMarketingTab() {
                 )}
               </div>
               {data.scheduler && (
-                <Button size="sm" variant="outline" onClick={togglePause} disabled={pauseLoading}
-                  className="text-xs shrink-0">
-                  {pauseLoading ? 'Updating…' : data.scheduler.paused ? '▶ Resume' : '⏸ Pause'}
-                </Button>
+                <div className="flex gap-2 shrink-0">
+                  <Button size="sm" variant="outline" onClick={runNow} disabled={runLoading || data.scheduler.paused}
+                    className="text-xs">
+                    {runLoading ? 'Running…' : '▶ Run Now'}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={togglePause} disabled={pauseLoading}
+                    className="text-xs">
+                    {pauseLoading ? 'Updating…' : data.scheduler.paused ? '▶ Resume' : '⏸ Pause'}
+                  </Button>
+                </div>
               )}
             </div>
           </div>

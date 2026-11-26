@@ -63,7 +63,7 @@ export default function CirclesPage() {
         <meta property="og:description" content="Find your people. Join communities built around shared magical interests." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/circles" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Spellful Circles" />
         <meta name="twitter:description" content="Find your people. Join communities built around shared magical interests." />

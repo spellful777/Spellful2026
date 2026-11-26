@@ -1369,15 +1369,17 @@ export default function TarotPage() {
         <meta property="og:description" content={tarot.seo.description} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/tarot" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/tarot/og-image" />
+        <meta property="og:image:secure_url" content="https://spellful.com/airo-assets/images/pages/tarot/og-image" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content={tarot.seo.title} />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:alt" content="Spellful Tarot — Free Readings &amp; Card Meanings" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={tarot.seo.title} />
         <meta name="twitter:description" content={tarot.seo.description} />
-        <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
-        <meta name="twitter:image:alt" content={tarot.seo.title} />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
+        <meta name="twitter:image:alt" content="Spellful logo" />
         <link rel="canonical" href="https://spellful.com/tarot" />
       </Helmet>
 

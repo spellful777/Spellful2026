@@ -175,14 +175,16 @@ export default function HoroscopePage() {
         <meta property="og:description" content="Get your personalized daily horoscope on Spellful — free astrology readings based on your birth chart." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/horoscope" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/horoscope/og-image" />
+        <meta property="og:image:secure_url" content="https://spellful.com/airo-assets/images/pages/horoscope/og-image" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
+        <meta property="og:image:type" content="image/png" />
         <meta property="og:image:alt" content="Your Daily Horoscope — Spellful" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Your Daily Horoscope — Spellful" />
         <meta name="twitter:description" content="Get your personalized daily horoscope on Spellful — free astrology readings based on your birth chart." />
-        <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/horoscope/og-image" />
         <meta name="twitter:image:alt" content="Your Daily Horoscope — Spellful" />
       </Helmet>
 

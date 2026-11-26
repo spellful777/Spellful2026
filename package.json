@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "workspaces": [
-    "content-lib",
-    "content-plugin"
+    "content-lib"
   ],
   "imports": {
     "#airo/secrets": "./export-plugins/airo-secrets.ts",

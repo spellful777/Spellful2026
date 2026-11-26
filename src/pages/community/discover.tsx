@@ -185,7 +185,7 @@ export default function DiscoverPage() {
         <meta property="og:description" content="Find and connect with witches and magical practitioners who share your interests." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/community/discover" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Discover Members — Spellful" />
         <meta name="twitter:description" content="Find and connect with witches and magical practitioners who share your interests." />

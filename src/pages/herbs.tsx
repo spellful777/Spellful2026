@@ -815,14 +815,16 @@ export default function HerbsPage() {
         <meta property="og:description" content="Source-transparent magical herb guide with botanical identity, safety warnings, and correspondence provenance. No signup required." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/herbs/og-image" />
+        <meta property="og:image:secure_url" content="https://spellful.com/airo-assets/images/pages/herbs/og-image" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Magical Herb & Ingredient Guide — Spellful" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:alt" content="Magical Herb &amp; Ingredient Guide — Spellful" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Magical Herb &amp; Ingredient Guide — Spellful" />
         <meta name="twitter:description" content="Source-transparent magical herb guide with botanical identity, safety warnings, and correspondence provenance." />
-        <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/herbs/og-image" />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'WebApplication',

@@ -103,10 +103,7 @@ export default function ResourcesPage() {
         <meta property="og:description" content="Free tarot card meanings, numerology guide, intuitive spreads, and angel number reference for the modern seeker." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/resources" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Free Tarot &amp; Numerology Guide — Spellful" />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Free Tarot &amp; Numerology Guide — Minor Arcana, Spreads &amp; Angel Numbers | Spellful" />
         <meta name="twitter:description" content="Free tarot card meanings, numerology guide, intuitive spreads, and angel number reference for the modern seeker." />

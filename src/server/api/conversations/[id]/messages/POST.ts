@@ -1,3 +1,4 @@
+import { selectRows } from '@/server/db/select-rows';
 /**
  * POST /api/conversations/:id/messages
  * Send an encrypted message.
@@ -13,6 +14,7 @@ import { db } from '@/server/db/client.js';
 import { conversations, user } from '@/server/db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { sendPushToUser } from '@/server/lib/push-notify.js';
+import { fanoutToUser } from '@/server/lib/sse-registry.js';
 import { isBlocked } from '@/server/lib/block-check.js';
 
 export default async function handler(req: Request<{ id: string }>, res: Response) {
@@ -51,6 +53,32 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   if (blocked) {
     // Return a fake success so the sender's UI behaves normally
     return res.status(201).json({ id: -1, blocked: true });
+  }
+
+  // Privacy check — respect recipient's whoCanMessage setting
+  if (recipientId && msgStatus === 'sent') {
+    const [privacyRows] = await db.execute(sql`
+      SELECT who_can_message FROM messaging_privacy_settings WHERE user_id = ${recipientId} LIMIT 1
+    `);
+    const privRows = selectRows<{ who_can_message: string }>(privacyRows);
+    const whoCanMessage = privRows[0]?.who_can_message ?? 'everyone';
+    if (whoCanMessage === 'nobody') {
+      return res.status(403).json({ error: 'This user is not accepting messages.' });
+    }
+    if (whoCanMessage === 'connections') {
+      // Check if they are coven connections
+      const [connRows] = await db.execute(sql`
+        SELECT id FROM coven_connections
+        WHERE status = 'accepted'
+          AND ((requester_id = ${myId} AND receiver_id = ${recipientId})
+            OR (requester_id = ${recipientId} AND receiver_id = ${myId}))
+        LIMIT 1
+      `);
+      if (!(selectRows<unknown>(connRows)).length) {
+        return res.status(403).json({ error: 'This user only accepts messages from connections.' });
+      }
+    }
+    // 'requests' and 'everyone' allow the message through (request flow is handled by message_requests table)
   }
 
   // Idempotency check — if the client supplied a key, look for an existing message
@@ -92,6 +120,16 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
       title: `New message from ${senderName}`,
       body: '✨ You have a new encrypted message on Spellful',
       url: '/messages',
+    });
+    // Real-time SSE fanout — push to all open tabs of the recipient
+    fanoutToUser(recipientId, {
+      type: 'new_message',
+      payload: { conversationId: convId, senderId: myId, messageId: insertId },
+    });
+    // Also notify the sender's other tabs so they stay in sync
+    fanoutToUser(myId, {
+      type: 'new_message',
+      payload: { conversationId: convId, senderId: myId, messageId: insertId, isMine: true },
     });
   }
 

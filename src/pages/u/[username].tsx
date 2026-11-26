@@ -164,12 +164,21 @@ const COLLECTION_FALLBACKS: Record<string, string> = {
   moon: '/airo-assets/images/pages/home/resource-moon-cycles',
 };
 
-const COVER_PRESETS: Record<string, string> = {
-  celestial: 'linear-gradient(135deg, hsl(248 60% 8%) 0%, hsl(270 55% 18%) 50%, hsl(248 60% 8%) 100%)',
-  forest: 'linear-gradient(135deg, hsl(150 40% 8%) 0%, hsl(270 45% 14%) 60%, hsl(248 50% 10%) 100%)',
-  ocean: 'linear-gradient(135deg, hsl(210 60% 8%) 0%, hsl(248 55% 16%) 60%, hsl(270 45% 10%) 100%)',
-  flame: 'linear-gradient(135deg, hsl(20 60% 10%) 0%, hsl(270 50% 14%) 60%, hsl(248 50% 8%) 100%)',
-  void: 'linear-gradient(135deg, hsl(248 50% 5%) 0%, hsl(260 40% 10%) 100%)',
+const DEFAULT_COVER = '/airo-assets/images/profile-covers/spellful-default';
+
+const COVER_PRESET_IMAGES: Record<string, string> = {
+  'spellful-default': DEFAULT_COVER,
+  midnight: '/airo-assets/images/profile-covers/midnight',
+  aurora:   '/airo-assets/images/profile-covers/aurora',
+  ember:    '/airo-assets/images/profile-covers/ember',
+  forest:   '/airo-assets/images/profile-covers/forest',
+  cosmos:   '/airo-assets/images/profile-covers/cosmos',
+  rose:     '/airo-assets/images/profile-covers/rose-mist',
+  // legacy keys — fall back to spellful-default
+  celestial: DEFAULT_COVER,
+  ocean:     '/airo-assets/images/profile-covers/cosmos',
+  flame:     '/airo-assets/images/profile-covers/ember',
+  void:      DEFAULT_COVER,
 };
 
 // Profile theme CSS variable overrides — must match THEME_OVERRIDES in account/profile.tsx
@@ -354,42 +363,36 @@ function RealmSection({ id, title, icon, children, className = '', headerRight }
   );
 }
 
-/** Social platform SVG icon */
+// Branded Spellful social icon URLs — purple/gold circular badges
+const BRANDED_SOCIAL_ICONS: Record<string, string> = {
+  instagram: '/airo-assets/images/social-icons/instagram',
+  threads:   '/airo-assets/images/social-icons/threads',
+  x:         '/airo-assets/images/social-icons/x',
+  twitter:   '/airo-assets/images/social-icons/x',
+  facebook:  '/airo-assets/images/social-icons/facebook',
+  youtube:   '/airo-assets/images/social-icons/youtube',
+  spotify:   '/airo-assets/images/social-icons/spotify',
+  website:   '/airo-assets/images/social-icons/website',
+};
+
+/** Social platform icon — branded image for known platforms, SVG fallback for others */
 function SocialIcon({ platform }: { platform: string }) {
   const p = platform.toLowerCase();
-  if (p === 'instagram') return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" aria-hidden="true">
-      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-    </svg>
-  );
+  const brandedUrl = BRANDED_SOCIAL_ICONS[p];
+  if (brandedUrl) {
+    return (
+      <img
+        src={brandedUrl}
+        alt={platform}
+        className="w-9 h-9 object-contain"
+        loading="lazy"
+      />
+    );
+  }
+  // SVG fallbacks for platforms without a branded icon
   if (p === 'tiktok') return (
     <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" aria-hidden="true">
       <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
-    </svg>
-  );
-  if (p === 'youtube') return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" aria-hidden="true">
-      <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-    </svg>
-  );
-  if (p === 'x' || p === 'twitter') return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" aria-hidden="true">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-    </svg>
-  );
-  if (p === 'facebook') return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" aria-hidden="true">
-      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-    </svg>
-  );
-  if (p === 'spotify') return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" aria-hidden="true">
-      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-    </svg>
-  );
-  if (p === 'threads') return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor" aria-hidden="true">
-      <path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.589 12c.027 3.086.718 5.496 2.057 7.164 1.43 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.964-.065-1.19.408-2.285 1.33-3.082.88-.76 2.119-1.207 3.583-1.291a13.853 13.853 0 0 1 3.02.142c-.126-.742-.375-1.332-.75-1.757-.513-.586-1.308-.883-2.359-.89h-.029c-.844 0-1.992.232-2.721 1.32L7.734 7.847c.98-1.454 2.568-2.256 4.478-2.256h.044c3.194.02 5.097 1.975 5.287 5.388.108.046.216.094.321.142 1.49.7 2.58 1.761 3.154 3.07.797 1.829.848 4.367-1.386 6.51C17.7 22.761 15.458 23.96 12.186 24z"/>
     </svg>
   );
   if (p === 'tumblr') return (
@@ -402,6 +405,7 @@ function SocialIcon({ platform }: { platform: string }) {
       <path d="M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 01.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.632-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/>
     </svg>
   );
+  // Generic website globe fallback
   return <Globe className="w-5 h-5" />;
 }
 
@@ -577,7 +581,7 @@ export default function UserProfilePage() {
 
   const coverStyle: React.CSSProperties = profile.coverImage
     ? { backgroundImage: `url(${profile.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : { background: COVER_PRESETS[profile.coverPreset ?? 'celestial'] ?? COVER_PRESETS.celestial };
+    : { backgroundImage: `url(${COVER_PRESET_IMAGES[profile.coverPreset ?? 'spellful-default'] ?? DEFAULT_COVER})`, backgroundSize: 'cover', backgroundPosition: 'center' };
 
   // Section navigator tiles — only show tiles for sections that have data
   const sectionTiles = [
@@ -605,7 +609,8 @@ export default function UserProfilePage() {
         <meta property="og:description" content={seoBio ? seoBio.slice(0, 155) : `Visit ${seoName}'s magical realm on Spellful.`} />
         <meta property="og:url" content={seoUrl} />
         <meta property="og:type" content="profile" />
-        {profile.image && <meta property="og:image" content={profile.image} />}
+        <meta property="og:image" content={profile.image ?? 'https://spellful.com/airo-assets/images/pages/profile/og-image'} />
+        <meta name="twitter:image" content={profile.image ?? 'https://spellful.com/airo-assets/images/pages/profile/og-image'} />
         <meta name="twitter:card" content="summary" />
       </Helmet>
 
@@ -814,7 +819,11 @@ export default function UserProfilePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* About My Path */}
             {showBio && (
-              <RealmSection title="About My Path ✨" icon={<BookOpen className="w-4 h-4" />} id="about-path">
+              <RealmSection
+                title="About My Path ✨"
+                icon={<BookOpen className="w-4 h-4" />}
+                id="about-path"
+              >
                 <p className="text-sm text-muted-foreground leading-relaxed">{profile.bio}</p>
                 {showLocation && (
                   <div className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground">
@@ -849,10 +858,12 @@ export default function UserProfilePage() {
             )}
           </div>
 
+
+
           {/* ── MODULE 2 — Magical Interests ────────────────────────────── */}
           {((profile.interestTags?.length ?? 0) > 0 || (profile.practiceLabels?.length ?? 0) > 0) && (
             <RealmSection title="✦ Magical Interests" icon={<Sparkles className="w-4 h-4" />} id="interests">
-              <div className="flex flex-wrap gap-2">
+              <div className="relative flex flex-wrap gap-2">
                 {(profile.interestTags ?? []).map(tag => (
                   <span key={tag} className="px-3 py-1 rounded-full text-xs border border-primary/30 bg-primary/10 text-primary font-medium">
                     ✦ {tag}
@@ -867,7 +878,6 @@ export default function UserProfilePage() {
             </RealmSection>
           )}
 
-          {/* ── Section Navigator ────────────────────────────────────────── */}
           {sectionTiles.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
@@ -1151,18 +1161,18 @@ export default function UserProfilePage() {
 
             {/* Social Links */}
             {showSocialLinks && profile.socialLinks && (
-              <RealmSection title="🔗 Find Me Elsewhere" icon={<Globe className="w-4 h-4" />} id="social-links">
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <RealmSection title="Find Me Elsewhere" icon={<Globe className="w-4 h-4" />} id="social-links">
+                <div className="flex flex-wrap gap-3">
                   {Object.entries(profile.socialLinks).filter(([, v]) => v).map(([platform, url]) => (
                     <a
                       key={platform}
                       href={url.startsWith('http') ? url : `https://${url}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-muted/40 p-3 hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                      aria-label={`Visit ${platform === 'x' || platform === 'twitter' ? 'X (Twitter)' : platform.charAt(0).toUpperCase() + platform.slice(1)} profile`}
+                      className="transition-transform hover:scale-110 active:scale-95"
                     >
-                      <span className="text-foreground"><SocialIcon platform={platform} /></span>
-                      <span className="text-xs text-muted-foreground capitalize">{platform}</span>
+                      <SocialIcon platform={platform} />
                     </a>
                   ))}
                 </div>

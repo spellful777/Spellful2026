@@ -114,7 +114,12 @@ export default function CommunityPage() {
         <meta property="og:description" content="A sacred circle of witches, seekers, and dreamers. Join the Spellful coven for live rituals, guided workshops, and a community that walks the path with you." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:image" content={`${siteUrl}/airo-assets/images/pages/community/hero`} />
+        <meta property="og:image" content={`${siteUrl}/airo-assets/images/pages/community/og-image`} />
+        <meta property="og:image:secure_url" content={`${siteUrl}/airo-assets/images/pages/community/og-image`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:alt" content="Spellful Community — Connect with Fellow Witches" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:image" content={`${siteUrl}/airo-assets/images/pages/community/hero`} />
         <script type="application/ld+json">{`{"@context":"https://schema.org","@type":"WebPage","@id":"${pageUrl}#webpage","name":"The Coven — Spellful Community","url":"${pageUrl}","isPartOf":{"@id":"${siteUrl}/#website"}}`}</script>

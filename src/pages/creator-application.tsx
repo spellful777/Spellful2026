@@ -198,7 +198,7 @@ export default function CreatorApplicationPage() {
         <meta property="og:description" content="Share your witchcraft, divination, or magical arts with the Spellful community. Apply for verified Creator status." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/creator-application" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Apply to Become a Creator — Spellful" />
         <meta name="twitter:description" content="Share your witchcraft, divination, or magical arts with the Spellful community." />

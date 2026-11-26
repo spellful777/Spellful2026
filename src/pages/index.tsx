@@ -184,14 +184,11 @@ export default function HomePage() {
         <meta property="og:description" content="Free tarot readings, birth chart calculator, spell library, moon ritual planner, and more. No signup, no ads, no app needed." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={siteUrl} />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Spellful — Free Witchcraft Tools, Tarot, Birth Charts &amp; Moon Rituals" />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Spellful — Free Witchcraft Tools, Tarot, Birth Charts &amp; Moon Rituals" />
         <meta name="twitter:description" content="Free tarot readings, birth chart calculator, spell library, moon ritual planner, and more. No signup, no ads, no app needed." />
-        <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
         <meta name="twitter:image:alt" content="Spellful — Free Witchcraft Tools, Tarot, Birth Charts &amp; Moon Rituals" />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',

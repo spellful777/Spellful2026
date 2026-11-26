@@ -241,15 +241,17 @@ export default function SpellsPage() {
         <meta property="og:description" content="18+ free witchcraft spells with step-by-step instructions, materials, and moon phase guidance. No signup required." />
         <meta property="og:url" content="https://spellful.com/spells" />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
+        <meta property="og:image:secure_url" content="https://spellful.com/airo-assets/images/pages/og-image" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Free Spell Library — Spellful" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:alt" content="Spellful logo" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Free Spell Library — Witchcraft Spells for Every Intention | Spellful" />
         <meta name="twitter:description" content="18+ free witchcraft spells with step-by-step instructions, materials, and moon phase guidance. No signup required." />
-        <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
-        <meta name="twitter:image:alt" content="Free Spell Library — Spellful" />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
+        <meta name="twitter:image:alt" content="Spellful logo" />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'CollectionPage',

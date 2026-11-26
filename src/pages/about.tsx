@@ -159,10 +159,7 @@ export default function AboutPage() {
         <meta property="og:description" content={about.meta.description} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="About Spellful" />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={about.meta.title} />
         <meta name="twitter:description" content={about.meta.description} />

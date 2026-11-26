@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { profile_studio as ps } from 'virtual:content';
 import { InstallSection } from '@/components/InstallSpellful';
-import AvatarWithFrame, { FRAME_DEFS, FrameKey } from '@/components/AvatarWithFrame';
+import AvatarWithFrame, { FRAME_DEFS } from '@/components/AvatarWithFrame';
 
 // ─── Accent swatches ──────────────────────────────────────────────────────────
 const ACCENTS = [
@@ -56,12 +56,13 @@ const DEFAULT_AVATARS = [
 
 // ─── Cover presets ────────────────────────────────────────────────────────────
 const COVER_PRESETS = [
-  { key: 'midnight', label: 'Midnight',  style: 'linear-gradient(135deg, hsl(var(--footer-bg-darkest)) 0%, hsl(var(--footer-bg-deep)) 50%, hsl(var(--muted)) 100%)' },
-  { key: 'aurora',   label: 'Aurora',    style: 'linear-gradient(135deg, hsl(var(--footer-bg-deep)) 0%, hsl(var(--accent) / 0.4) 50%, hsl(var(--footer-lavender) / 0.3) 100%)' },
-  { key: 'ember',    label: 'Ember',     style: 'linear-gradient(135deg, hsl(var(--card-deep)) 0%, hsl(var(--warning) / 0.25) 60%, hsl(var(--primary) / 0.2) 100%)' },
-  { key: 'forest',   label: 'Forest',    style: 'linear-gradient(135deg, hsl(var(--footer-bg-darkest)) 0%, hsl(var(--secondary) / 0.2) 60%, hsl(var(--muted)) 100%)' },
-  { key: 'cosmos',   label: 'Cosmos',    style: 'linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--footer-bg-deep)) 40%, hsl(var(--accent) / 0.3) 100%)' },
-  { key: 'rose',     label: 'Rose Mist', style: 'linear-gradient(135deg, hsl(var(--card-deep)) 0%, hsl(var(--footer-lavender) / 0.35) 60%, hsl(var(--accent) / 0.2) 100%)' },
+  { key: 'spellful-default', label: 'Spellful Default', image: '/airo-assets/images/profile-covers/spellful-default' },
+  { key: 'midnight', label: 'Midnight',  image: '/airo-assets/images/profile-covers/midnight' },
+  { key: 'aurora',   label: 'Aurora',    image: '/airo-assets/images/profile-covers/aurora' },
+  { key: 'ember',    label: 'Ember',     image: '/airo-assets/images/profile-covers/ember' },
+  { key: 'forest',   label: 'Forest',    image: '/airo-assets/images/profile-covers/forest' },
+  { key: 'cosmos',   label: 'Cosmos',    image: '/airo-assets/images/profile-covers/cosmos' },
+  { key: 'rose',     label: 'Rose Mist', image: '/airo-assets/images/profile-covers/rose-mist' },
 ];
 
 const WITCH_PATHS = ['Eclectic','Green','Hedge','Kitchen','Sea','Solitary','Ceremonial','Dianic','Faery','Chaos','Cosmic','Shadow'];
@@ -80,8 +81,8 @@ const PROFILE_THEMES = [
 
 // Frame list — single source of truth from AvatarWithFrame.tsx
 const AVATAR_FRAMES = [
-  { key: '' as FrameKey, label: 'None', plusOnly: false },
-  ...FRAME_DEFS.map(f => ({ key: f.key, label: f.label, plusOnly: f.plusOnly })),
+  { key: '', label: 'None' },
+  ...FRAME_DEFS.map(f => ({ key: f.key, label: f.label })),
 ];
 
 const PRACTICE_LABEL_OPTIONS = [
@@ -180,7 +181,7 @@ const PROFILE_LAYOUTS = [
 const DEFAULT_FORM_REAL: FormState = {
   name: '', bio: '', location: '', pronouns: '', witchPath: '',
   sunSign: '', moonSign: '', risingSign: '', profileVisibility: 'public',
-  accentColor: 'gold', coverPreset: 'midnight', coverImage: null,
+  accentColor: 'gold', coverPreset: 'spellful-default', coverImage: null,
   interestTags: [],
   socialLinks: { instagram: '', tiktok: '', youtube: '', spotify: '', threads: '', tumblr: '', website: '' },
   avatarPreset: '', profileTheme: '', avatarFrame: '', practiceLabels: [], profileStatus: '',
@@ -266,7 +267,7 @@ export default function ProfileStudioPage() {
   const [activeTab, setActiveTab] = useState<StudioTab>('look');
   const [previewMode, setPreviewMode] = useState<'me' | 'public' | 'coven'>('me');
   const [tagInput, setTagInput] = useState('');
-  const [coverUploading, setCoverUploading] = useState(false);
+
 
   // Identity fields
   const [identityForm, setIdentityForm] = useState<IdentityFormState>({
@@ -324,7 +325,7 @@ export default function ProfileStudioPage() {
 
   const [previewStats, setPreviewStats] = useState({ covenCount: 0, followerCount: 0 });
 
-  const coverRef = useRef<HTMLInputElement>(null);
+
   const avatarRef = useRef<HTMLInputElement>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -435,7 +436,7 @@ export default function ProfileStudioPage() {
             risingSign: String(p.risingSign ?? ''),
             profileVisibility: String(p.profileVisibility ?? 'public'),
             accentColor: String(p.accentColor ?? 'gold'),
-            coverPreset: String(p.coverPreset ?? 'midnight'),
+            coverPreset: String(p.coverPreset ?? 'spellful-default'),
             coverImage: p.coverImage ? String(p.coverImage) : null,
             interestTags: Array.isArray(p.interestTags) ? (p.interestTags as string[]) : [],
             socialLinks: {
@@ -667,18 +668,6 @@ export default function ProfileStudioPage() {
   }
 
   // ── Upload helpers ─────────────────────────────────────────────────────────
-  async function uploadCover(file: File) {
-    setCoverUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append('cover', file);
-      const r = await fetch('/api/profile/cover', { method: 'POST', body: fd, credentials: 'include' });
-      const data = await r.json() as { url?: string; error?: string };
-      if (data.url) { set('coverImage', data.url); set('coverPreset', ''); }
-      else setError(data.error ?? 'Upload failed');
-    } catch { setError('Upload failed'); }
-    finally { setCoverUploading(false); }
-  }
 
   async function uploadAvatar(file: File) {
     setAvatarUploading(true);
@@ -739,7 +728,7 @@ export default function ProfileStudioPage() {
   const accent = accentCss(form.accentColor);
   const coverBg = form.coverImage
     ? { backgroundImage: `url(${form.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : { background: COVER_PRESETS.find(p => p.key === form.coverPreset)?.style ?? COVER_PRESETS[0].style };
+    : { backgroundImage: `url(${COVER_PRESETS.find(p => p.key === form.coverPreset)?.image ?? COVER_PRESETS[0].image})`, backgroundSize: 'cover', backgroundPosition: 'center' };
   const displayName = form.name || session?.user?.name || 'Your Name';
   const initials = displayName.slice(0, 2).toUpperCase();
   const presetSrc = form.avatarPreset ? DEFAULT_AVATARS.find(a => a.key === form.avatarPreset)?.src ?? null : null;
@@ -838,7 +827,7 @@ export default function ProfileStudioPage() {
               <div className="absolute -bottom-8 left-3">
                 <AvatarWithFrame
                   src={avatarSrc ?? undefined}
-                  frameKey={form.avatarFrame as FrameKey}
+                  frameKey={form.avatarFrame}
                   size={56}
                   isPlus={isPlus}
                   alt={displayName}
@@ -1108,7 +1097,7 @@ export default function ProfileStudioPage() {
                           key={p.key}
                           onClick={() => { set('coverPreset', p.key); set('coverImage', null); }}
                           className="relative rounded-lg overflow-hidden transition-all"
-                          style={{ height: '44px', background: p.style, outline: form.coverPreset === p.key && !form.coverImage ? `2px solid ${accent}` : '2px solid transparent', outlineOffset: '2px' }}
+                          style={{ height: '44px', backgroundImage: `url(${p.image})`, backgroundSize: 'cover', backgroundPosition: 'center', outline: form.coverPreset === p.key && !form.coverImage ? `2px solid ${accent}` : '2px solid transparent', outlineOffset: '2px' }}
                           aria-label={p.label}
                           title={p.label}
                         >
@@ -1122,25 +1111,10 @@ export default function ProfileStudioPage() {
                       ))}
                     </div>
                     <div className="flex items-center gap-2 pt-1">
-                      {ent.data.isPlus ? (
-                        <>
-                          <Button variant="outline" size="sm" onClick={() => coverRef.current?.click()} disabled={coverUploading} className="gap-1.5 text-xs">
-                            <Camera className="w-3.5 h-3.5" />
-                            {coverUploading ? 'Uploading…' : 'Upload photo'}
-                          </Button>
-                          {form.coverImage && (
-                            <Button variant="ghost" size="sm" onClick={() => { set('coverImage', null); set('coverPreset', 'midnight'); }} className="gap-1.5 text-xs text-destructive">
-                              <X className="w-3.5 h-3.5" /> Remove
-                            </Button>
-                          )}
-                          <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" className="hidden"
-                            onChange={e => { const f = e.target.files?.[0]; if (f) void uploadCover(f); }} />
-                        </>
-                      ) : (
-                        <Link to="/plus" className="inline-flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'hsl(var(--primary))' }}>
-                          <Sparkles className="w-3.5 h-3.5" />
-                          Upload a custom cover with Spellful Plus
-                        </Link>
+                      {form.coverImage && ent.data.isPlus && (
+                        <Button variant="ghost" size="sm" onClick={() => { set('coverImage', null); set('coverPreset', 'spellful-default'); }} className="gap-1.5 text-xs text-destructive">
+                          <X className="w-3.5 h-3.5" /> Remove custom cover
+                        </Button>
                       )}
                     </div>
                   </Collapsible>
@@ -1216,35 +1190,24 @@ export default function ProfileStudioPage() {
 
                   {/* Avatar frame */}
                   <Collapsible title="Avatar Frame">
-                    {!isPlus && (
-                      <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-                        Upgrade to Spellful Plus to unlock all 12 exclusive frames.
-                      </p>
-                    )}
                     <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
                       {AVATAR_FRAMES.map(f => {
                         const isSelected = form.avatarFrame === f.key;
-                        const locked = f.plusOnly && !isPlus;
                         return (
                           <button
                             key={f.key}
-                            onClick={() => { if (!locked) set('avatarFrame', f.key); }}
-                            disabled={locked}
-                            aria-label={`${f.label}${locked ? ' (Plus only)' : ''}`}
-                            className="relative flex flex-col items-center gap-1 rounded-xl p-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed"
+                            onClick={() => set('avatarFrame', f.key)}
+                            aria-label={f.label}
+                            className="relative flex flex-col items-center gap-1 rounded-xl p-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             style={{
                               background: isSelected ? `${accent}18` : 'hsl(var(--muted)/0.5)',
                               outline: isSelected ? `2px solid ${accent}` : '2px solid transparent',
                               outlineOffset: '2px',
-                              opacity: locked ? 0.7 : 1,
                             }}
                           >
                             <AvatarWithFrame
-                              frameKey={f.key as FrameKey}
+                              frameKey={f.key}
                               size={44}
-                              isPlus={isPlus}
-                              showLock={locked}
                             />
                             <span className="text-[9px] leading-tight text-center line-clamp-2"
                               style={{ color: isSelected ? accent : 'hsl(var(--muted-foreground))' }}>

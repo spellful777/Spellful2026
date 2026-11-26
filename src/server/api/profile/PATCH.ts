@@ -8,9 +8,15 @@ import { validateUsernameFormat, normalizeUsername, usernameErrorMessage } from 
 const VALID_ACCENTS = ['', 'gold', 'lavender', 'rose', 'sage', 'sky', 'ember', 'violet', 'moon'];
 const VALID_THEMES = ['', 'celestial', 'forest', 'lunar', 'gothic', 'cottage', 'crystal'];
 const VALID_LAYOUTS = ['compact', 'classic', 'immersive'];
-const VALID_FRAMES = ['', 'moon', 'celestial', 'botanical', 'crystal', 'ornate',
+const VALID_FRAMES = [
+  '', 'obsidian', 'amethyst', 'lunar', 'emerald', 'sapphire',
+  'crimson', 'golden', 'rose-quartz', 'smoky', 'aurora',
+  'violet', 'ivory', 'copper', 'jade', 'astral',
+  // legacy keys — accepted but stored as-is for graceful migration
+  'moon', 'celestial', 'botanical', 'crystal', 'ornate',
   'frame-1', 'frame-2', 'frame-3', 'frame-4', 'frame-5',
-  'frame-6', 'frame-7', 'frame-8', 'frame-9', 'frame-10'];
+  'frame-6', 'frame-7', 'frame-8', 'frame-9', 'frame-10',
+];
 const VALID_PRESETS = ['', 'default-hat-black', 'default-hat-blue', 'default-hat-green', 'default-hat-lesbian', 'default-hat-orange', 'default-hat-purple', 'default-hat-rainbow', 'default-hat-red', 'default-hat-trans'];
 
 // Canonical base URLs for platforms that accept @username handles.

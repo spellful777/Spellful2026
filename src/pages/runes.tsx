@@ -612,7 +612,7 @@ export default function RunesPage() {
         <meta property="og:description" content="Cast Elder Futhark runes for reflection, explore their history and symbolism, and learn how to read runes with Spellful's free interactive guide." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/runes" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Rune Reading & Elder Futhark Guide | Spellful" />
         <meta name="twitter:description" content="Cast Elder Futhark runes for reflection, explore their history and symbolism, and learn how to read runes with Spellful's free interactive guide." />

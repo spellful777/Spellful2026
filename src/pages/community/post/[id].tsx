@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, ThumbsUp, Bookmark, Flag, MessageSquare,
   HelpCircle, Pin, Lock, CheckCircle2, MoreHorizontal,
-  Eye, Tag, Share2, Sparkles, Send, MapPin, Pencil, Trash2,
+  Eye, Tag, Share2, Sparkles, Send, MapPin, Pencil, Trash2, Scale,
 } from 'lucide-react';
 import { useSession } from '@/lib/auth/auth-client';
 import { BlockUserSheet } from '@/components/BlockUserSheet';
 import { ReportModal } from '@/components/ReportModal';
+import AppealModal from '@/components/AppealModal';
 import { usePostDetail, useReplies, type CommunityReply } from '@/hooks/useCommunityPost';
 import { community_post } from 'virtual:content';
 import { Button } from '@/components/ui/button';
@@ -498,6 +499,7 @@ function ReplyComposer({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PostThreadPage() {
+  const [appealOpen, setAppealOpen] = useState(false);
   const { id } = useParams<{ id: string }>();
   const { session, isPending } = useSession();
   const navigate = useNavigate();
@@ -801,14 +803,23 @@ export default function PostThreadPage() {
                     >
                       <Trash2 className="w-3.5 h-3.5" /> Delete
                     </button>
+                    <button
+                      onClick={() => setAppealOpen(true)}
+                      className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg text-muted-foreground hover:text-primary transition-colors"
+                      title="Appeal a moderation decision"
+                    >
+                      <Scale className="w-3.5 h-3.5" /> Appeal
+                    </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setPostReportOpen(true)}
-                    className="ml-auto flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    <Flag className="w-3.5 h-3.5" /> {community_post.reportLabel}
-                  </button>
+                  <div className="ml-auto flex items-center gap-1">
+                    <button
+                      onClick={() => setPostReportOpen(true)}
+                      className="flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-lg text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <Flag className="w-3.5 h-3.5" /> {community_post.reportLabel}
+                    </button>
+                  </div>
                 )}
 
                 <div className="flex items-center gap-3 text-xs text-muted-foreground ml-2">
@@ -902,6 +913,15 @@ export default function PostThreadPage() {
               onClose={() => setPostReportOpen(false)}
               targetType="post"
               targetId={post.id}
+            />
+          )}
+
+          {/* Post appeal modal */}
+          {appealOpen && post && (
+            <AppealModal
+              targetType="post"
+              targetId={post.id}
+              onClose={() => setAppealOpen(false)}
             />
           )}
 

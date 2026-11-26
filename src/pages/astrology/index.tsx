@@ -44,14 +44,14 @@ export default function AstrologyIndexPage() {
         <meta property="og:description" content="Complete astrology guide covering all 12 zodiac signs, planetary meanings, and astrological houses." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/astrology/og-image" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content="Astrology Guide: Zodiac Signs, Planets &amp; Houses | Spellful" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Astrology Guide: Zodiac Signs, Planets &amp; Houses | Spellful" />
         <meta name="twitter:description" content="Complete astrology guide covering all 12 zodiac signs, planetary meanings, and astrological houses." />
-        <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/astrology/og-image" />
         <meta name="twitter:image:alt" content="Astrology Guide — Spellful" />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',

@@ -154,6 +154,21 @@ export default async function handler(req: Request, res: Response) {
     : [];
   const stateByConvId = new Map(stateRows.map((s) => [s.conversationId, s]));
 
+  // Batch: coven connection status for all other users
+  const covenRows = uniqueOtherIds.length
+    ? (await db.execute(sql`
+        SELECT requester_id, receiver_id
+        FROM coven_connections
+        WHERE status = 'accepted'
+          AND (requester_id = ${myId} OR receiver_id = ${myId})
+          AND (requester_id IN (${sql.join(uniqueOtherIds.map(id => sql`${id}`), sql`, `)})
+            OR receiver_id IN (${sql.join(uniqueOtherIds.map(id => sql`${id}`), sql`, `)}))
+      `)) as unknown as [Array<{ requester_id: string; receiver_id: string }>, unknown]
+    : [[], undefined];
+  const covenPartnerIds = new Set(
+    (covenRows[0] as Array<{ requester_id: string; receiver_id: string }>).flatMap(r => [r.requester_id, r.receiver_id]).filter(id => id !== myId)
+  );
+
   const result = paginated
     .filter((conv) => {
       // Filter out conversations the user has hidden (delete-for-me)
@@ -192,6 +207,7 @@ export default async function handler(req: Request, res: Response) {
       isPinned: state?.isPinned ?? false,
       isMuted: state?.isMuted ?? false,
       isStarred: state?.isStarred ?? false,
+      isCoven: otherId ? covenPartnerIds.has(otherId) : false,
     };
   });
 

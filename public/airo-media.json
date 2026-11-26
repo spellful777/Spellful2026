@@ -653,7 +653,7 @@
   },
   "pages/og-image": {
     "mediaType": "image",
-    "currentUrl": "/airo-assets/uploads/pages-og-image-7ff4c824.png"
+    "currentUrl": "/airo-assets/uploads/pages-og-image-dc40a7d2.png"
   },
   "pages/messages/welcome-banner": {
     "mediaType": "image",
@@ -806,5 +806,197 @@
   "profile-frames/frame-10": {
     "mediaType": "image",
     "currentUrl": "/airo-assets/uploads/profile-frames-frame-10-3fdad5d2.png"
+  },
+  "email/header-banner": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/email-header-banner-45daac55.jpg"
+  },
+  "email/footer-banner": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/email-footer-banner-7fcc502a.jpg"
+  },
+  "pages/home/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-home-og-image-a991bb09.jpg"
+  },
+  "pages/tarot/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-tarot-og-image-9f680aee.jpg"
+  },
+  "pages/dream-journal/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-dream-journal-og-image-494308e7.jpg"
+  },
+  "pages/spells/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-spells-og-image-a7208b0d.jpg"
+  },
+  "pages/moon-calendar/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-moon-calendar-og-image-8f0510f4.jpg"
+  },
+  "pages/moon-ritual/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-moon-ritual-og-image-333795e9.jpg"
+  },
+  "pages/grimoire/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-grimoire-og-image-3baba336.jpg"
+  },
+  "pages/birth-chart/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-birth-chart-og-image-de58ece5.jpg"
+  },
+  "pages/herbs/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-herbs-og-image-d4f926b0.jpg"
+  },
+  "pages/horoscope/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-horoscope-og-image-3ff1a9c3.jpg"
+  },
+  "pages/community/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-community-og-image-f8b0b452.jpg"
+  },
+  "pages/astrology/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-astrology-og-image-f4151fca.jpg"
+  },
+  "pages/profile/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-profile-og-image-5ce55bc6.jpg"
+  },
+  "pages/crystals/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-crystals-og-image-30515c8f.jpg"
+  },
+  "pages/coven/og-image": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/pages-coven-og-image-75afeb4d.jpg"
+  },
+  "profile-covers/aurora": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-aurora-51cdbb88.jpg"
+  },
+  "profile-covers/ember": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-ember-bb11a8df.jpg"
+  },
+  "profile-covers/cosmos": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-cosmos-43213bf2.jpg"
+  },
+  "profile-covers/midnight": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-midnight-3ecf12ba.jpg"
+  },
+  "profile-covers/rose-mist": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-rose-mist-860502ca.jpg"
+  },
+  "profile-covers/forest": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-forest-08829475.jpg"
+  },
+  "profile-covers/spellful-default": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/profile-covers-spellful-default-90178350.png"
+  },
+  "social-icons/x": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-x-a7056171.png"
+  },
+  "social-icons/instagram": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-instagram-c0eb0c73.png"
+  },
+  "social-icons/facebook": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-facebook-58adaf71.png"
+  },
+  "social-icons/youtube": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-youtube-c0008564.png"
+  },
+  "social-icons/spotify": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-spotify-1034b885.png"
+  },
+  "social-icons/website": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-website-1034b885.png"
+  },
+  "social-icons/threads": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/social-icons-threads-13679388.png"
+  },
+  "decorative/floral-crescent-left": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-floral-crescent-left-b62999a3.png"
+  },
+  "decorative/gold-star-right": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-gold-star-right-78f469c8.png"
+  },
+  "decorative/gold-sparkle-small": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-gold-sparkle-small-23f3425b.png"
+  },
+  "decorative/floral-crescent-right": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-floral-crescent-right-f6944581.png"
+  },
+  "decorative/botanical-branch-left": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-botanical-branch-left-ae791aaf.png"
+  },
+  "decorative/botanical-branch-right": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-botanical-branch-right-688859ee.png"
+  },
+  "decorative/gold-sparkle": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-gold-sparkle-ff677da5.png"
+  },
+  "decorative/gold-sparkle-right": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-gold-sparkle-right-e70e9bd3.png"
+  },
+  "decorative/crescent-divider": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-crescent-divider-57947407.png"
+  },
+  "decorative/triple-moon": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-triple-moon-c1f8325e.png"
+  },
+  "decorative/star-divider": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-star-divider-c4cacac4.png"
+  },
+  "decorative/botanical-corner-left": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-botanical-corner-left-abc4ba99.png"
+  },
+  "decorative/gold-star-sparkles-left": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-gold-star-sparkles-left-9d643292.png"
+  },
+  "decorative/botanical-corner-right": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-botanical-corner-right-6235b1e7.png"
+  },
+  "decorative/moon-phases": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-moon-phases-9055b87c.png"
+  },
+  "decorative/lotus-ornament": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-lotus-ornament-f1d69a4f.png"
+  },
+  "decorative/amethyst-crystal": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/decorative-amethyst-crystal-d827a64c.png"
   }
 }

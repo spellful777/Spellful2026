@@ -133,10 +133,7 @@ export default function CompatibilityPage() {
         <meta property="og:description" content="Discover your zodiac compatibility. Check love, friendship, and communication scores for any two signs." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/compatibility" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Zodiac Compatibility — Spellful" />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Zodiac Compatibility — Spellful" />
         <meta name="twitter:description" content="Discover your zodiac compatibility. Check love, friendship, and communication scores for any two signs." />

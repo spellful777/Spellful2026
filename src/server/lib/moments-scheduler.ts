@@ -60,11 +60,11 @@ interface ConsentRow {
 /** Returns a map of userId -> Set<category> for all consented rows */
 async function loadConsent(userIds: string[]): Promise<Map<string, Set<string>>> {
   if (!db || userIds.length === 0) return new Map();
-  const placeholders = userIds.map(() => '?').join(',');
+  const inList = sql.join(userIds.map(id => sql`${id}`), sql`, `);
   const [rows] = await db.execute<ConsentRow>(
     sql`SELECT user_id AS userId, category, consented
         FROM marketing_consent
-        WHERE user_id IN (${sql.raw(placeholders)}) AND consented = TRUE`,
+        WHERE user_id IN (${inList}) AND consented = TRUE`,
   );
   const map = new Map<string, Set<string>>();
   for (const row of selectRows<ConsentRow>(rows)) {
@@ -84,12 +84,12 @@ function hasConsent(consentMap: Map<string, Set<string>>, userId: string, catego
 /** Returns a set of "userId:dedupKey" strings that have already been sent/queued */
 async function loadSentDedup(userIds: string[], dedupKeys: string[]): Promise<Set<string>> {
   if (!db || userIds.length === 0 || dedupKeys.length === 0) return new Set();
-  const uPlaceholders = userIds.map(() => '?').join(',');
-  const dPlaceholders = dedupKeys.map(() => '?').join(',');
+  const uList = sql.join(userIds.map(id => sql`${id}`), sql`, `);
+  const dList = sql.join(dedupKeys.map(k => sql`${k}`), sql`, `);
   const [rows] = await db.execute<{ user_id: string; dedup_key: string }>(
     sql`SELECT user_id, dedup_key FROM moments_email_sends
-        WHERE user_id IN (${sql.raw(uPlaceholders)})
-          AND dedup_key IN (${sql.raw(dPlaceholders)})
+        WHERE user_id IN (${uList})
+          AND dedup_key IN (${dList})
           AND status IN ('queued','sent')`,
   );
   const set = new Set<string>();

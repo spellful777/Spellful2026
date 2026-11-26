@@ -1,278 +1,300 @@
+import React, { lazy, Suspense } from 'react';
 import { RouteObject } from 'react-router';
-import HomePage from './pages/index';
-import ResourcesPage from './pages/resources';
-import MoonCalendarPage from './pages/moon-calendar';
-import BirthChartPage from './pages/birth-chart';
-import AboutPage from './pages/about';
-import HerbsPage from './pages/herbs';
-import LoginPage from './pages/login';
-import SignupPage from './pages/signup';
-import ForgotPasswordPage from './pages/forgot-password';
-import AccountPage from './pages/account';
-import PrivacySanctuaryPage from './pages/account/privacy';
-import ProfileStudioPage from './pages/account/profile';
-import EditProfilePage from './pages/account/edit-profile';
-import SecurityPage from './pages/account/security';
-import AstrologySettingsPage from './pages/account/astrology';
-import AccessibilityPage from './pages/account/accessibility';
-import AccountTypePage from './pages/account/account-type';
-import GrimoirePage from './pages/grimoire';
-import TarotPage from './pages/tarot';
-import MoonRitualPage from './pages/moon-ritual';
-import DashboardPage from './pages/dashboard';
-import TimelinePage from './pages/timeline';
-import CalendarPage from './pages/calendar';
-import DreamJournalPage from './pages/dream-journal';
-import SanctuaryPage from './pages/sanctuary';
-import SpellsPage from './pages/spells/index';
-import SpellDetailPage from './pages/spells/[slug]';
-import SubmitSpellPage from './pages/spells/submit';
-import AdminDashboardPage from './pages/admin/dashboard';
-import AdminApplicationsPage from './pages/admin/applications';
-import AdminModeratorPage from './pages/admin/moderator';
-import AdminCommunityAdminPage from './pages/admin/community-admin';
-import MyApplicationsPage from './pages/account/applications';
-import PlusPage from './pages/plus';
-import AdminSpellsPage from './pages/admin/spells';
-import AdminCommunityPage from './pages/admin/community';
-import AdminRolesPage from './pages/admin/roles';
-import AdminEngagementPage from './pages/admin/engagement';
-import CommandCenterPage from './pages/admin/command-center';
-import CreatorApplicationPage from './pages/creator-application';
-import CreatorsPage from './pages/creators';
-import OrganizationsPage from './pages/organizations';
-import CirclesPage from './pages/circles';
-import UnsubscribePage from './pages/unsubscribe';
-import EmailPreferencesPage from './pages/email-preferences';
-// Eager import so renderToString doesn't hit a Suspense boundary on 404 routes
-// and abort to client rendering. The prod 404 page is tiny; the dev-tools
-// variant stays lazy because it pulls in dev-only code we don't want in
-// production bundles.
+
+// Lazy-load every page so the preview only fetches the current page's module
+// rather than all 95+ at once (which overwhelmed the dev-server connection limit).
+// ProdNotFoundPage stays eager so SSR renderToString never hits a Suspense boundary
+// on 404 routes and aborts to client rendering.
 import ProdNotFoundPage from './pages/_404';
-import NumerologyPage from './pages/numerology';
-import RunesPage from './pages/runes';
-import CompatibilityPage from './pages/compatibility';
-import ProfilePage from './pages/profile/[username]';
-import UserProfilePage from './pages/u/[username]';
-import MessagesPage from './pages/messages';
-import PrivacyPage from './pages/privacy';
-import TermsPage from './pages/terms';
-import CommunityPage from './pages/community/index';
-import CommunityCategoryPage from './pages/community/[slug]';
-import CommunityPostPage from './pages/community/post/[id]';
-import CommunityDiscoverPage from './pages/community/discover';
-import CommunityNewPage from './pages/community/new';
-import CommunityBookmarksPage from './pages/community/bookmarks';
-import CommunityNotificationsPage from './pages/community/notifications';
-import AstronomicalAccuracyPage from './pages/astronomical-accuracy';
-import TarotCardDetailPage from './pages/tarot/cards/[slug]';
-import MoonPhasesPage from './pages/moon/phases';
-import MoonEventPage from './pages/moon/[type]/[year]/[month]';
-import AstrologyIndexPage from './pages/astrology/index';
-import ZodiacSignPage from './pages/astrology/[sign]';
-import PlanetsPage from './pages/astrology/planets';
-import HousesPage from './pages/astrology/houses';
-import AspectsPage from './pages/astrology/aspects';
-import LiveSkyPage from './pages/astrology/live-sky';
-import CosmicConnectionsPage from './pages/astrology/cosmic-connections';
-import CelestialTimeMachinePage from './pages/astrology/celestial-time-machine';
-import RemindersPage from './pages/reminders';
-import AppStoreSubmissionPage from './pages/app-store-submission';
-import AppStoreScreenshotsPage from './pages/app-store-screenshots';
-import AppLaunchKitPage from './pages/app-launch-kit';
-import HoroscopePage from './pages/horoscope';
-import LearnPage from './pages/learn/index';
-import AcademyTopicPage from './pages/learn/[topicSlug]/index';
-import AcademyLessonPage from './pages/learn/[topicSlug]/[lessonSlug]';
-import HowToReadYourBirthChartPage from './pages/seo-guides/how-to-read-your-birth-chart';
-import SunMoonRisingSignsPage from './pages/seo-guides/sun-moon-rising-signs-explained';
-import TwelveAstrologicalHousesPage from './pages/seo-guides/twelve-astrological-houses';
-import MoonSignMeaningPage from './pages/seo-guides/moon-sign-meaning';
-import HowToReadTarotPage from './pages/seo-guides/how-to-read-tarot-for-beginners';
-import ThreeCardTarotSpreadsPage from './pages/seo-guides/three-card-tarot-spreads';
-import MajorVsMinorArcanaPage from './pages/seo-guides/major-vs-minor-arcana';
-import EightMoonPhasesPage from './pages/seo-guides/eight-moon-phases-meaning';
-import NewMoonVsFullMoonPage from './pages/seo-guides/new-moon-vs-full-moon-rituals';
-import HowToUseMoonCalendarPage from './pages/seo-guides/how-to-use-a-moon-calendar';
-import WitchcraftForBeginnersPage from './pages/seo-guides/witchcraft-for-beginners';
-import HowToCreateGrimoirePage from './pages/seo-guides/how-to-create-a-grimoire';
-import TarotSharePage, { loader as tarotShareLoader } from './pages/tarot/share/[publicId]';
-import ExplorePage from './pages/explore/index';
+
+const HomePage = lazy(() => import('./pages/index'));
+const ResourcesPage = lazy(() => import('./pages/resources'));
+const MoonCalendarPage = lazy(() => import('./pages/moon-calendar'));
+const BirthChartPage = lazy(() => import('./pages/birth-chart'));
+const AboutPage = lazy(() => import('./pages/about'));
+const HerbsPage = lazy(() => import('./pages/herbs'));
+const LoginPage = lazy(() => import('./pages/login'));
+const SignupPage = lazy(() => import('./pages/signup'));
+const ForgotPasswordPage = lazy(() => import('./pages/forgot-password'));
+const AccountPage = lazy(() => import('./pages/account'));
+const PrivacySanctuaryPage = lazy(() => import('./pages/account/privacy'));
+const ProfileStudioPage = lazy(() => import('./pages/account/profile'));
+const EditProfilePage = lazy(() => import('./pages/account/edit-profile'));
+const SecurityPage = lazy(() => import('./pages/account/security'));
+const AstrologySettingsPage = lazy(() => import('./pages/account/astrology'));
+const AccessibilityPage = lazy(() => import('./pages/account/accessibility'));
+const AccountTypePage = lazy(() => import('./pages/account/account-type'));
+const GrimoirePage = lazy(() => import('./pages/grimoire'));
+const TarotPage = lazy(() => import('./pages/tarot'));
+const MoonRitualPage = lazy(() => import('./pages/moon-ritual'));
+const DashboardPage = lazy(() => import('./pages/dashboard'));
+const TimelinePage = lazy(() => import('./pages/timeline'));
+const CalendarPage = lazy(() => import('./pages/calendar'));
+const DreamJournalPage = lazy(() => import('./pages/dream-journal'));
+const SanctuaryPage = lazy(() => import('./pages/sanctuary'));
+const SpellsPage = lazy(() => import('./pages/spells/index'));
+const SpellDetailPage = lazy(() => import('./pages/spells/[slug]'));
+const SubmitSpellPage = lazy(() => import('./pages/spells/submit'));
+const AdminDashboardPage = lazy(() => import('./pages/admin/dashboard'));
+const AdminApplicationsPage = lazy(() => import('./pages/admin/applications'));
+const AdminModeratorPage = lazy(() => import('./pages/admin/moderator'));
+const AdminCommunityAdminPage = lazy(() => import('./pages/admin/community-admin'));
+const MyApplicationsPage = lazy(() => import('./pages/account/applications'));
+const PlusPage = lazy(() => import('./pages/plus'));
+const AdminSpellsPage = lazy(() => import('./pages/admin/spells'));
+const AdminCommunityPage = lazy(() => import('./pages/admin/community'));
+const AdminRolesPage = lazy(() => import('./pages/admin/roles'));
+const AdminEngagementPage = lazy(() => import('./pages/admin/engagement'));
+const CommandCenterPage = lazy(() => import('./pages/admin/command-center'));
+const CreatorApplicationPage = lazy(() => import('./pages/creator-application'));
+const CreatorsPage = lazy(() => import('./pages/creators'));
+const OrganizationsPage = lazy(() => import('./pages/organizations'));
+const CirclesPage = lazy(() => import('./pages/circles'));
+const UnsubscribePage = lazy(() => import('./pages/unsubscribe'));
+const EmailPreferencesPage = lazy(() => import('./pages/email-preferences'));
+const NumerologyPage = lazy(() => import('./pages/numerology'));
+const RunesPage = lazy(() => import('./pages/runes'));
+const CompatibilityPage = lazy(() => import('./pages/compatibility'));
+const ProfilePage = lazy(() => import('./pages/profile/[username]'));
+const UserProfilePage = lazy(() => import('./pages/u/[username]'));
+const MessagesPage = lazy(() => import('./pages/messages'));
+const PrivacyPage = lazy(() => import('./pages/privacy'));
+const TermsPage = lazy(() => import('./pages/terms'));
+const CommunityPage = lazy(() => import('./pages/community/index'));
+const CommunityCategoryPage = lazy(() => import('./pages/community/[slug]'));
+const CommunityPostPage = lazy(() => import('./pages/community/post/[id]'));
+const CommunityDiscoverPage = lazy(() => import('./pages/community/discover'));
+const CommunityNewPage = lazy(() => import('./pages/community/new'));
+const CommunityBookmarksPage = lazy(() => import('./pages/community/bookmarks'));
+const CommunityNotificationsPage = lazy(() => import('./pages/community/notifications'));
+const CommunityHelpGettingStartedPage = lazy(() => import('./pages/community/help/getting-started'));
+const CommunityHelpFaqPage = lazy(() => import('./pages/community/help/faq'));
+const CommunityHelpGlossaryPage = lazy(() => import('./pages/community/help/glossary'));
+const CommunityHelpSafetyPage = lazy(() => import('./pages/community/help/safety'));
+const CommunityHelpReportBugPage = lazy(() => import('./pages/community/help/report-a-bug'));
+const CommunityAnnouncementsPage = lazy(() => import('./pages/community/announcements'));
+const CommunitySuggestionsPage = lazy(() => import('./pages/community/suggestions'));
+const AstronomicalAccuracyPage = lazy(() => import('./pages/astronomical-accuracy'));
+const TarotCardDetailPage = lazy(() => import('./pages/tarot/cards/[slug]'));
+const MoonPhasesPage = lazy(() => import('./pages/moon/phases'));
+const MoonEventPage = lazy(() => import('./pages/moon/[type]/[year]/[month]'));
+const AstrologyIndexPage = lazy(() => import('./pages/astrology/index'));
+const ZodiacSignPage = lazy(() => import('./pages/astrology/[sign]'));
+const PlanetsPage = lazy(() => import('./pages/astrology/planets'));
+const HousesPage = lazy(() => import('./pages/astrology/houses'));
+const AspectsPage = lazy(() => import('./pages/astrology/aspects'));
+const LiveSkyPage = lazy(() => import('./pages/astrology/live-sky'));
+const CosmicConnectionsPage = lazy(() => import('./pages/astrology/cosmic-connections'));
+const CelestialTimeMachinePage = lazy(() => import('./pages/astrology/celestial-time-machine'));
+const RemindersPage = lazy(() => import('./pages/reminders'));
+const AppStoreSubmissionPage = lazy(() => import('./pages/app-store-submission'));
+const AppStoreScreenshotsPage = lazy(() => import('./pages/app-store-screenshots'));
+const AppLaunchKitPage = lazy(() => import('./pages/app-launch-kit'));
+const HoroscopePage = lazy(() => import('./pages/horoscope'));
+const LearnPage = lazy(() => import('./pages/learn/index'));
+const AcademyTopicPage = lazy(() => import('./pages/learn/[topicSlug]/index'));
+const AcademyLessonPage = lazy(() => import('./pages/learn/[topicSlug]/[lessonSlug]'));
+const HowToReadYourBirthChartPage = lazy(() => import('./pages/seo-guides/how-to-read-your-birth-chart'));
+const SunMoonRisingSignsPage = lazy(() => import('./pages/seo-guides/sun-moon-rising-signs-explained'));
+const TwelveAstrologicalHousesPage = lazy(() => import('./pages/seo-guides/twelve-astrological-houses'));
+const MoonSignMeaningPage = lazy(() => import('./pages/seo-guides/moon-sign-meaning'));
+const HowToReadTarotPage = lazy(() => import('./pages/seo-guides/how-to-read-tarot-for-beginners'));
+const ThreeCardTarotSpreadsPage = lazy(() => import('./pages/seo-guides/three-card-tarot-spreads'));
+const MajorVsMinorArcanaPage = lazy(() => import('./pages/seo-guides/major-vs-minor-arcana'));
+const EightMoonPhasesPage = lazy(() => import('./pages/seo-guides/eight-moon-phases-meaning'));
+const NewMoonVsFullMoonPage = lazy(() => import('./pages/seo-guides/new-moon-vs-full-moon-rituals'));
+const HowToUseMoonCalendarPage = lazy(() => import('./pages/seo-guides/how-to-use-a-moon-calendar'));
+const WitchcraftForBeginnersPage = lazy(() => import('./pages/seo-guides/witchcraft-for-beginners'));
+const HowToCreateGrimoirePage = lazy(() => import('./pages/seo-guides/how-to-create-a-grimoire'));
+// TarotSharePage has a named loader export — use a module-level lazy wrapper
+const TarotSharePage = lazy(() => import('./pages/tarot/share/[publicId]'));
+const ExplorePage = lazy(() => import('./pages/explore/index'));
+
+// Loader for tarot share page — dynamically imports the module to get the named loader export
+const tarotShareLoader: RouteObject['loader'] = async (args) => {
+  const mod = await import('./pages/tarot/share/[publicId]');
+  return mod.loader!(args);
+};
 
 const NotFoundPage = ProdNotFoundPage;
+
+// Suspense wrapper for lazy pages — provides a loading state while the chunk loads
+function Lazy({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>}>{children}</Suspense>;
+}
 
 export const routes: RouteObject[] = [
   {
     path: '/login',
-    element: <LoginPage />,
+    element: <Lazy><LoginPage /></Lazy>,
   },
   {
     path: '/signup',
-    element: <SignupPage />,
+    element: <Lazy><SignupPage /></Lazy>,
   },
   {
     path: '/forgot-password',
-    element: <ForgotPasswordPage />,
+    element: <Lazy><ForgotPasswordPage /></Lazy>,
   },
   {
     path: '/account',
-    element: <AccountPage />,
+    element: <Lazy><AccountPage /></Lazy>,
   },
   {
     path: '/account/profile',
-    element: <ProfileStudioPage />,
+    element: <Lazy><ProfileStudioPage /></Lazy>,
   },
   {
     path: '/account/privacy',
-    element: <PrivacySanctuaryPage />,
+    element: <Lazy><PrivacySanctuaryPage /></Lazy>,
   },
   {
     path: '/account/edit-profile',
-    element: <EditProfilePage />,
+    element: <Lazy><EditProfilePage /></Lazy>,
   },
   {
     path: '/account/security',
-    element: <SecurityPage />,
+    element: <Lazy><SecurityPage /></Lazy>,
   },
   {
     path: '/account/astrology',
-    element: <AstrologySettingsPage />,
+    element: <Lazy><AstrologySettingsPage /></Lazy>,
   },
   {
     path: '/account/accessibility',
-    element: <AccessibilityPage />,
+    element: <Lazy><AccessibilityPage /></Lazy>,
   },
   {
     path: '/account/account-type',
-    element: <AccountTypePage />,
+    element: <Lazy><AccountTypePage /></Lazy>,
   },
   {
     path: '/sanctuary',
-    element: <SanctuaryPage />,
+    element: <Lazy><SanctuaryPage /></Lazy>,
   },
   {
     path: '/spells',
-    element: <SpellsPage />,
+    element: <Lazy><SpellsPage /></Lazy>,
   },
   {
     path: '/spells/submit',
-    element: <SubmitSpellPage />,
+    element: <Lazy><SubmitSpellPage /></Lazy>,
   },
   {
     path: '/spells/:slug',
-    element: <SpellDetailPage />,
+    element: <Lazy><SpellDetailPage /></Lazy>,
   },
   {
     path: '/admin/dashboard',
-    element: <AdminDashboardPage />,
+    element: <Lazy><AdminDashboardPage /></Lazy>,
   },
   {
     path: '/admin/applications',
-    element: <AdminApplicationsPage />,
+    element: <Lazy><AdminApplicationsPage /></Lazy>,
   },
   {
     path: '/admin/moderator',
-    element: <AdminModeratorPage />,
+    element: <Lazy><AdminModeratorPage /></Lazy>,
   },
   {
     path: '/admin/community-admin',
-    element: <AdminCommunityAdminPage />,
+    element: <Lazy><AdminCommunityAdminPage /></Lazy>,
   },
   {
     path: '/account/applications',
-    element: <MyApplicationsPage />,
+    element: <Lazy><MyApplicationsPage /></Lazy>,
   },
   {
     path: '/plus',
-    element: <PlusPage />,
+    element: <Lazy><PlusPage /></Lazy>,
   },
   {
     path: '/admin/spells',
-    element: <AdminSpellsPage />,
+    element: <Lazy><AdminSpellsPage /></Lazy>,
   },
   {
     path: '/admin/community',
-    element: <AdminCommunityPage />,
+    element: <Lazy><AdminCommunityPage /></Lazy>,
   },
   {
     path: '/admin/roles',
-    element: <AdminRolesPage />,
+    element: <Lazy><AdminRolesPage /></Lazy>,
   },
   {
     path: '/admin/engagement',
-    element: <AdminEngagementPage />,
+    element: <Lazy><AdminEngagementPage /></Lazy>,
   },
   {
     path: '/admin/command-center',
-    element: <CommandCenterPage />,
+    element: <Lazy><CommandCenterPage /></Lazy>,
   },
   {
     path: '/creator-application',
-    element: <CreatorApplicationPage />,
+    element: <Lazy><CreatorApplicationPage /></Lazy>,
   },
   {
     path: '/grimoire',
-    element: <GrimoirePage />,
+    element: <Lazy><GrimoirePage /></Lazy>,
   },
   {
     path: '/explore',
-    element: <ExplorePage />,
+    element: <Lazy><ExplorePage /></Lazy>,
   },
   {
     path: '/tarot',
-    element: <TarotPage />,
+    element: <Lazy><TarotPage /></Lazy>,
   },
   {
     path: '/moon-ritual',
-    element: <MoonRitualPage />,
+    element: <Lazy><MoonRitualPage /></Lazy>,
   },
   {
     path: '/dashboard',
-    element: <DashboardPage />,
+    element: <Lazy><DashboardPage /></Lazy>,
   },
   {
     path: '/timeline',
-    element: <TimelinePage />,
+    element: <Lazy><TimelinePage /></Lazy>,
   },
   {
     path: '/calendar',
-    element: <CalendarPage />,
+    element: <Lazy><CalendarPage /></Lazy>,
   },
   {
     path: '/dream-journal',
-    element: <DreamJournalPage />,
+    element: <Lazy><DreamJournalPage /></Lazy>,
   },
   {
     path: '/resources',
-    element: <ResourcesPage />,
+    element: <Lazy><ResourcesPage /></Lazy>,
   },
   {
     path: '/moon-calendar',
-    element: <MoonCalendarPage />,
+    element: <Lazy><MoonCalendarPage /></Lazy>,
   },
   {
     path: '/birth-chart',
-    element: <BirthChartPage />,
+    element: <Lazy><BirthChartPage /></Lazy>,
   },
   {
     path: '/about',
-    element: <AboutPage />,
+    element: <Lazy><AboutPage /></Lazy>,
   },
   {
     path: '/herbs',
-    element: <HerbsPage />,
+    element: <Lazy><HerbsPage /></Lazy>,
   },
   {
     path: '/',
-    element: <HomePage />,
+    element: <Lazy><HomePage /></Lazy>,
   },
-  { path: '/numerology', element: <NumerologyPage /> },
-  { path: '/runes', element: <RunesPage /> },
-  { path: '/compatibility', element: <CompatibilityPage /> },
-  { path: '/profile/:username', element: <ProfilePage /> },
+  { path: '/numerology', element: <Lazy><NumerologyPage /></Lazy> },
+  { path: '/runes', element: <Lazy><RunesPage /></Lazy> },
+  { path: '/compatibility', element: <Lazy><CompatibilityPage /></Lazy> },
+  { path: '/profile/:username', element: <Lazy><ProfilePage /></Lazy> },
   {
     path: '/u/:username',
-    element: <UserProfilePage />,
+    element: <Lazy><UserProfilePage /></Lazy>,
     loader: async ({ params }: { params: Record<string, string | undefined> }) => {
       try {
         // Fetch minimal profile data server-side so SSR HTML includes correct OG meta.
@@ -287,57 +309,64 @@ export const routes: RouteObject[] = [
       }
     },
   },
-  { path: '/messages', element: <MessagesPage /> },
-  { path: '/privacy', element: <PrivacyPage /> },
-  { path: '/terms', element: <TermsPage /> },
-  { path: '/community', element: <CommunityPage /> },
+  { path: '/messages', element: <Lazy><MessagesPage /></Lazy> },
+  { path: '/privacy', element: <Lazy><PrivacyPage /></Lazy> },
+  { path: '/terms', element: <Lazy><TermsPage /></Lazy> },
+  { path: '/community', element: <Lazy><CommunityPage /></Lazy> },
   // Static community paths MUST come before /community/:slug so React Router
   // does not match "new", "bookmarks", "notifications", "post", or "discover"
   // as a :slug param and render the wrong page.
-  { path: '/community/new', element: <CommunityNewPage /> },
-  { path: '/community/bookmarks', element: <CommunityBookmarksPage /> },
-  { path: '/community/notifications', element: <CommunityNotificationsPage /> },
-  { path: '/community/discover', element: <CommunityDiscoverPage /> },
-  { path: '/community/post/:id', element: <CommunityPostPage /> },
-  { path: '/community/:slug', element: <CommunityCategoryPage /> },
-  { path: '/creators', element: <CreatorsPage /> },
-  { path: '/organizations', element: <OrganizationsPage /> },
-  { path: '/circles', element: <CirclesPage /> },
-  { path: '/astronomical-accuracy', element: <AstronomicalAccuracyPage /> },
-  { path: '/tarot/cards/:slug', element: <TarotCardDetailPage /> },
-  { path: '/tarot/share/:publicId', element: <TarotSharePage />, loader: tarotShareLoader },
-  { path: '/moon/phases', element: <MoonPhasesPage /> },
-  { path: '/moon/:type/:year/:month', element: <MoonEventPage /> },
-  { path: '/astrology', element: <AstrologyIndexPage /> },
-  { path: '/astrology/planets', element: <PlanetsPage /> },
-  { path: '/astrology/houses', element: <HousesPage /> },
-  { path: '/astrology/aspects', element: <AspectsPage /> },
-  { path: '/astrology/live-sky', element: <LiveSkyPage /> },
-  { path: '/astrology/cosmic-connections', element: <CosmicConnectionsPage /> },
-  { path: '/astrology/celestial-time-machine', element: <CelestialTimeMachinePage /> },
-  { path: '/astrology/:sign', element: <ZodiacSignPage /> },
-  { path: '/reminders', element: <RemindersPage /> },
-  { path: '/app-store-submission', element: <AppStoreSubmissionPage /> },
-  { path: '/app-store-screenshots', element: <AppStoreScreenshotsPage /> },
-  { path: '/app-launch-kit', element: <AppLaunchKitPage /> },
-  { path: '/horoscope', element: <HoroscopePage /> },
-  { path: '/learn', element: <LearnPage /> },
-  { path: '/learn/:topicSlug', element: <AcademyTopicPage /> },
-  { path: '/learn/:topicSlug/:lessonSlug', element: <AcademyLessonPage /> },
-  { path: '/seo-guides/how-to-read-your-birth-chart', element: <HowToReadYourBirthChartPage /> },
-  { path: '/seo-guides/sun-moon-rising-signs-explained', element: <SunMoonRisingSignsPage /> },
-  { path: '/seo-guides/twelve-astrological-houses', element: <TwelveAstrologicalHousesPage /> },
-  { path: '/seo-guides/moon-sign-meaning', element: <MoonSignMeaningPage /> },
-  { path: '/seo-guides/how-to-read-tarot-for-beginners', element: <HowToReadTarotPage /> },
-  { path: '/seo-guides/three-card-tarot-spreads', element: <ThreeCardTarotSpreadsPage /> },
-  { path: '/seo-guides/major-vs-minor-arcana', element: <MajorVsMinorArcanaPage /> },
-  { path: '/seo-guides/eight-moon-phases-meaning', element: <EightMoonPhasesPage /> },
-  { path: '/seo-guides/new-moon-vs-full-moon-rituals', element: <NewMoonVsFullMoonPage /> },
-  { path: '/seo-guides/how-to-use-a-moon-calendar', element: <HowToUseMoonCalendarPage /> },
-  { path: '/seo-guides/witchcraft-for-beginners', element: <WitchcraftForBeginnersPage /> },
-  { path: '/seo-guides/how-to-create-a-grimoire', element: <HowToCreateGrimoirePage /> },
-  { path: '/unsubscribe', element: <UnsubscribePage /> },
-  { path: '/email-preferences', element: <EmailPreferencesPage /> },
+  { path: '/community/new', element: <Lazy><CommunityNewPage /></Lazy> },
+  { path: '/community/bookmarks', element: <Lazy><CommunityBookmarksPage /></Lazy> },
+  { path: '/community/notifications', element: <Lazy><CommunityNotificationsPage /></Lazy> },
+  { path: '/community/discover', element: <Lazy><CommunityDiscoverPage /></Lazy> },
+  { path: '/community/post/:id', element: <Lazy><CommunityPostPage /></Lazy> },
+  { path: '/community/help/getting-started', element: <Lazy><CommunityHelpGettingStartedPage /></Lazy> },
+  { path: '/community/help/faq', element: <Lazy><CommunityHelpFaqPage /></Lazy> },
+  { path: '/community/help/glossary', element: <Lazy><CommunityHelpGlossaryPage /></Lazy> },
+  { path: '/community/help/safety', element: <Lazy><CommunityHelpSafetyPage /></Lazy> },
+  { path: '/community/help/report-a-bug', element: <Lazy><CommunityHelpReportBugPage /></Lazy> },
+  { path: '/community/announcements', element: <Lazy><CommunityAnnouncementsPage /></Lazy> },
+  { path: '/community/suggestions', element: <Lazy><CommunitySuggestionsPage /></Lazy> },
+  { path: '/community/:slug', element: <Lazy><CommunityCategoryPage /></Lazy> },
+  { path: '/creators', element: <Lazy><CreatorsPage /></Lazy> },
+  { path: '/organizations', element: <Lazy><OrganizationsPage /></Lazy> },
+  { path: '/circles', element: <Lazy><CirclesPage /></Lazy> },
+  { path: '/astronomical-accuracy', element: <Lazy><AstronomicalAccuracyPage /></Lazy> },
+  { path: '/tarot/cards/:slug', element: <Lazy><TarotCardDetailPage /></Lazy> },
+  { path: '/tarot/share/:publicId', element: <Lazy><TarotSharePage /></Lazy>, loader: tarotShareLoader },
+  { path: '/moon/phases', element: <Lazy><MoonPhasesPage /></Lazy> },
+  { path: '/moon/:type/:year/:month', element: <Lazy><MoonEventPage /></Lazy> },
+  { path: '/astrology', element: <Lazy><AstrologyIndexPage /></Lazy> },
+  { path: '/astrology/planets', element: <Lazy><PlanetsPage /></Lazy> },
+  { path: '/astrology/houses', element: <Lazy><HousesPage /></Lazy> },
+  { path: '/astrology/aspects', element: <Lazy><AspectsPage /></Lazy> },
+  { path: '/astrology/live-sky', element: <Lazy><LiveSkyPage /></Lazy> },
+  { path: '/astrology/cosmic-connections', element: <Lazy><CosmicConnectionsPage /></Lazy> },
+  { path: '/astrology/celestial-time-machine', element: <Lazy><CelestialTimeMachinePage /></Lazy> },
+  { path: '/astrology/:sign', element: <Lazy><ZodiacSignPage /></Lazy> },
+  { path: '/reminders', element: <Lazy><RemindersPage /></Lazy> },
+  { path: '/app-store-submission', element: <Lazy><AppStoreSubmissionPage /></Lazy> },
+  { path: '/app-store-screenshots', element: <Lazy><AppStoreScreenshotsPage /></Lazy> },
+  { path: '/app-launch-kit', element: <Lazy><AppLaunchKitPage /></Lazy> },
+  { path: '/horoscope', element: <Lazy><HoroscopePage /></Lazy> },
+  { path: '/learn', element: <Lazy><LearnPage /></Lazy> },
+  { path: '/learn/:topicSlug', element: <Lazy><AcademyTopicPage /></Lazy> },
+  { path: '/learn/:topicSlug/:lessonSlug', element: <Lazy><AcademyLessonPage /></Lazy> },
+  { path: '/seo-guides/how-to-read-your-birth-chart', element: <Lazy><HowToReadYourBirthChartPage /></Lazy> },
+  { path: '/seo-guides/sun-moon-rising-signs-explained', element: <Lazy><SunMoonRisingSignsPage /></Lazy> },
+  { path: '/seo-guides/twelve-astrological-houses', element: <Lazy><TwelveAstrologicalHousesPage /></Lazy> },
+  { path: '/seo-guides/moon-sign-meaning', element: <Lazy><MoonSignMeaningPage /></Lazy> },
+  { path: '/seo-guides/how-to-read-tarot-for-beginners', element: <Lazy><HowToReadTarotPage /></Lazy> },
+  { path: '/seo-guides/three-card-tarot-spreads', element: <Lazy><ThreeCardTarotSpreadsPage /></Lazy> },
+  { path: '/seo-guides/major-vs-minor-arcana', element: <Lazy><MajorVsMinorArcanaPage /></Lazy> },
+  { path: '/seo-guides/eight-moon-phases-meaning', element: <Lazy><EightMoonPhasesPage /></Lazy> },
+  { path: '/seo-guides/new-moon-vs-full-moon-rituals', element: <Lazy><NewMoonVsFullMoonPage /></Lazy> },
+  { path: '/seo-guides/how-to-use-a-moon-calendar', element: <Lazy><HowToUseMoonCalendarPage /></Lazy> },
+  { path: '/seo-guides/witchcraft-for-beginners', element: <Lazy><WitchcraftForBeginnersPage /></Lazy> },
+  { path: '/seo-guides/how-to-create-a-grimoire', element: <Lazy><HowToCreateGrimoirePage /></Lazy> },
+  { path: '/unsubscribe', element: <Lazy><UnsubscribePage /></Lazy> },
+  { path: '/email-preferences', element: <Lazy><EmailPreferencesPage /></Lazy> },
   {
     id: 'airo-not-found',
     path: '*',

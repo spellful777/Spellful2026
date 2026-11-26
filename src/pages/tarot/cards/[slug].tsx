@@ -127,9 +127,9 @@ export default function TarotCardDetailPage() {
         <meta property="og:description" content={description} />
         <meta property="og:type" content="article" />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:image" content={card.image ?? 'https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png'} />
+        <meta property="og:image" content={card.image ?? 'https://spellful.com/airo-assets/images/pages/og-image'} />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:image" content={card.image ?? 'https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png'} />
+        <meta name="twitter:image" content={card.image ?? 'https://spellful.com/airo-assets/images/pages/og-image'} />
         <script type="application/ld+json">{JSON.stringify(jsonLd).replace(/</g, '\\u003c')}</script>
       </Helmet>
 

@@ -19,13 +19,15 @@ import { formatDistanceToNow } from 'date-fns';
 import FriendUpdatesFeed from '@/components/FriendUpdatesFeed';
 import SinceYouWereAwayBanner from '@/components/SinceYouWereAwayBanner';
 import CovenHearth from '@/components/CovenHearth';
+import CommunityNavBar from '@/components/CommunityNavBar';
 
 // ── Community stats strip ─────────────────────────────────────────────────────
 interface CommunityStats { onlineCount: number; registeredCount: number; }
 
-function CommunityStatsStrip() {
+function CommunityStatsStrip({ compact = false }: { compact?: boolean }) {
   const [stats, setStats] = useState<CommunityStats | null>(null);
   const [error, setError] = useState(false);
+  const [showOnlineList, setShowOnlineList] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,53 +46,74 @@ function CommunityStatsStrip() {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
+  const onlineLabel = stats
+    ? stats.onlineCount === 1
+      ? '1 witch online'
+      : `${stats.onlineCount.toLocaleString()} witches online`
+    : null;
+
+  const memberLabel = stats
+    ? stats.registeredCount === 1
+      ? '1 member'
+      : `${stats.registeredCount.toLocaleString()} members`
+    : null;
+
   return (
     <div
-      className="border-b border-border"
-      style={{ background: 'hsl(var(--card-deep))' }}
+      className={compact ? '' : 'border-b border-border'}
+      style={compact ? {} : { background: 'hsl(var(--card-deep))' }}
       aria-label="Community statistics"
     >
-      <div className="max-w-6xl mx-auto px-5 md:px-8 py-2.5 flex flex-col sm:flex-row items-center justify-start gap-3 sm:gap-8">
+      <div className={compact ? 'flex items-center gap-3' : 'max-w-6xl mx-auto px-5 md:px-8 py-2.5 flex items-center gap-4'}>
 
-        {/* Witches Online */}
-        <div className="flex items-center gap-2">
+        {/* Witches Online — tappable */}
+        <button
+          type="button"
+          onClick={() => setShowOnlineList((v) => !v)}
+          className="flex items-center gap-1.5 group focus:outline-none"
+          aria-label="See who is online"
+        >
           <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'hsl(var(--presence-live))' }} />
             <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: 'hsl(var(--presence-live))' }} />
           </span>
           {stats === null && !error ? (
-            <span className="h-3.5 w-28 rounded animate-pulse inline-block bg-muted" aria-label="Loading online count" />
+            <span className="h-3 w-24 rounded animate-pulse inline-block bg-muted" aria-label="Loading online count" />
           ) : error ? (
-            <span className="text-xs text-muted-foreground">— Witches Online</span>
+            <span className="text-xs text-muted-foreground">— online</span>
           ) : (
-            <span className="text-xs" style={{ fontFamily: 'var(--font-sans)' }}>
-              <span className="font-semibold text-foreground">{stats!.onlineCount.toLocaleString()}</span>
-              <span className="ml-1 text-muted-foreground">Witches Online</span>
+            <span className="text-xs group-hover:text-primary transition-colors" style={{ fontFamily: 'var(--font-sans)', color: 'hsl(var(--muted-foreground))' }}>
+              {onlineLabel}
             </span>
           )}
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ background: 'hsl(var(--presence-live-bg) / 0.15)', color: 'hsl(var(--presence-live))' }}>
-            Live
-          </span>
-        </div>
+        </button>
 
-        <span className="hidden sm:block w-px h-4 shrink-0 bg-border" aria-hidden="true" />
+        <span className="w-px h-3.5 shrink-0 bg-border" aria-hidden="true" />
 
-        {/* Registered Witches */}
-        <div className="flex items-center gap-2">
-          <Users className="w-3.5 h-3.5 shrink-0 text-accent" aria-hidden="true" />
+        {/* Registered members */}
+        <div className="flex items-center gap-1.5">
+          <Users className="w-3 h-3 shrink-0" style={{ color: 'hsl(var(--accent))' }} aria-hidden="true" />
           {stats === null && !error ? (
-            <span className="h-3.5 w-36 rounded animate-pulse inline-block bg-muted" aria-label="Loading registered count" />
+            <span className="h-3 w-20 rounded animate-pulse inline-block bg-muted" aria-label="Loading registered count" />
           ) : error ? (
-            <span className="text-xs text-muted-foreground">— Registered Witches</span>
+            <span className="text-xs text-muted-foreground">— members</span>
           ) : (
-            <span className="text-xs" style={{ fontFamily: 'var(--font-sans)' }}>
-              <span className="font-semibold text-foreground">{stats!.registeredCount.toLocaleString()}</span>
-              <span className="ml-1 text-muted-foreground">Registered Witches</span>
+            <span className="text-xs" style={{ fontFamily: 'var(--font-sans)', color: 'hsl(var(--muted-foreground))' }}>
+              {memberLabel}
             </span>
           )}
         </div>
 
       </div>
+
+      {/* Online list popover — simple inline expand */}
+      {showOnlineList && (
+        <div className="max-w-6xl mx-auto px-5 md:px-8 pb-2">
+          <p className="text-xs text-muted-foreground italic">
+            Detailed online list coming soon — check back later.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -363,15 +386,34 @@ export default function CommunityPage() {
         <meta property="og:description" content="Join the Spellful community — discuss witchcraft, tarot, astrology, and moon magic with fellow practitioners." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/community" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
+        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/community/og-image" />
+        <meta property="og:image:secure_url" content="https://spellful.com/airo-assets/images/pages/community/og-image" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:alt" content="Spellful Community — Connect with Fellow Witches" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Spellful Community — Connect with Fellow Witches" />
         <meta name="twitter:description" content="Discuss witchcraft, tarot, astrology, and moon magic with fellow practitioners." />
-        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/community/og-image" />
       </Helmet>
 
       <main className="min-h-screen">
-        {/* ── Magical Hero header ── */}
+        {/* ── Signed-in: compact nav bar ── */}
+        {session && (
+          <CommunityNavBar
+            userName={session.user?.name}
+            userImage={session.user?.image}
+            username={(session.user as { username?: string }).username}
+            unread={unread}
+            search={search}
+            onSearchChange={setSearch}
+            onSearchSubmit={handleSearch}
+          />
+        )}
+
+        {/* ── Guest only: Magical Hero header ── */}
+        {(!session && !isPending) && (
         <section
           className="relative overflow-hidden border-b border-border"
           style={{ background: `linear-gradient(160deg, hsl(var(--hero-midnight)) 0%, hsl(var(--hero-plum)) 50%, hsl(var(--hero-midnight)) 100%)` }}
@@ -578,6 +620,19 @@ export default function CommunityPage() {
                 >
                   ✦ Spellful Home
                 </Link>
+                <Link
+                  to="/community/help/getting-started"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors"
+                  style={{
+                    background: `hsl(var(--hero-surface) / 0.9)`,
+                    borderColor: `hsl(var(--hero-lavender) / 0.3)`,
+                    color: `hsl(var(--hero-lavender-soft))`,
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = `hsl(var(--hero-lavender) / 0.7)`; (e.currentTarget as HTMLAnchorElement).style.color = `hsl(var(--hero-moonlight))`; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = `hsl(var(--hero-lavender) / 0.3)`; (e.currentTarget as HTMLAnchorElement).style.color = `hsl(var(--hero-lavender-soft))`; }}
+                >
+                  ✦ Help & Resources
+                </Link>
                 <Link to="/community/notifications" className="relative">
                   <Button
                     variant="outline" size="sm" className="gap-2"
@@ -602,6 +657,7 @@ export default function CommunityPage() {
           {/* Stats strip sits inside the hero section */}
           <CommunityStatsStrip />
         </section>
+        )}
 
         {/* ── Since-you-were-away banner ── */}
         {session && (

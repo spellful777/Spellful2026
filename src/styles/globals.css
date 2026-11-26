@@ -409,6 +409,37 @@ html {
   --astro-capricorn: 30 25% 45%;
   --astro-aquarius: 210 70% 60%;
   --astro-pisces: 230 55% 68%;
+  /* Avatar frame color rings — 15 named options, all CSS-generated */
+  --frame-obsidian:       248 10% 17%;
+  --frame-obsidian-hi:    248 10% 30%;
+  --frame-amethyst:       270 43% 43%;
+  --frame-amethyst-hi:    270 43% 60%;
+  --frame-lunar:          230 15% 60%;
+  --frame-lunar-hi:       230 15% 76%;
+  --frame-emerald:        150 55% 23%;
+  --frame-emerald-hi:     150 55% 36%;
+  --frame-sapphire:       220 65% 28%;
+  --frame-sapphire-hi:    220 65% 44%;
+  --frame-crimson:        345 60% 27%;
+  --frame-crimson-hi:     345 60% 42%;
+  --frame-golden:         38 65% 33%;
+  --frame-golden-hi:      38 65% 54%;
+  --frame-rose-quartz:    345 30% 57%;
+  --frame-rose-quartz-hi: 345 30% 73%;
+  --frame-smoky:          260 8% 36%;
+  --frame-smoky-hi:       260 8% 55%;
+  --frame-aurora:         180 62% 27%;
+  --frame-aurora-hi:      180 62% 42%;
+  --frame-violet:         258 60% 27%;
+  --frame-violet-hi:      258 60% 45%;
+  --frame-ivory:          38 28% 60%;
+  --frame-ivory-hi:       38 28% 76%;
+  --frame-copper:         20 60% 30%;
+  --frame-copper-hi:      20 60% 46%;
+  --frame-jade:           165 40% 27%;
+  --frame-jade-hi:        165 40% 40%;
+  --frame-astral:         225 65% 16%;
+  --frame-astral-hi:      225 65% 28%;
 }
 /* ── Accessibility preferences ─────────────────────────────────────────────── */
 html.reduce-motion *,
@@ -525,4 +556,16 @@ html.high-contrast {
 }
 @media (prefers-reduced-motion: reduce) {
   .cosmic-star { animation: none !important; }
+}
+
+@media (max-width: 767px) {
+  .spellful-mobile-thread {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  /* The thread owns the composer and the bottom safe area while open. */
+  body:has(.spellful-mobile-thread) nav[aria-label="Mobile bottom navigation"] {
+    display: none !important;
+  }
 }

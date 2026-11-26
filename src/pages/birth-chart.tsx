@@ -596,14 +596,14 @@ export default function BirthChartPage() {
         <meta property="og:description" content={chart ? `Cast your natal chart at Spellful. Sun in ${chart.sun.sign}, Moon in ${chart.moon.sign}, ${chart.ascendant.sign} Rising.` : 'Reveal your natal chart — planetary positions, houses, aspects, and deep astrological interpretations.'} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/birth-chart" />
-        <meta property="og:image" content={chart ? ogImageUrl() : 'https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png'} />
+        <meta property="og:image" content={chart ? ogImageUrl() : 'https://spellful.com/airo-assets/images/pages/birth-chart/og-image'} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content={chart ? `${form.name ? form.name + "'s" : 'My'} Birth Chart — Spellful` : 'Birth Chart Calculator — Spellful'} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={chart ? `${form.name ? form.name + "'s" : 'My'} Big Three: ☉ ${chart.sun.sign} · ☽ ${chart.moon.sign} · ↑ ${chart.ascendant.sign} — Spellful` : 'Birth Chart Calculator — Spellful'} />
         <meta name="twitter:description" content={chart ? `Cast your natal chart at Spellful. Sun in ${chart.sun.sign}, Moon in ${chart.moon.sign}, ${chart.ascendant.sign} Rising.` : 'Reveal your natal chart — planetary positions, houses, aspects, and deep astrological interpretations.'} />
-        <meta name="twitter:image" content={chart ? ogImageUrl() : 'https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png'} />
+        <meta name="twitter:image" content={chart ? ogImageUrl() : 'https://spellful.com/airo-assets/images/pages/birth-chart/og-image'} />
         <meta name="twitter:image:alt" content={chart ? `${form.name ? form.name + "'s" : 'My'} Birth Chart — Spellful` : 'Birth Chart Calculator — Spellful'} />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',

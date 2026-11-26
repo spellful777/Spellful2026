@@ -303,7 +303,7 @@ export default function CalendarPage() {
         <meta property="og:description" content="Free moon phase calendar with full moons, new moons, eclipses, retrogrades, and sabbats. No signup, no ads." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/calendar" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
       </Helmet>

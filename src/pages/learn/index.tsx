@@ -29,10 +29,7 @@ export default function LearnPage() {
         <meta property="og:description" content="22 free guided lessons across 9 topics. Learn astrology, tarot, moon magic, numerology, witchcraft, herbs, dreams, and history with quizzes and progress tracking." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://spellful.com/learn" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Spellful Academy — Free Lessons in Astrology, Tarot &amp; Witchcraft" />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Spellful Academy — Free Lessons in Astrology, Tarot &amp; Witchcraft" />
         <meta name="twitter:description" content="22 free guided lessons across 9 topics. Learn astrology, tarot, moon magic, numerology, witchcraft, herbs, dreams, and history." />

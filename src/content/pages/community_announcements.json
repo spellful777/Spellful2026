@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "title": "Announcements — Spellful Community",
+    "description": "Official Spellful announcements, What's New updates, changelogs, and community events."
+  },
+  "heading": "Announcements",
+  "subheading": "Official updates, new features, and community news from the Spellful team",
+  "filterAll": "All",
+  "filterAnnouncement": "Announcements",
+  "filterWhatsNew": "What's New",
+  "filterChangelog": "Changelog",
+  "filterEvent": "Events",
+  "emptyHeading": "Nothing here yet",
+  "emptyBody": "Check back soon for official updates from the Spellful team.",
+  "staffBadge": "Spellful Team"
+}

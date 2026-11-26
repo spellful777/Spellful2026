@@ -40,14 +40,16 @@ function RootLayoutInner({ children }: RootLayoutProps) {
         <meta name="description" content="Spellful is your sacred space for witchcraft wisdom, tarot readings, moon rituals, birth charts, spells, and the Spellful Academy — free guided lessons in astrology, tarot, numerology, and more." />
         {/* Site-wide social defaults — individual pages override with their own <Helmet> */}
         <meta property="og:site_name" content="Spellful" />
-        <meta property="og:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
+        <meta property="og:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
+        <meta property="og:image:secure_url" content="https://spellful.com/airo-assets/images/pages/og-image" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Spellful — Witchcraft, Tarot &amp; Intuitive Resources" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:alt" content="Spellful logo" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@spellful" />
-        <meta name="twitter:image" content="https://spellful.com/airo-assets/uploads/pages-og-image-7ff4c824.png" />
-        <meta name="twitter:image:alt" content="Spellful — Witchcraft, Tarot &amp; Intuitive Resources" />
+        <meta name="twitter:image" content="https://spellful.com/airo-assets/images/pages/og-image" />
+        <meta name="twitter:image:alt" content="Spellful logo" />
       </Helmet>
       <HomepageSameAsJsonLd />
       <ScrollRestoration />
