@@ -33,13 +33,13 @@ export default async function handler(req: Request, res: Response) {
 
     if (existing) return res.status(409).json({ error: 'Connection already exists', status: existing.status });
 
-    await db.insert(covenConnections).values({
+    const [result] = await db.insert(covenConnections).values({
       requesterId: session.user.id,
       receiverId,
       status: 'pending',
     });
 
-    res.status(201).json({ ok: true });
+    res.status(201).json({ ok: true, connectionId: result.insertId });
   } catch (err) {
     console.error(JSON.stringify({ event: 'coven.request.error', msg: String(err).slice(0, 120) }));
     res.status(500).json({ error: 'Failed to send request' });

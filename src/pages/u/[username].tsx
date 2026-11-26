@@ -1,3 +1,4 @@
+import { MemberConnectionActions } from '@/components/MemberConnectionActions';
 /**
  * /u/:username — Immersive public member profile (Redesign v2)
  *
@@ -27,11 +28,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useSession } from '@/lib/auth/auth-client';
 import { Button } from '@/components/ui/button';
 import {
-  MapPin, Users, Lock, Check, Clock, MessageCircle,
+  MapPin, Users, Lock, Check, MessageCircle,
   ExternalLink, Settings, MoreHorizontal, Share2,
   Star, Sparkles, BookOpen, Heart, Image as ImageIcon,
   Music, Scroll, Globe, FileText,
-  Wand2, Layers, UserPlus, X, ChevronLeft, ChevronRight,
+  Wand2, Layers, X, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import AvatarWithFrame from '@/components/AvatarWithFrame';
 import { OnlineDot } from '@/components/OnlineDot';
@@ -430,7 +431,6 @@ export default function UserProfilePage() {
   const [guestbook, setGuestbook] = useState<GuestbookData | null>(null);
 
   // UI state
-  const [covenActionLoading, setCovenActionLoading] = useState(false);
   const [guestbookText, setGuestbookText] = useState('');
   const [guestbookSubmitting, setGuestbookSubmitting] = useState(false);
   const [guestbookSuccess, setGuestbookSuccess] = useState(false);
@@ -483,27 +483,6 @@ export default function UserProfilePage() {
       setLoading(false);
     }).catch(() => { setError('Failed to load profile'); setLoading(false); });
   }, [username, previewMode, viewerId]);
-
-  // Coven invite / accept / cancel
-  async function handleCovenAction() {
-    if (!profileData || covenActionLoading) return;
-    setCovenActionLoading(true);
-    const { connectionStatus, connectionId, profile } = profileData;
-    try {
-      if (!connectionStatus) {
-        const r = await fetch('/api/coven/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receiverId: profile.id }) });
-        if (r.ok) setProfileData(prev => prev ? { ...prev, connectionStatus: 'pending_sent' } : prev);
-      } else if (connectionStatus === 'pending_sent' && connectionId) {
-        const r = await fetch(`/api/coven/invite/${connectionId}`, { method: 'DELETE' });
-        if (r.ok) setProfileData(prev => prev ? { ...prev, connectionStatus: null, connectionId: null } : prev);
-      } else if (connectionStatus === 'pending_received' && connectionId) {
-        const r = await fetch(`/api/coven/invite/${connectionId}/accept`, { method: 'POST' });
-        if (r.ok) setProfileData(prev => prev ? { ...prev, connectionStatus: 'accepted' } : prev);
-      }
-    } finally {
-      setCovenActionLoading(false);
-    }
-  }
 
   // Guestbook submit
   async function handleGuestbookSubmit(e: React.FormEvent) {
@@ -747,23 +726,18 @@ export default function UserProfilePage() {
             {/* Action buttons */}
             {!isOwn && viewerId && (
               <div className="flex gap-2 mb-1 flex-wrap">
-                <Button size="sm" className="flex-1 min-w-0 text-xs font-semibold" onClick={handleCovenAction} disabled={covenActionLoading}>
-                  {connectionStatus === 'accepted'
-                    ? <><Check className="w-3.5 h-3.5 mr-1" />In Coven</>
-                    : connectionStatus === 'pending_sent'
-                    ? <><Clock className="w-3.5 h-3.5 mr-1" />Invited</>
-                    : connectionStatus === 'pending_received'
-                    ? <><Users className="w-3.5 h-3.5 mr-1" />Accept</>
-                    : <><UserPlus className="w-3.5 h-3.5 mr-1" />Follow</>}
+                <MemberConnectionActions
+                  key={profile.id}
+                  memberId={profile.id}
+                  initialCovenStatus={connectionStatus}
+                  initialConnectionId={profileData?.connectionId ?? null}
+                  onCovenChange={(status, id) => setProfileData(previous => previous?.profile.id === profile.id
+                    ? { ...previous, connectionStatus: status, connectionId: id }
+                    : previous)}
+                />
+                <Button size="sm" variant="outline" onClick={() => navigate(`/messages?user=${profile.id}`)}>
+                  <MessageCircle className="mr-1 h-4 w-4" /> Message
                 </Button>
-                <Button size="sm" variant="outline" className="flex-1 min-w-0 text-xs" onClick={() => navigate(`/messages?user=${profile.id}`)}>
-                  <MessageCircle className="w-3.5 h-3.5 mr-1" />Message
-                </Button>
-                {connectionStatus !== 'accepted' && (
-                  <Button size="sm" variant="outline" className="flex-1 min-w-0 text-xs" onClick={handleCovenAction} disabled={covenActionLoading}>
-                    <Users className="w-3.5 h-3.5 mr-1" />Invite to Coven
-                  </Button>
-                )}
               </div>
             )}
             {!isOwn && !viewerId && (

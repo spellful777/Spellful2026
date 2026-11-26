@@ -345,15 +345,15 @@ export default function DiscoverPage() {
 
                 {/* Actions */}
                 {session && (
-                  <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: '1px solid hsl(var(--border))' }}>
+                  <div className="flex flex-wrap gap-2 mt-3 pt-3" style={{ borderTop: '1px solid hsl(var(--border))' }}>
                     {/* Follow button */}
                     <Button
                       size="sm"
-                      variant={m.isFollowing ? 'outline' : 'outline'}
-                      className="text-xs h-7 px-2.5"
+                      variant={m.isFollowing ? 'outline' : 'default'}
+                      className="h-9 px-3 text-xs"
                       disabled={followLoading === m.id}
                       onClick={() => toggleFollow(m.id, m.isFollowing)}
-                      aria-label={m.isFollowing ? 'Unfollow' : 'Follow'}
+                      aria-pressed={m.isFollowing}
                     >
                       {m.isFollowing
                         ? <><UserCheck className="w-3 h-3 mr-1" style={{ color: accent }} />Following</>
@@ -373,7 +373,7 @@ export default function DiscoverPage() {
                       </Button>
                     ) : m.covenStatus === 'pending_sent' ? (
                       <Button size="sm" variant="outline" className="text-xs h-7 px-2.5" disabled>
-                        {community_discover.invited}
+                        Coven request sent
                       </Button>
                     ) : m.covenStatus === 'pending_received' ? (
                       <Button
@@ -383,7 +383,7 @@ export default function DiscoverPage() {
                         onClick={() => acceptCovenRequest(m.id, m.covenConnectionId!)}
                         disabled={covenLoading === m.id}
                       >
-                        {community_discover.accept}
+                        Accept Coven request
                       </Button>
                     ) : (
                       <Button
@@ -393,7 +393,7 @@ export default function DiscoverPage() {
                         onClick={() => sendCovenRequest(m.id)}
                         disabled={covenLoading === m.id}
                       >
-                        {covenLoading === m.id ? '…' : community_discover.inviteToCoven}
+                        {covenLoading === m.id ? 'Sending…' : 'Send Coven request'}
                       </Button>
                     )}
                   </div>

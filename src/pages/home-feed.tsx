@@ -76,7 +76,7 @@ export default function HomeFeed() {
             {option === 'following' ? 'Following' : 'Discover'}
           </Button>
         ))}
-        <Button asChild variant="ghost"><Link to="/community/discover">Find members</Link></Button>
+        <Button asChild variant="outline"><Link to="/community/discover">Find people to follow</Link></Button>
       </nav>
       {newPosts && <div className="sticky top-16 z-20"><Button onClick={refresh}>New posts</Button></div>}
       {error ? (
