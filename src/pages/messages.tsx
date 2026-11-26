@@ -1,3 +1,4 @@
+import { parseInboxGroups, type GroupSummary } from '@/lib/inbox-groups';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { uploadedMediaUrl } from '@/lib/native-api';
@@ -61,22 +62,6 @@ interface Reaction {
   emoji: string;
   count: number;
   userIds: string[];
-}
-
-interface GroupSummary {
-  id: number;
-  name: string;
-  description: string;
-  avatarUrl: string | null;
-  createdBy: string;
-  role: string;
-  memberCount: number;
-  unreadCount: number;
-  isArchived: boolean;
-  isPinned: boolean;
-  isMuted: boolean;
-  lastMessage: { content: string | null; senderId: string; createdAt: string } | null;
-  updatedAt: string;
 }
 
 interface GroupMessage {
@@ -165,6 +150,7 @@ function Avatar({ user, size = 44 }: { user: OtherUser | null; size?: number }) 
 
 function formatTime(iso: string) {
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
   const now = new Date();
   if (d.toDateString() === now.toDateString()) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1043,9 +1029,7 @@ export default function MessagesPage() {
     try {
       const response = await fetch('/api/groups', { credentials: 'include' });
       if (!response.ok) throw new Error('Could not load groups');
-      const data = await response.json() as { groups: GroupSummary[] };
-      if (!Array.isArray(data.groups)) throw new Error('Invalid group list');
-      setGroups(data.groups);
+      setGroups(parseInboxGroups(await response.json()));
     } catch {
       setGroupsLoadError(true);
     } finally {
@@ -2291,7 +2275,7 @@ export default function MessagesPage() {
   const inboxRows = [
     ...filteredConversations.map(conv => ({ conv, group: null, time: conv.lastMessage?.createdAt ?? conv.updatedAt })),
     ...matchingGroups.map(group => ({ conv: null, group, time: group.lastMessage?.createdAt ?? group.updatedAt })),
-  ].sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
+  ].sort((a, b) => (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0));
 
   const renderGroupRow = (group: GroupSummary, idx: number) => (
 <motion.button
