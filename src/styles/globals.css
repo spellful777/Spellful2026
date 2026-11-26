@@ -564,6 +564,11 @@ html.high-contrast {
     padding-right: env(safe-area-inset-right, 0px);
   }
 
+  .spellful-mobile-thread input,
+  .spellful-mobile-thread textarea {
+    font-size: 16px;
+  }
+
   /* The thread owns the composer and the bottom safe area while open. */
   body:has(.spellful-mobile-thread) nav[aria-label="Mobile bottom navigation"] {
     display: none !important;

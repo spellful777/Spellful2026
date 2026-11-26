@@ -1,3 +1,4 @@
+import { uploadedMediaUrl } from '@/lib/native-api';
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -744,7 +745,7 @@ export default function AccountPage() {
                         boxShadow: '0 0 0 2px hsl(var(--primary) / 0.5), 0 0 0 4px hsl(var(--background))',
                       }}>
                       {avatarUrl ? (
-                        <img src={avatarUrl} alt={user.name ?? 'Avatar'} className="w-full h-full object-cover" />
+                        <img src={uploadedMediaUrl(avatarUrl)} alt={user.name ?? 'Avatar'} className="w-full h-full object-cover" />
                       ) : (
                         <span className="text-lg font-serif" style={{ color: 'hsl(var(--primary))' }}>{initials}</span>
                       )}
@@ -886,7 +887,7 @@ export default function AccountPage() {
                           <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                             className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full" />
                         ) : avatarUrl ? (
-                          <img src={avatarUrl} alt={user.name ?? 'Your avatar'} className="w-full h-full object-cover" />
+                          <img src={uploadedMediaUrl(avatarUrl)} alt={user.name ?? 'Your avatar'} className="w-full h-full object-cover" />
                         ) : (
                           <span className="text-2xl font-serif" style={{ color: 'hsl(var(--primary))' }}>{initials}</span>
                         )}
@@ -1913,7 +1914,7 @@ export default function AccountPage() {
                         {/* Avatar */}
                         <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 flex items-center justify-center" style={{ background: 'hsl(var(--card))' }}>
                           {b.image ? (
-                            <img src={b.image} alt={b.name ?? ''} className="w-full h-full object-cover" />
+                            <img src={uploadedMediaUrl(b.image)} alt={b.name ?? ''} className="w-full h-full object-cover" />
                           ) : (
                             <span className="text-sm font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>
                               {(b.name ?? b.username ?? '?')[0].toUpperCase()}

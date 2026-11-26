@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { uploadedMediaUrl } from '@/lib/native-api';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
@@ -151,7 +153,7 @@ function Avatar({ user, size = 44 }: { user: OtherUser | null; size?: number }) 
       }}
     >
       {user?.image ? (
-        <img src={user.image} alt={user.name ?? ''} className="w-full h-full object-cover" />
+        <img src={uploadedMediaUrl(user.image)} alt={user.name ?? ''} className="w-full h-full object-cover" />
       ) : (
         <span className="font-serif font-semibold text-sm" style={{ color: 'hsl(var(--primary-foreground))' }}>
           {initials}
@@ -885,7 +887,7 @@ function DesktopThread({
               )}
               {!otherUserPublicKey && !sendError && (
                 <p className="text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                  Your message will be sent now. Full encryption activates once they open Messages.
+                  You can send a private message once they open Messages.
                 </p>
               )}
               <div className="flex items-center justify-center gap-2 mt-1.5">
@@ -928,6 +930,7 @@ export default function MessagesPage() {
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [convLoadError, setConvLoadError] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [threadLoadError, setThreadLoadError] = useState(false);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [keyReady, setKeyReady] = useState(false);
   const [mobileView, setMobileView] = useState<'list' | 'thread'>('list');
@@ -1019,6 +1022,7 @@ export default function MessagesPage() {
 
   // horoscope state removed — strip removed from inbox per redesign spec
   const bottomRef = useRef<HTMLDivElement>(null);
+  const mobileMessageList = useRef<HTMLDivElement>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -1333,20 +1337,27 @@ export default function MessagesPage() {
 
   // ── Key setup ─────────────────────────────────────────────────────────────
 
+  const registerMessagingKey = useCallback(async () => {
+    const { publicKeyJwk } = await getOrCreateKeyPair();
+    const result = await fetch('/api/keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ publicKey: publicKeyJwk }),
+    });
+    return result.ok;
+  }, []);
+
   useEffect(() => {
+    setKeyReady(false);
     if (!myId) return;
-    async function setup() {
-      const { publicKeyJwk } = await getOrCreateKeyPair();
-      await fetch('/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ publicKey: publicKeyJwk }),
-      });
-      setKeyReady(true);
-    }
-    void setup();
-  }, [myId]);
+    let current = true;
+    void registerMessagingKey().then(
+      ready => { if (current) setKeyReady(ready); },
+      () => { if (current) setKeyReady(false); },
+    );
+    return () => { current = false; };
+  }, [myId, registerMessagingKey]);
 
   // ── Load conversations ────────────────────────────────────────────────────
 
@@ -1461,6 +1472,8 @@ export default function MessagesPage() {
   // ── Open a conversation ───────────────────────────────────────────────────
 
   async function openConversation(convId: number, other: OtherUser) {
+    activeConvIdRef.current = convId;
+    setOtherUserPublicKey(null);
     setActiveConvId(convId);
     setActiveOtherUser(other);
     setMobileView('thread');
@@ -1491,19 +1504,21 @@ export default function MessagesPage() {
     setShowSearch(false);
 
     const [keyRes, wallpaperRes, covenRes] = await Promise.all([
-      fetch(`/api/keys?userId=${other.id}`, { credentials: 'include' }),
-      fetch(`/api/conversations/${convId}/wallpaper`, { credentials: 'include' }),
-      fetch(`/api/coven/status/${other.id}`, { credentials: 'include' }),
+      fetch(`/api/keys?userId=${other.id}`, { credentials: 'include' }).catch(() => null),
+      fetch(`/api/conversations/${convId}/wallpaper`, { credentials: 'include' }).catch(() => null),
+      fetch(`/api/coven/status/${other.id}`, { credentials: 'include' }).catch(() => null),
     ]);
-    const theirKey = keyRes.ok ? ((await keyRes.json() as { publicKey?: string }).publicKey ?? null) : null;
+    if (activeConvIdRef.current !== convId) return;
+    const theirKey = keyRes?.ok ? ((await keyRes.json() as { publicKey?: string }).publicKey ?? null) : null;
+    if (activeConvIdRef.current !== convId) return;
     setOtherUserPublicKey(theirKey);
-    if (wallpaperRes.ok) {
+    if (wallpaperRes?.ok) {
       const wp = await wallpaperRes.json() as WallpaperPrefs;
       setWallpaper(wp);
     } else {
       setWallpaper(defaultWallpaper);
     }
-    if (covenRes.ok) {
+    if (covenRes?.ok) {
       const cs = await covenRes.json() as { status: CovenStatus; connectionId: number | null };
       setCovenStatus(cs.status);
       setCovenConnectionId(cs.connectionId);
@@ -1514,9 +1529,10 @@ export default function MessagesPage() {
       setIsCoven(false);
     }
 
+    if (activeConvIdRef.current !== convId) return;
     await loadFolder('inbox', convId, theirKey);
     setConversations(prev => prev.map(c => c.id === convId ? { ...c, unreadCount: 0 } : c));
-    setTimeout(() => inputRef.current?.focus(), 300);
+
   }
 
   // ── Re-fetch the other user's public key (called on input focus so the UI
@@ -1527,7 +1543,21 @@ export default function MessagesPage() {
       const res = await fetch(`/api/keys?userId=${activeOtherUser.id}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json() as { publicKey?: string };
-        if (data.publicKey) setOtherUserPublicKey(data.publicKey);
+        const key = data.publicKey;
+        if (key && activeConvIdRef.current === activeConvId) {
+          setOtherUserPublicKey(key);
+          const unavailable = messages.filter(message => message.plaintext === '🔒 Encrypted');
+          if (unavailable.length) {
+            const decrypted = await decryptAll(unavailable, key);
+            if (activeConvIdRef.current !== activeConvId) return;
+            const byId = new Map(decrypted.map(message => [message.id, message.plaintext]));
+            setMessages(latest => latest.map(message =>
+              message.plaintext === '🔒 Encrypted' && byId.has(message.id)
+                ? { ...message, plaintext: byId.get(message.id) }
+                : message,
+            ));
+          }
+        }
       }
     } catch { /* non-fatal */ }
   }
@@ -1581,26 +1611,34 @@ export default function MessagesPage() {
 
   async function loadFolder(f: Folder, convId: number, theirKey: string | null) {
     setLoadingMsgs(true);
-    const statusParam = f === 'drafts' ? 'draft' : f === 'trash' ? 'trashed' : '';
-    const url = `/api/conversations/${convId}/messages${statusParam ? `?status=${statusParam}` : ''}`;
-    const res = await fetch(url, { credentials: 'include' });
-    if (!res.ok) { setLoadingMsgs(false); return; }
-    const responseData = await res.json() as { messages?: Message[]; hasMore?: boolean; oldestId?: number | null } | Message[];
-    // Handle both old array format and new { messages, hasMore, oldestId } format
-    const raw = Array.isArray(responseData) ? responseData : (responseData.messages ?? []);
-    const hasMore = !Array.isArray(responseData) ? (responseData.hasMore ?? false) : false;
-    const oldestId = !Array.isArray(responseData) ? (responseData.oldestId ?? null) : null;
-    const decrypted = await decryptAll(raw, theirKey);
-    setMessages(decrypted);
-    setHasMoreMessages(hasMore);
-    setOldestMsgId(oldestId ?? (decrypted[0]?.id ?? null));
-    // Seed the since-pointer so polling only fetches new messages
-    if (decrypted.length && f === 'inbox') {
-      const latest = decrypted[decrypted.length - 1];
-      lastMsgTimestampRef.current = latest.createdAt;
+    setThreadLoadError(false);
+    try {
+      const statusParam = f === 'drafts' ? 'draft' : f === 'trash' ? 'trashed' : '';
+      const url = `/api/conversations/${convId}/messages${statusParam ? `?status=${statusParam}` : ''}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Conversation request failed');
+      const responseData = await res.json() as { messages?: Message[]; hasMore?: boolean; oldestId?: number | null } | Message[];
+      // Handle both old array format and new { messages, hasMore, oldestId } format
+      const raw = Array.isArray(responseData) ? responseData : (responseData.messages ?? []);
+      const hasMore = !Array.isArray(responseData) ? (responseData.hasMore ?? false) : false;
+      const oldestId = !Array.isArray(responseData) ? (responseData.oldestId ?? null) : null;
+      const decrypted = await decryptAll(raw, theirKey);
+      if (activeConvIdRef.current !== convId) return;
+      setMessages(decrypted);
+      setHasMoreMessages(hasMore);
+      setOldestMsgId(oldestId ?? (decrypted[0]?.id ?? null));
+      // Seed the since-pointer so polling only fetches new messages
+      if (decrypted.length && f === 'inbox') {
+        const latest = decrypted[decrypted.length - 1];
+        lastMsgTimestampRef.current = latest.createdAt;
+      }
+    } catch {
+      if (activeConvIdRef.current === convId) setThreadLoadError(true);
+    } finally {
+      if (activeConvIdRef.current === convId) setLoadingMsgs(false);
     }
-    setLoadingMsgs(false);
   }
+
 
   // ── Load older messages (pagination) ─────────────────────────────────────
   async function loadOlderMessages() {
@@ -1854,7 +1892,12 @@ export default function MessagesPage() {
   // ── Scroll to bottom on new messages ─────────────────────────────────────
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const list = mobileMessageList.current;
+    if (list) {
+      list.scrollTop = list.scrollHeight;
+    } else {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
   }, [messages.length]);
 
   // ── Auto-save draft after 2s of inactivity ───────────────────────────────
@@ -1900,6 +1943,12 @@ export default function MessagesPage() {
     // If in edit mode, submit the edit instead
     if (editingMsg) { await submitEdit(); return; }
     if (!draft.trim() || !activeConvId || sending) return;
+    if (!otherUserPublicKey || !keyReady) {
+      setSendError('Encryption is still connecting. Try again when both people have opened Messages.');
+      void refreshOtherUserKey();
+      if (!keyReady) void registerMessagingKey().then(setKeyReady).catch(() => undefined);
+      return;
+    }
     setSending(true);
     setSendError(null);
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
@@ -1907,11 +1956,7 @@ export default function MessagesPage() {
     // Generate a per-send idempotency key to prevent duplicate messages on retry
     const idempotencyKey = `${myId}-${activeConvId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     try {
-      // If the recipient hasn't set up their key yet, send as plaintext (base64-encoded, iv='plain')
-      // Once both parties have keys, messages are fully encrypted.
-      const { ciphertext, iv } = otherUserPublicKey
-        ? await encryptMessage(draft.trim(), otherUserPublicKey)
-        : { ciphertext: btoa(unescape(encodeURIComponent(draft.trim()))), iv: 'plain' };
+      const { ciphertext, iv } = await encryptMessage(draft.trim(), otherUserPublicKey);
       const res = await fetch(`/api/conversations/${activeConvId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2800,15 +2845,16 @@ export default function MessagesPage() {
         {/* ════════════════════════════════════════════════
             MOBILE THREAD VIEW (full-screen slide-in)
         ════════════════════════════════════════════════ */}
-        <AnimatePresence>
+        {typeof document !== 'undefined' && createPortal(
+          <AnimatePresence>
           {mobileView === 'thread' && activeGroupId && (
             <motion.div
               key="group-thread"
-              className="spellful-mobile-thread md:hidden fixed inset-0 flex flex-col overflow-hidden"
+              className="spellful-mobile-thread md:hidden fixed inset-0 w-full max-w-full flex flex-col overflow-hidden"
               style={{ background: 'hsl(var(--background))', zIndex: 60 }}
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] as const }}>
               <GroupThreadView
                 group={groups.find(g => g.id === activeGroupId) ?? null}
@@ -2827,16 +2873,14 @@ export default function MessagesPage() {
               />
             </motion.div>
           )}
-        </AnimatePresence>
-        <AnimatePresence>
           {mobileView === 'thread' && !activeGroupId && (
             <motion.div
               key="thread"
-              className="spellful-mobile-thread md:hidden fixed inset-0 flex flex-col overflow-hidden"
+              className="spellful-mobile-thread md:hidden fixed inset-0 w-full max-w-full flex flex-col overflow-hidden"
               style={{ background: 'hsl(var(--background))', zIndex: 60 }}
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] as const }}>
 
               {/* Thread top bar */}
@@ -2856,7 +2900,7 @@ export default function MessagesPage() {
                 <button
                   type="button"
                   onClick={() => { if (activeOtherUser?.username) navigate(`/u/${activeOtherUser.username}`); }}
-                  className="flex-1 flex flex-col items-center gap-0.5 cursor-pointer disabled:cursor-default"
+                  className="min-w-0 flex-1 flex flex-col items-center gap-0.5 cursor-pointer disabled:cursor-default"
                   disabled={!activeOtherUser?.username}
                   aria-label={activeOtherUser?.username ? `View ${activeOtherUser.name ?? activeOtherUser.username}'s profile` : undefined}>
                   <span className="relative">
@@ -2867,24 +2911,24 @@ export default function MessagesPage() {
                       </span>
                     )}
                   </span>
-                  <p className="text-sm font-semibold leading-tight hover:underline" style={{ color: 'hsl(var(--foreground))' }}>
+                  <p className="max-w-full truncate text-sm font-semibold leading-tight hover:underline" style={{ color: 'hsl(var(--foreground))' }}>
                     {activeOtherUser?.name ?? activeOtherUser?.username ?? 'Unknown'}
                   </p>
                   <AnimatePresence mode="wait">
                     {otherIsTyping ? (
                       <motion.p key="typing-m" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="text-xs leading-tight" style={{ color: 'hsl(var(--primary))' }}>
+                        className="max-w-full truncate text-xs leading-tight" style={{ color: 'hsl(var(--primary))' }}>
                         typing…
                       </motion.p>
                     ) : activeOtherUser?.username ? (
                       <motion.p key="username-m" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="text-xs leading-tight" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                        className="max-w-full truncate text-xs leading-tight" style={{ color: 'hsl(var(--muted-foreground))' }}>
                         @{activeOtherUser.username}
                       </motion.p>
                     ) : null}
                   </AnimatePresence>
                 </button>
-                <div className="flex items-center gap-1">
+                <div className="flex shrink-0 items-center gap-1">
                   <button
                     onClick={() => setShowSearch(v => !v)}
                     className="w-8 h-8 rounded-full flex items-center justify-center"
@@ -3035,7 +3079,14 @@ export default function MessagesPage() {
                     </button>
                   </div>
                 )}
-                {loadingMsgs ? (
+                {threadLoadError ? (
+                  <div className="py-12 text-center">
+                    <p className="mb-3 text-sm text-muted-foreground">Couldn’t load this conversation.</p>
+                    <Button variant="outline" onClick={() => {
+                      if (activeConvId) void loadFolder(folder, activeConvId, otherUserPublicKey);
+                    }}>Try again</Button>
+                  </div>
+                ) : loadingMsgs ? (
                   <div className="flex flex-col gap-3 pt-4">
                     {[1, 2, 3].map(i => (
                       <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'} animate-pulse`}>
@@ -3432,7 +3483,7 @@ export default function MessagesPage() {
                       </form>
                       {!otherUserPublicKey && (
                         <p className="text-xs text-center px-2 mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          Message will send now — encryption activates once they open Messages.
+                          You can send a private message once they open Messages.
                         </p>
                       )}
                       {sendError && (
@@ -3444,7 +3495,9 @@ export default function MessagesPage() {
               )}
             </motion.div>
           )}
-        </AnimatePresence>
+          </AnimatePresence>,
+          document.body,
+        )}
 
         {/* ════════════════════════════════════════════════
             DESKTOP TWO-PANEL LAYOUT

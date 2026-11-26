@@ -1020,7 +1020,7 @@ export default function ProfileStudioPage() {
                         <div className="relative flex-shrink-0">
                           <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center" style={{ background: 'hsl(var(--muted))', boxShadow: `0 0 0 2px ${accent}` }}>
                             {avatarSrc
-                              ? <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
+                              ? <img src={uploadedMediaUrl(avatarSrc)} alt={displayName} className="w-full h-full object-cover" />
                               : <span className="text-xl font-serif" style={{ color: accent }}>{initials}</span>
                             }
                           </div>
