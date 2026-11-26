@@ -1,10 +1,37 @@
 import { useEffect, useState } from 'react';
-import { Bell, Compass, MessageSquare, Pencil, User } from 'lucide-react';
+import { ArrowUpRight, Bell, Compass, MessageSquare, Moon, Pencil, User } from 'lucide-react';
 import { Link } from 'react-router';
+import { getMoonPhase, type MoonPhaseResult } from '@/lib/moon-phase-engine';
 import SparkItLink from '@/components/SparkItLink';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { COMMUNITY_FEED, COMMUNITY_CONNECTIONS, COMMUNITY_REQUESTS, HOME_EXPLORE } from '@/lib/community-navigation';
+
+function HomeMoonLink() {
+  const [moon, setMoon] = useState<MoonPhaseResult | null>(null);
+
+  useEffect(() => {
+    const updateMoon = () => setMoon(getMoonPhase());
+    updateMoon();
+    const timer = setInterval(updateMoon, 60_000);
+    window.addEventListener('focus', updateMoon);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', updateMoon);
+    };
+  }, []);
+
+  return (
+    <Link to="/moon-calendar" className="home-social-surface coven-press flex min-h-11 items-center gap-2 rounded-lg px-3 py-1.5 text-xs focus-visible:outline focus-visible:outline-primary">
+      <Moon className="size-4 shrink-0 text-primary" aria-hidden="true" />
+      <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <span className="font-semibold text-foreground">{moon?.phase ?? 'Moon calendar'}</span>
+        {moon && <span className="text-muted-foreground">{moon.illumination}% illuminated</span>}
+      </span>
+      <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+    </Link>
+  );
+}
 
 interface SocialSummary {
   covenCount: number;
@@ -52,14 +79,17 @@ export default function HomeSocialMenu({ username }: { username?: string | null 
   ];
 
   return (
-    <header className="space-y-3">
+    <header className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="font-heading text-3xl">Home</h1>
+        <h1 className="sr-only md:not-sr-only md:font-heading md:text-3xl">Home</h1>
+        <Link to="/" aria-label="Spellful Home" className="home-brand relative inline-flex min-h-11 items-center rounded-sm focus-visible:outline focus-visible:outline-primary md:hidden">
+          <img src="/airo-assets/images/logo/official-white" alt="" width={82} height={44} className="block h-11 w-auto" />
+        </Link>
         <div className="flex items-center gap-2">
           <SparkItLink />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="Social menu" className="h-11 w-11 shrink-0 rounded-full">
+              <Button variant="outline" size="icon" aria-label="Social menu" className="home-social-surface h-11 w-11 shrink-0 rounded-full">
                 <User aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
@@ -75,9 +105,11 @@ export default function HomeSocialMenu({ username }: { username?: string | null 
         </div>
       </div>
 
-      <nav aria-label="Your social counts" className="grid grid-cols-3 divide-x divide-border rounded-xl border border-border bg-card">
+      <HomeMoonLink />
+
+      <nav aria-label="Your social counts" className="home-social-surface grid grid-cols-3 divide-x divide-border rounded-lg">
         {stats.map(({ label, value, to }) => (
-          <Link key={label} to={to} className="coven-press rounded-lg px-2 py-2 text-center hover:bg-muted focus-visible:outline focus-visible:outline-primary">
+          <Link key={label} to={to} className="coven-press rounded-lg px-2 py-1.5 text-center hover:bg-muted focus-visible:outline focus-visible:outline-primary">
             <span className="block text-base font-semibold tabular-nums text-foreground">{value?.toLocaleString() ?? '—'}</span>
             <span className="block text-xs text-muted-foreground">{label}</span>
           </Link>

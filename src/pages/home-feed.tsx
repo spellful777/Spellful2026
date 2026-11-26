@@ -69,17 +69,13 @@ export default function HomeFeed({ username }: { username?: string | null }) {
   const visiblePosts = !error && (!loading || anchor.current) ? posts : [];
 
   return (
-    <main className="mx-auto max-w-3xl space-y-5 px-4 pb-24 pt-8">
+    <main className="mx-auto max-w-3xl space-y-3 px-4 pb-24 pt-4">
       <Helmet><title>Home feed | Spellful</title><meta name="robots" content="noindex" /></Helmet>
       <HomeSocialMenu username={username} />
       <nav aria-label="Home feed" className="grid grid-cols-3 gap-2">
-        <Button asChild className="min-h-11 px-1.5" variant={filter === 'following' ? 'default' : 'outline'}>
-          <Link to="/" aria-current={filter === 'following' ? 'page' : undefined}>Following</Link>
-        </Button>
-        <Button asChild className="min-h-11 px-1.5" variant={filter === 'discover' ? 'default' : 'outline'}>
-          <Link to={HOME_EXPLORE} aria-current={filter === 'discover' ? 'page' : undefined}>Explore</Link>
-        </Button>
-        <Button asChild variant="outline" className="min-h-11 px-1.5"><Link to={COMMUNITY_FEED}>Community</Link></Button>
+        <Link to="/" className="home-feed-link coven-press" aria-current={filter === 'following' ? 'page' : undefined}>Following</Link>
+        <Link to={HOME_EXPLORE} className="home-feed-link coven-press" aria-current={filter === 'discover' ? 'page' : undefined}>Explore</Link>
+        <Link to={COMMUNITY_FEED} className="home-feed-link coven-press">Community</Link>
       </nav>
       {filter === 'discover' && (
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
