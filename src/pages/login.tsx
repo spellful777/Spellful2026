@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
+import { toSafeInternalPath } from '@/lib/auth/safe-redirect';
 import { authClient, useSession } from '@/lib/auth/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,15 +90,16 @@ type Step = 'form' | 'twofa';
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { session, isPending } = useSession();
+  const { session, isPending, refetch } = useSession();
+  const [checkedSignIn, setCheckedSignIn] = useState(false);
 
   // Safe redirect: only allow paths within Spellful (no external URLs).
   // Account/profile pages are settings destinations — after sign-in we always
   // send members to their Sanctuary instead, so login feels like a homecoming.
   const safeRedirect = useCallback((): string => {
     const settingsPaths = ['/account', '/account/profile'];
-    const raw = searchParams.get('redirect') ?? '';
-    if (raw.startsWith('/') && !raw.startsWith('//') && !settingsPaths.includes(raw)) {
+    const raw = toSafeInternalPath(searchParams.get('redirect'));
+    if (raw && !settingsPaths.includes(raw)) {
       return raw;
     }
     return '/sanctuary';
@@ -119,6 +121,7 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setCheckedSignIn(false);
     setLoading(true);
     try {
       const result = await authClient.signIn.email({ email, password, rememberMe });
@@ -132,8 +135,11 @@ export default function LoginPage() {
         } else {
           setError(result.error.message ?? 'Invalid email or password.');
         }
+      } else if (result.data && 'twoFactorRedirect' in result.data && result.data.twoFactorRedirect) {
+        setStep('twofa');
       } else {
-        navigate(safeRedirect());
+        await refetch();
+        setCheckedSignIn(true);
       }
     } catch {
       setError('Something went wrong. Please try again.');
@@ -146,14 +152,15 @@ export default function LoginPage() {
     e.preventDefault();
     if (twoFaCode.length < 6) { setError('Please enter the full 6-digit code.'); return; }
     setError('');
+    setCheckedSignIn(false);
     setLoading(true);
     try {
-      const twoFactor = (authClient as unknown as { twoFactor?: { verifyTotp: (opts: { code: string }) => Promise<{ error?: { message?: string } }> } }).twoFactor;
-      const result = await twoFactor?.verifyTotp({ code: twoFaCode });
-      if (result?.error) {
+      const result = await authClient.twoFactor.verifyTotp({ code: twoFaCode });
+      if (result.error) {
         setError(result.error.message ?? 'Invalid code. Please try again.');
       } else {
-        navigate(safeRedirect());
+        await refetch();
+        setCheckedSignIn(true);
       }
     } catch {
       setError('Something went wrong. Please try again.');
@@ -162,9 +169,10 @@ export default function LoginPage() {
     }
   }
 
-  if (isPending) return null;
+  if (isPending) return <p role="status" className="p-5">Checking your session…</p>;
   if (session) return null;
 
+  const formError = error || (checkedSignIn ? 'We couldn’t confirm your session. Please try again.' : '');
   const c = login;
 
   return (
@@ -362,10 +370,10 @@ export default function LoginPage() {
                     </label>
 
                     <AnimatePresence>
-                      {error && (
+                      {formError && (
                         <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                           style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: 'hsl(var(--destructive))', textAlign: 'center', padding: '0.5rem 0.75rem', background: 'hsl(var(--destructive) / 0.08)', borderRadius: 8, border: '1px solid hsl(var(--destructive) / 0.2)' }}>
-                          {error}
+                          {formError}
                         </motion.p>
                       )}
                     </AnimatePresence>
@@ -451,10 +459,10 @@ export default function LoginPage() {
                     </div>
 
                     <AnimatePresence>
-                      {error && (
+                      {formError && (
                         <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                           style={{ fontFamily: 'var(--font-sans)', fontSize: '0.8rem', color: 'hsl(var(--destructive))', textAlign: 'center', padding: '0.5rem 0.75rem', background: 'hsl(var(--destructive) / 0.08)', borderRadius: 8, border: '1px solid hsl(var(--destructive) / 0.2)' }}>
-                          {error}
+                          {formError}
                         </motion.p>
                       )}
                     </AnimatePresence>

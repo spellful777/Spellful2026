@@ -1,11 +1,6 @@
 /**
  * Client-side stale-session recovery.
  *
- * When `useSession()` surfaces an error (or never settles) the usual cause is a
- * stale `better-auth.session_token` cookie the server can no longer validate.
- * React error boundaries can't catch it — a failed session lookup is a returned
- * value, not a thrown error — so the app would otherwise sit blank forever.
- *
  * Recovery: hit the server's `?clearCookies=1` escape hatch to expire the
  * HttpOnly cookie, then reload into a clean unauthenticated state. The reload
  * must be one-shot: if clearing doesn't fix it (truly broken auth), a second

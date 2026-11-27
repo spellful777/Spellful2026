@@ -1,3 +1,4 @@
+import PublicCoven from '@/components/PublicCoven';
 import { uploadedMediaUrl } from '@/lib/native-api';
 import { getTrendingTopics } from '@/lib/community-trending-topics';
 import { useState, useEffect } from 'react';
@@ -368,6 +369,17 @@ const COMMUNITY_VIEWS = [
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CommunityPage() {
   const { session, isPending } = useSession();
+  const location = useLocation();
+  if (isPending) return <p role="status" className="p-5">Loading Coven…</p>;
+  if (!session) {
+    if (!location.search) return <PublicCoven />;
+    const destination = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?redirect=${destination}`} replace />;
+  }
+  return <MemberCommunity key={session.user.id} session={session} />;
+}
+
+function MemberCommunity({ session }: { session: NonNullable<ReturnType<typeof useSession>['session']> }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [filter, setFilter] = useState<PostFilter>('latest');
@@ -436,14 +448,7 @@ export default function CommunityPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id]);
 
-  // Auth gate — redirect to login
-  if (!isPending && !session) {
-    const destination = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/login?redirect=${destination}`} replace />;
-  }
-
-  // Username gate — must choose a username before participating
-  const needsUsername = !isPending && session && !(session.user as { username?: string }).username;
+  const needsUsername = !(session.user as { username?: string }).username;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

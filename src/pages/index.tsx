@@ -1,4 +1,6 @@
-import { useSearchParams } from 'react-router';
+import { Navigate, useSearchParams } from 'react-router';
+import PublicCoven from '@/components/PublicCoven';
+import { COMMUNITY_FEED, HOME_FEED } from '@/lib/community-navigation';
 import HomeFeed from './home-feed';
 import { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router';
@@ -152,12 +154,18 @@ function BenefitRow({ icon: Icon, title, desc, accent }: {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
-  const { session } = useSession();
+  const { session, isPending } = useSession();
   const [params] = useSearchParams();
-  if (!session) return <PublicHomePage />;
+  const feed = params.get('feed');
+  if (isPending && (feed === 'following' || feed === 'explore')) return <p role="status" className="p-5">Loading Coven…</p>;
+  if (!session) {
+    if (feed === 'explore') return <PublicCoven />;
+    if (feed === 'following') return <Navigate replace to={`/login?redirect=${encodeURIComponent(HOME_FEED)}`} />;
+    return <PublicHomePage />;
+  }
   const { user } = session;
   const username = 'username' in user && typeof user.username === 'string' ? user.username : undefined;
-  return params.get('feed') === 'following' || params.get('feed') === 'explore'
+  return feed === 'following' || feed === 'explore'
     ? <HomeFeed key={user.id} username={username} />
     : <CommandCenter key={user.id} />;
 }
@@ -378,13 +386,13 @@ function PublicHomePage() {
                   <Sparkles size={15} />
                   Create Your Free Sanctuary
                 </Link>
-                <a
-                  href="#explore"
+                <Link
+                  to={COMMUNITY_FEED}
                   className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-sm transition-all duration-200 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   style={{ background: 'transparent', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground) / 0.8)', fontFamily: 'var(--font-sans)', letterSpacing: '0.04em' }}
                 >
-                  Explore Spellful
-                </a>
+                  Explore the Coven
+                </Link>
               </motion.div>
 
               <motion.p

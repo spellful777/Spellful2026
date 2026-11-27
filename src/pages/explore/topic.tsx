@@ -10,6 +10,16 @@ type Member = { username: string; name: string | null; image: string | null };
 export default function ExploreTopic() {
   const { topic: slug } = useParams();
   const topic = findTopic(slug);
+  if (!topic) return <main className="p-5"><Link to="/explore">Back to Explore</Link><h1>Topic unavailable</h1></main>;
+  return <main className="mx-auto max-w-xl space-y-3 px-4 py-4 pb-24">
+    <Helmet><title>{topic} · Explore Spellful</title></Helmet>
+    <Link className="text-sm text-muted-foreground" to="/explore">← Explore</Link>
+    <h1 className="font-heading text-3xl">{topic}</h1>
+    <TopicActivity key={topic} topic={topic} />
+  </main>;
+}
+
+export function TopicActivity({ topic }: { topic: string }) {
   const { user } = useSession();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -17,7 +27,6 @@ export default function ExploreTopic() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [more, setMore] = useState(false);
   useEffect(() => {
-    if (!topic) return;
     const abort = new AbortController();
     const json = async (path: string) => {
       const response = await fetch(path, { signal: abort.signal });
@@ -35,11 +44,7 @@ export default function ExploreTopic() {
       }).catch(() => { if (!abort.signal.aborted) setStatus('error'); });
     return () => abort.abort();
   }, [topic, page, user?.id]);
-  if (!topic) return <main className="p-5"><Link to="/explore">Back to Explore</Link><h1>Topic unavailable</h1></main>;
-  return <main className="mx-auto max-w-xl space-y-3 px-4 py-4 pb-24">
-    <Helmet><title>{topic} · Explore Spellful</title></Helmet>
-    <Link className="text-sm text-muted-foreground" to="/explore">← Explore</Link>
-    <h1 className="font-heading text-3xl">{topic}</h1>
+  return <>
     {status === 'loading' && <p role="status">Loading topic…</p>}
     {status === 'error' && <p role="alert">Couldn’t load this topic.</p>}
     {status === 'ready' && <>
@@ -63,5 +68,5 @@ export default function ExploreTopic() {
         {more && <button onClick={() => setPage(value => value + 1)}>Next</button>}
       </div>
     </>}
-  </main>;
+  </>;
 }
