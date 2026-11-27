@@ -23,6 +23,8 @@ interface CovenMember {
   otherImage: string | null;
 }
 
+type ConnectionAction = 'accept' | 'decline' | 'cancel' | 'remove';
+
 type Filter = 'all' | 'online' | 'pending' | 'sent';
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
@@ -59,7 +61,7 @@ function MemberRow({
 }: {
   member: CovenMember;
   currentUserId: string;
-  onAction: (connectionId: number, action: 'accept' | 'decline' | 'remove') => void;
+  onAction: (connectionId: number, action: ConnectionAction) => void;
   actionLoading: number | null;
 }) {
   const otherId = member.requesterId === currentUserId ? member.receiverId : member.requesterId;
@@ -163,7 +165,7 @@ function MemberRow({
               size="sm"
               variant="ghost"
               disabled={isLoading}
-              onClick={() => onAction(member.id, 'remove')}
+              onClick={() => onAction(member.id, 'cancel')}
               className="h-7 text-xs gap-1"
               style={{ color: 'hsl(var(--muted-foreground))' }}
             >
@@ -212,6 +214,7 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
       return params;
     }, { replace: true, preventScrollReset: true });
   }
+  const [actionMessage, setActionMessage] = useState('');
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
   type Suggestion = { id: string; name: string | null; username: string | null; image: string | null; witchPath: string | null; sharedTags: number };
@@ -311,19 +314,29 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
     return () => clearInterval(interval);
   }, [connections, currentUserId]);
 
-  async function handleAction(connectionId: number, action: 'accept' | 'decline' | 'remove') {
+  async function handleAction(connectionId: number, action: ConnectionAction) {
     setActionLoading(connectionId);
+    setActionMessage('');
     try {
-      if (action === 'remove') {
-        await fetch(`/api/coven/${connectionId}`, { method: 'DELETE', credentials: 'include' });
+      let response: Response;
+      if (action === 'cancel' || action === 'remove') {
+        const path = `/api/coven/${connectionId}${action === 'cancel' ? '?pending=1' : ''}`;
+        response = await fetch(path, { method: 'DELETE', credentials: 'include' });
       } else {
-        await fetch('/api/coven/respond', {
+        response = await fetch('/api/coven/respond', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ connectionId, action }),
         });
       }
+      if (response.status === 409) {
+        setActionMessage('This invitation is no longer pending.');
+      } else if (!response.ok) {
+        throw new Error('Coven update failed');
+      }
+    } catch {
+      setActionMessage('Couldn’t update your Coven. Try again.');
     } finally {
       setActionLoading(null);
     }
@@ -389,6 +402,7 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
         </Button>
       </div>
 
+      {actionMessage && <p role="status" className="text-sm">{actionMessage}</p>}
       {loadNotice}
 
       {/* Filter pills */}

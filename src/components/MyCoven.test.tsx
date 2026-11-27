@@ -48,3 +48,25 @@ it.each([401, 403])('keeps the last list during an outage and hides it after HTT
   await screen.findByText('Couldn’t load your Coven members.');
   expect(screen.queryByRole('link', { name: 'Cedar' })).toBeNull();
 });
+
+it('cancels only pending invitations and reloads a connection accepted in another tab', async () => {
+  const pending = { ...member, status: 'pending' };
+  let listed = pending;
+  const fetch = vi.fn(async (url: string, options?: RequestInit) => {
+    if (options?.method === 'DELETE') {
+      listed = member;
+      return Response.json({ error: 'Request is no longer pending' }, { status: 409 });
+    }
+    if (url === '/api/coven') return Response.json({ connections: [listed] });
+    return Response.json(url === '/api/coven/suggestions' ? { suggestions: [] } : { online: false });
+  });
+  vi.stubGlobal('fetch', fetch);
+  render(<MemoryRouter><MyCoven currentUserId="self" /></MemoryRouter>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+  expect(fetch).toHaveBeenCalledWith('/api/coven/1?pending=1', {
+    credentials: 'include', method: 'DELETE',
+  });
+  expect(await screen.findByText('This invitation is no longer pending.')).toBeTruthy();
+  expect(await screen.findByRole('button', { name: 'All Members (1)' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+});
