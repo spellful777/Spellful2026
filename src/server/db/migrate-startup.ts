@@ -8,6 +8,7 @@
  * without touching the live database, leaving the two out of sync.
  */
 import mysql from 'mysql2/promise';
+import categories from './community-categories.json';
 import { getDatabaseCredentials } from './config.js';
 
 interface ColumnRow {
@@ -1864,6 +1865,20 @@ export async function runStartupMigration(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    // An accounts-only restore leaves the category table empty. Respect any
+    // categories already configured by an administrator, including disabled ones.
+    step = 'initialize-community-categories';
+    const [existingCategories] = await conn.execute<mysql.RowDataPacket[]>(
+      'SELECT id FROM community_categories LIMIT 1'
+    );
+    if (!existingCategories.length) {
+      const rows = categories.map(c => [c.name, c.slug, c.description, c.icon, c.sort]);
+      await conn.query(
+        `INSERT INTO community_categories (name, slug, description, icon, sort_order)
+         VALUES ? ON DUPLICATE KEY UPDATE id = id`,
+        [rows]
+      );
+    }
   } catch (e) {
     // Non-fatal — log and continue; the server still starts
     const code = e instanceof Error && 'code' in e && typeof e.code === 'string'

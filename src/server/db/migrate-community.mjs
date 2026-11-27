@@ -5,6 +5,7 @@
 import { createConnection } from 'mysql2/promise';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import categories from './community-categories.json' with { type: 'json' };
 
 const configPath = join(process.env.NOMAD_TASK_DIR || '/local', 'config.json');
 // eslint-disable-next-line security/detect-non-literal-fs-filename
@@ -280,16 +281,7 @@ await run('grimoire_community_refs', `
 `);
 
 // ── Seed 8 categories ─────────────────────────────────────────────────────────
-const categories = [
-  { name: 'Beginner Witchcraft',       slug: 'beginner-witchcraft',      description: 'Questions, advice, and learning the basics.',                           icon: 'Wand2',       sort: 1 },
-  { name: 'Tarot & Divination',        slug: 'tarot-divination',         description: 'Card interpretations, spreads, and reading exchanges.',                  icon: 'Layers',      sort: 2 },
-  { name: 'Moon Magic & Rituals',      slug: 'moon-magic-rituals',       description: 'Lunar traditions, intentions, and seasonal practices.',                  icon: 'Moon',        sort: 3 },
-  { name: 'Herbs, Crystals & Nature',  slug: 'herbs-crystals-nature',    description: 'Plant folklore, crystals, and correspondences.',                         icon: 'Leaf',        sort: 4 },
-  { name: 'Astrology & Birth Charts',  slug: 'astrology-birth-charts',   description: 'Zodiac placements, charts, and planetary symbolism.',                    icon: 'Globe2',      sort: 5 },
-  { name: 'Spells & Grimoires',        slug: 'spells-grimoires',         description: 'Original rituals, creative ideas, and shared knowledge.',                icon: 'BookOpen',    sort: 6 },
-  { name: "The Witch's Lounge",        slug: 'witches-lounge',           description: 'Introductions, friendships, and general conversations.',                 icon: 'Heart',       sort: 7 },
-  { name: 'LGBTQ+ Magical Community', slug: 'lgbtq-magical-community',  description: 'An inclusive space for LGBTQ+ members and allies.',                      icon: 'Rainbow',     sort: 8 },
-];
+
 
 for (const cat of categories) {
   try {
