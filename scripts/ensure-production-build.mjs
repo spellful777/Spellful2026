@@ -1,5 +1,7 @@
-import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // GoDaddy can promote the preview's client files without running the SSR build.
 const needsClient = !existsSync('dist/client/index.html');
@@ -12,9 +14,14 @@ if (needsClient || needsServer) {
   } catch (error) {
     if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
     console.info('Installing locked production dependencies for the missing build');
-    execFileSync('npm', ['ci', '--omit=dev', '--prefer-offline', '--no-audit', '--no-fund'], {
-      stdio: 'inherit',
-    });
+    const cache = mkdtempSync(join(tmpdir(), 'spellful-npm-'));
+    try {
+      execFileSync('npm', ['ci', '--omit=dev', '--cache', cache, '--no-audit', '--no-fund'], {
+        stdio: 'inherit',
+      });
+    } finally {
+      rmSync(cache, { recursive: true, force: true });
+    }
   }
   const { build } = await import('vite');
   if (needsClient) {
