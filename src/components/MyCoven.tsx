@@ -2,7 +2,7 @@
  * MyCoven — Coven dashboard tab
  * Shows: All Coven Members, Online Members, Pending Invitations, Sent Invitations
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { motion } from 'motion/react';
 import { Users, Clock, UserCheck, UserX, UserMinus, RefreshCw, Moon, ShieldOff } from 'lucide-react';
@@ -197,8 +197,9 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function MyCoven({ currentUserId }: { currentUserId: string }) {
-  const [connections, setConnections] = useState<CovenMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [connections, setConnections] = useState<CovenMember[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const activeRequest = useRef<AbortController | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get('tab');
   const filter: Filter = tab === 'requests' ? 'pending' : tab === 'online' || tab === 'sent' ? tab : 'all';
@@ -219,32 +220,43 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
   const [invitingId, setInvitingId] = useState<string | null>(null);
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
 
-  const load = useCallback(async (signal?: AbortSignal) => {
+  const changingConnections = actionLoading !== null || invitingId !== null;
+  const load = useCallback(async () => {
+    if (activeRequest.current) return;
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    const { signal } = controller;
     try {
-      const r = await fetch('/api/coven', { credentials: 'include', signal, cache: 'no-store' });
-      if (!r.ok) return;
-      const data = await r.json() as { connections: CovenMember[] };
-      if (!signal?.aborted) {
-        const next = data.connections ?? [];
-        setConnections(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
-      }
-    } catch { /* silent */ }
-    finally { if (!signal?.aborted) setLoading(false); }
+      const response = await fetch('/api/coven', { credentials: 'include', signal, cache: 'no-store' });
+      if (signal.aborted) return;
+      if (response.status === 401 || response.status === 403) setConnections(null);
+      if (!response.ok) throw new Error('Coven request failed');
+      const data = await response.json() as { connections?: CovenMember[] };
+      const next = data.connections;
+      if (!Array.isArray(next)) throw new Error('Missing Coven connections');
+      if (signal.aborted) return;
+      setConnections(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
+      setLoadFailed(false);
+    } catch {
+      if (!signal.aborted) setLoadFailed(true);
+    } finally {
+      if (activeRequest.current === controller) activeRequest.current = null;
+    }
   }, []);
 
   useEffect(() => {
-    if (actionLoading !== null || invitingId !== null) return;
-    const controller = new AbortController();
-    const refresh = () => { if (!document.hidden) void load(controller.signal); };
-    void load(controller.signal);
+    if (changingConnections) return;
+    const refresh = () => { if (!document.hidden) void load(); };
+    void load();
     const timer = setInterval(refresh, 15_000);
     window.addEventListener('focus', refresh);
     return () => {
-      controller.abort();
+      activeRequest.current?.abort();
+      activeRequest.current = null;
       clearInterval(timer);
       window.removeEventListener('focus', refresh);
     };
-  }, [actionLoading, invitingId, load]);
+  }, [changingConnections, load]);
 
   // Load suggestions once
   useEffect(() => {
@@ -274,7 +286,7 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
 
   // Poll online status for accepted members
   useEffect(() => {
-    const accepted = connections.filter(c => c.status === 'accepted');
+    const accepted = (connections ?? []).filter(c => c.status === 'accepted');
     if (!accepted.length) return;
 
     async function checkOnline() {
@@ -317,6 +329,30 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
     }
   }
 
+  const loadNotice = loadFailed && (
+    <div role="status" className="flex flex-wrap items-center gap-3 py-4">
+      <p>{connections ? 'Couldn’t refresh your Coven. Showing the last loaded list.' : 'Couldn’t load your Coven members.'}</p>
+      <Button size="sm" variant="outline" disabled={changingConnections} onClick={() => void load()}>Retry</Button>
+    </div>
+  );
+  if (!connections && loadFailed) return loadNotice;
+
+  if (!connections) {
+    return (
+      <div className="space-y-3 py-4">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
+            <Skeleton className="w-11 h-11 rounded-full" />
+            <div className="flex-1 space-y-1.5">
+              <Skeleton className="h-3.5 w-32 rounded" />
+              <Skeleton className="h-3 w-20 rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const accepted = connections.filter(c => c.status === 'accepted');
   const pendingIn = connections.filter(c => c.status === 'pending' && c.receiverId === currentUserId);
   const pendingSent = connections.filter(c => c.status === 'pending' && c.requesterId === currentUserId);
@@ -334,22 +370,6 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
 
   const pendingCount = pendingIn.length;
 
-  if (loading) {
-    return (
-      <div className="space-y-3 py-4">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}>
-            <Skeleton className="w-11 h-11 rounded-full" />
-            <div className="flex-1 space-y-1.5">
-              <Skeleton className="h-3.5 w-32 rounded" />
-              <Skeleton className="h-3 w-20 rounded" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
   return (
     <div className="py-4 space-y-4">
       {/* Header row */}
@@ -364,10 +384,12 @@ export default function MyCoven({ currentUserId }: { currentUserId: string }) {
             {pendingCount > 0 && <span className="ml-2" style={{ color: 'hsl(var(--primary))' }}>· {pendingCount} pending {pendingCount === 1 ? 'invitation' : 'invitations'}</span>}
           </p>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => { setLoading(true); void load(); }} className="h-8 w-8 p-0 rounded-full">
+        <Button size="sm" variant="ghost" aria-label="Refresh Coven members" disabled={changingConnections} onClick={() => void load()} className="h-8 w-8 p-0 rounded-full">
           <RefreshCw className="w-3.5 h-3.5" style={{ color: 'hsl(var(--muted-foreground))' }} />
         </Button>
       </div>
+
+      {loadNotice}
 
       {/* Filter pills */}
       <div className="flex flex-wrap gap-2">
