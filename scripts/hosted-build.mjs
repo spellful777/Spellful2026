@@ -16,35 +16,49 @@ function filesIn(dir) {
 
 const digest = data => createHash('sha256').update(data).digest('hex');
 
-function inputHash() {
-  const paths = ['package-lock.json', 'vite.config.ts', 'postcss.config.js', 'tailwind.config.js',
-    'tsconfig.json', 'tsconfig.node.json', 'index.html', 'airo-media.json', ...filesIn('src'),
-    ...filesIn('export-plugins')];
+function hashFiles(paths) {
   const hash = createHash('sha256');
   for (const path of paths.sort()) hash.update(path + '\0' + digest(readFileSync(path)) + '\n');
   return hash.digest('hex');
+}
+
+function inputHash() {
+  return hashFiles(['package-lock.json', 'vite.config.ts', 'postcss.config.js', 'tailwind.config.js',
+    'tsconfig.json', 'tsconfig.node.json', 'index.html', 'airo-media.json', ...filesIn('src'),
+    ...filesIn('export-plugins')]);
+}
+
+// Public media is tracked and copied separately. Only fingerprint compiler output.
+function compiledFiles() {
+  return filesIn('dist').map(path => relative('dist', path)).filter(path =>
+    path === 'server.bundle.mjs' || path.startsWith('bin/') ||
+    (path.startsWith('client/') && !existsSync(join('public', relative('client', path))))
+  ).sort();
+}
+
+function installedStamp(archiveHash) {
+  return archiveHash + '\n' + hashFiles(compiledFiles().map(path => join('dist', path)));
 }
 
 export function restoreHostedBuild({ complete = false } = {}) {
   if (!existsSync(manifest) || !existsSync(archive)) return false;
   const release = JSON.parse(readFileSync(manifest, 'utf8'));
   if (release.inputs !== inputHash()) return false;
-  if (complete && existsSync(installed) && readFileSync(installed, 'utf8') === release.sha256) return true;
+  if (complete && existsSync(installed)) {
+    const previousStamp = readFileSync(installed, 'utf8');
+    if (previousStamp === installedStamp(release.sha256)) return true;
+  }
   if (release.sha256 !== digest(readFileSync(archive))) throw Error('Invalid hosted build checksum');
   mkdirSync('dist/client', { recursive: true });
   cpSync('public', 'dist/client', { recursive: true });
   execFileSync('tar', ['-xzf', archive, '-C', 'dist']);
-  writeFileSync(installed, release.sha256);
+  writeFileSync(installed, installedStamp(release.sha256));
   console.info('Restored the compiled Spellful client and server');
   return true;
 }
 
 if (process.argv.includes('--pack-hosted-build')) {
-  // Public media is already tracked and restored separately. Package only compiler output.
-  const files = filesIn('dist').map(path => relative('dist', path)).filter(path =>
-    path === 'server.bundle.mjs' || path.startsWith('bin/') ||
-    (path.startsWith('client/') && !existsSync(join('public', relative('client', path))))
-  ).sort();
+  const files = compiledFiles();
   if (!files.includes('server.bundle.mjs') || !files.includes('client/index.html') ||
       !files.some(path => path.startsWith('bin/'))) throw Error('Incomplete production build');
   mkdirSync('scripts/hosted-build', { recursive: true });
