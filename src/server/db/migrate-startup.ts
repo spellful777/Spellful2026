@@ -1870,6 +1870,14 @@ export async function runStartupMigration(): Promise<void> {
       && /^[A-Z0-9_]{1,64}$/.test(e.code) ? e.code : 'UNKNOWN';
     // The hosting dashboard displays the event name and omits structured fields.
     console.error(`startup.migration.failed step=${step} code=${code}`);
+    if (conn && step === 'read-user-schema' && code === 'ER_NO_SUCH_TABLE') {
+      try {
+        const [tables] = await conn.query<mysql.RowDataPacket[]>('SHOW TABLES');
+        console.error(`startup.migration.visible-tables count=${tables.length}`);
+      } catch {
+        console.error('startup.migration.visible-tables count=unknown');
+      }
+    }
   } finally {
     if (conn) await conn.end().catch(() => undefined);
   }
