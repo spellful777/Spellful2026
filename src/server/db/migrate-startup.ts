@@ -17,6 +17,7 @@ interface ColumnRow {
 export async function runStartupMigration(): Promise<void> {
   const cfg = getDatabaseCredentials();
   let conn: mysql.Connection | null = null;
+  let step = 'connect';
 
   try {
     conn = await mysql.createConnection({
@@ -29,8 +30,10 @@ export async function runStartupMigration(): Promise<void> {
     });
 
     // ── user table ────────────────────────────────────────────────────────────
+    step = 'read-user-schema';
     const [cols] = await (conn.execute('SHOW COLUMNS FROM user') as unknown as Promise<[ColumnRow[], unknown]>);
     const existing = new Set(cols.map((c) => c.Field));
+    step = 'apply-schema';
 
     const userAlters: Array<{ col: string; sql: string }> = [
       { col: 'comment_gifs_enabled', sql: 'ALTER TABLE user ADD COLUMN comment_gifs_enabled BOOLEAN NULL' },
@@ -1863,8 +1866,10 @@ export async function runStartupMigration(): Promise<void> {
 
   } catch (e) {
     // Non-fatal — log and continue; the server still starts
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error(JSON.stringify({ event: 'startup.migration.failed', msg: msg.slice(0, 200) }));
+    const code = e instanceof Error && 'code' in e && typeof e.code === 'string'
+      && /^[A-Z0-9_]{1,64}$/.test(e.code) ? e.code : 'UNKNOWN';
+    // The hosting dashboard displays the event name and omits structured fields.
+    console.error(`startup.migration.failed step=${step} code=${code}`);
   } finally {
     if (conn) await conn.end().catch(() => undefined);
   }
