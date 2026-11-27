@@ -13,7 +13,7 @@ import { home } from 'virtual:content';
 import { ContentListContext } from '@airo/content';
 import AstroFeed from '@/components/AstroFeed';
 import CommandCenter from '@/components/CommandCenter';
-import { useSession } from '@/lib/auth/auth-client.tsx';
+import { SessionCheckRetry, useSession } from '@/lib/auth/auth-client.tsx';
 import { getMoonPhase, moonGlyph } from '@/lib/moon-phase-engine';
 import HomeCovenCard from '@/components/HomeCovenCard';
 import { InstallBanner } from '@/components/InstallSpellful';
@@ -154,12 +154,13 @@ function BenefitRow({ icon: Icon, title, desc, accent }: {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
-  const { session, isPending } = useSession();
+  const { session, isPending, sessionCheckFailed } = useSession();
   const [params] = useSearchParams();
   const feed = params.get('feed');
   if (isPending && (feed === 'following' || feed === 'explore')) return <p role="status" className="p-5">Loading Coven…</p>;
   if (!session) {
     if (feed === 'explore') return <PublicCoven />;
+    if (feed === 'following' && sessionCheckFailed) return <SessionCheckRetry />;
     if (feed === 'following') return <Navigate replace to={`/login?redirect=${encodeURIComponent(HOME_FEED)}`} />;
     return <PublicHomePage />;
   }

@@ -86,6 +86,7 @@ export function useSession() {
     isPending,
     error,
     isAuthenticated,
+    sessionCheckFailed: !isAuthenticated && !!error && error.status !== 401,
     refetch,
   };
 }
@@ -112,9 +113,23 @@ export const AuthProvider = SessionProvider;
 // Session timeout for loading state (30 seconds)
 const SESSION_TIMEOUT_MS = 30000;
 
+export function SessionCheckRetry() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <p className="text-gray-600">We couldn’t check your session. Please try again.</p>
+      <button
+        onClick={() => window.location.reload()}
+        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
 // ProtectedRoute component with timeout handling
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isPending, error } = useSession();
+  const { isAuthenticated, isPending, sessionCheckFailed } = useSession();
   const location = useLocation();
   const [timedOut, setTimedOut] = useState(false);
 
@@ -128,18 +143,8 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     return () => clearTimeout(timeout);
   }, [isPending]);
 
-  if ((isPending && timedOut) || (!isAuthenticated && error && error.status !== 401)) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-gray-600">We couldn’t check your session. Please try again.</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        >
-          Retry
-        </button>
-      </div>
-    );
+  if ((isPending && timedOut) || sessionCheckFailed) {
+    return <SessionCheckRetry />;
   }
 
   if (isPending) {

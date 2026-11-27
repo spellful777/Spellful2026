@@ -11,7 +11,7 @@ import {
   Bell, Bookmark, TrendingUp, MessageSquare, HelpCircle,
   Pin, Lock, Eye, ChevronRight, Search, Users, Star, Building2,
 } from 'lucide-react';
-import { useSession } from '@/lib/auth/auth-client';
+import { SessionCheckRetry, useSession } from '@/lib/auth/auth-client';
 import SparkCard from '@/components/SparkCard';
 import { SPARK_COMPOSE, COMMUNITY_FAVORITES } from '@/lib/community-navigation';
 import SparkHeartButton from '@/components/SparkHeartButton';
@@ -368,11 +368,12 @@ const COMMUNITY_VIEWS = [
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CommunityPage() {
-  const { session, isPending } = useSession();
+  const { session, isPending, sessionCheckFailed } = useSession();
   const location = useLocation();
   if (isPending) return <p role="status" className="p-5">Loading Coven…</p>;
   if (!session) {
     if (!location.search) return <PublicCoven />;
+    if (sessionCheckFailed) return <SessionCheckRetry />;
     const destination = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/login?redirect=${destination}`} replace />;
   }
