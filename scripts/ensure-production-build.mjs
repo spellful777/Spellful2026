@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -30,6 +30,12 @@ if (needsClient || needsServer) {
   }
   if (needsServer) {
     console.info('Building missing Spellful server bundle');
-    await build({ build: { ssr: 'src/server/entry.ts' } });
+    // GoDaddy already installs these packages. Bundling their source at startup
+    // exceeds the preview container's memory limit.
+    const { dependencies } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    await build({
+      ssr: { external: Object.keys(dependencies) },
+      build: { ssr: 'src/server/entry.ts' },
+    });
   }
 }
