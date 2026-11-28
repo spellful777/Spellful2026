@@ -3,7 +3,7 @@ import { findTopic } from '@/lib/spark-topics';
 import { communityLikePreviews } from '@/server/lib/community-like-previews.js';
 import { sparkReshares } from '@/server/lib/spark-reshares.js';
 import { loadOriginalSparks } from '@/server/lib/original-sparks.js';
-import { followsPostAuthor, postAudienceAllows } from '@/server/lib/community-post-access.js';
+import { covenWithPostAuthor, followsPostAuthor, postAudienceAllows } from '@/server/lib/community-post-access.js';
 /**
  * GET /api/community/posts
  * Query params: filter (all|latest|chronological|personalized|popular|trending|unanswered|following|mine), category, kind (spark|discussion), page, limit
@@ -44,7 +44,7 @@ export default async function handler(req: Request, res: Response) {
   if (filter === 'unanswered') conditions.push(eq(communityPosts.replyCount, 0));
   if (filter === 'mine' && myId) conditions.push(eq(communityPosts.userId, myId));
   const follows = myId ? followsPostAuthor(myId) : sql`false`;
-  if (filter === 'following') conditions.push(follows);
+  if (filter === 'following') conditions.push(myId && req.query.kind === 'spark' ? sql`(${follows} or ${covenWithPostAuthor(myId)})` : follows);
   if (filter === 'discover' && myId) {
     conditions.push(eq(communityPosts.audience, 'public'), ne(communityPosts.userId, myId), sql`not ${follows}`);
   }
@@ -104,6 +104,8 @@ export default async function handler(req: Request, res: Response) {
       userId: communityPosts.userId,
       authorName: user.name,
       authorImage: memberAvatar,
+      authorPreset: user.avatarPreset,
+      authorFrame: user.avatarFrame,
       authorUsername: user.username,
       categoryName: communityCategories.name,
       categorySlug: communityCategories.slug,

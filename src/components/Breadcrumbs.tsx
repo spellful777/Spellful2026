@@ -109,6 +109,8 @@ export default function Breadcrumbs() {
   if (segments.length < 1) return null;
 
   const crumbs = buildCrumbs(pathname);
+  if (segments[0] === 'u' && segments.length === 2) crumbs[1] = { label: 'Members', href: '/community/discover' };
+  if (pathname === '/account/profile' || pathname === '/account/edit-profile') crumbs[crumbs.length - 1].label = 'Profile Studio';
   if (pathname === '/community/new') {
     crumbs[crumbs.length - 1].label = new URLSearchParams(search).get('kind') === 'spark' ? 'Spark it' : 'New Discussion';
   }

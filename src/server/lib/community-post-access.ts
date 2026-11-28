@@ -7,6 +7,14 @@ export function followsPostAuthor(viewer: string) {
       and ${userFollows.followingId} = ${communityPosts.userId})`;
 }
 
+export function covenWithPostAuthor(viewer: string | SQLWrapper) {
+  const author = communityPosts.userId;
+  return sql`exists (select 1 from ${covenConnections}
+    where ${covenConnections.status} = 'accepted' and
+      ((${covenConnections.requesterId} = ${viewer} and ${covenConnections.receiverId} = ${author}) or
+       (${covenConnections.receiverId} = ${viewer} and ${covenConnections.requesterId} = ${author})))`;
+}
+
 // The caller separately decides whether a moderated post can be viewed by its author.
 export function postAudienceAllows(viewer?: string | SQLWrapper) {
   const publicPost = sql`${communityPosts.audience} = 'public'`;
@@ -14,15 +22,11 @@ export function postAudienceAllows(viewer?: string | SQLWrapper) {
 
   const author = communityPosts.userId;
   const block = communityBlocks;
-  const connection = covenConnections;
   return sql`(not exists (select 1 from ${block} where
     (${block.blockerId} = ${viewer} and ${block.blockedId} = ${author}) or
     (${block.blockedId} = ${viewer} and ${block.blockerId} = ${author}))
     and (${publicPost} or ${author} = ${viewer} or
-      (${communityPosts.audience} = 'coven' and exists (select 1 from ${connection}
-        where ${connection.status} = 'accepted' and
-          ((${connection.requesterId} = ${viewer} and ${connection.receiverId} = ${author}) or
-           (${connection.receiverId} = ${viewer} and ${connection.requesterId} = ${author}))))))`;
+      (${communityPosts.audience} = 'coven' and ${covenWithPostAuthor(viewer)})))`;
 }
 
 export function visiblePostForMember(postId: number, viewer: string | SQLWrapper) {

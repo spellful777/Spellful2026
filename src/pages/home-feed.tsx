@@ -148,7 +148,7 @@ export default function HomeFeed({ username, visitor = false }: { username?: str
               <section className="rounded-xl border border-border bg-card px-4 py-5">
                 <h2 className="font-heading text-xl text-foreground">{filter === 'following' ? 'Your Following feed' : 'Explore Sparks'}</h2>
                 <p role="status" className="mt-1 text-sm text-muted-foreground">
-                  {filter === 'following' ? 'Follow members to see their Sparks here.' : 'No public Sparks to explore yet.'}
+                  {filter === 'following' ? 'Sparks from your Coven and the people you follow appear here.' : 'No public Sparks to explore yet.'}
                 </p>
                 <Link className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary underline underline-offset-4"
                   to={filter === 'following' ? '/community/discover' : '/explore'}>

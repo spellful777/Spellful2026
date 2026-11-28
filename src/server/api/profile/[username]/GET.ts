@@ -51,6 +51,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
         hideOnlineStatus: user.hideOnlineStatus,
         shareFollowing: user.shareFollowing,
         invitePermission: user.invitePermission,
+        messagePermission: user.messagePermission,
         profileLayout: user.profileLayout,
         bioVisibility: user.bioVisibility,
         locationVisibility: user.locationVisibility,
@@ -163,7 +164,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
         eq(communityPosts.type, 'spark'), eq(communityPosts.isHidden, false))).limit(1);
       if (!spark || !access.allows(spark.audience)) featuredAbout = null;
     }
-    const { shareFollowing: _shareFollowing, invitePermission, ...publicProfile } = profile;
+    const { shareFollowing: _shareFollowing, invitePermission, messagePermission, ...publicProfile } = profile;
     const latestPosts = await db.select({
       id: communityPosts.id, title: communityPosts.title, createdAt: communityPosts.createdAt,
     }).from(communityPosts).where(and(
@@ -176,6 +177,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
       latestPosts,
       profile: {
         ...publicProfile, featuredAbout,
+        ...(isOwn ? { invitePermission, messagePermission } : {}),
         interestTags: !isOwn && profile.profileSections?.some(section => section.id === 'interests' && !section.enabled) ? null : profile.interestTags,
         bio: access.allows(profile.bioVisibility) ? profile.bio : null,
         location: access.allows(profile.locationVisibility) ? profile.location : null,

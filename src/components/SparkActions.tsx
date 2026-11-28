@@ -1,10 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Bookmark, Heart, MessageCircle, MoreHorizontal, Quote, Repeat2, Share, Star } from 'lucide-react';
+import { Bookmark, Heart, MessageCircle, MoreHorizontal, Repeat2, Share, Star } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Link } from 'react-router';
 import SparkHeartButton from '@/components/SparkHeartButton';
 import { useSparkFavorite } from '@/components/SparkFavoriteButton';
 import { SPARK_COMPOSE } from '@/lib/community-navigation';
+
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { publicShareUrl } from '@/lib/share-studio';
 
 type SparkActionData = {
   id: number; audience?: string | null; reshareOf?: number | null; originalSpark?: { id: number } | null;
@@ -19,6 +22,9 @@ export function SparkActions({ post, canInteract = true, onFavorite, onSave, thr
   onSave?: (saved: boolean) => void;
 }) {
   const [reshare, setReshare] = useState({ active: !!post.reshared, count: post.reshareCount ?? 0 });
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copyStatus, setCopyStatus] = useState('');
+  const shareUrl = shareOpen ? publicShareUrl(new URL('/community/post/' + post.id, window.location.href).href) : '';
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
   const original = post.reshareOf ?? post.id;
@@ -60,7 +66,7 @@ export function SparkActions({ post, canInteract = true, onFavorite, onSave, thr
   return <>
     <div className="spark-actions">
       {canInteract ? <SparkHeartButton postId={post.id} liked={post.liked} likeCount={post.likeCount ?? 0} onChanged={onFavorite} />
-        : <span aria-label={(post.likeCount ?? 0) + ' favorites'}>♡ {post.likeCount ?? 0}</span>}
+        : <span aria-label={(post.likeCount ?? 0) + ' favorites'}><Heart size={17} aria-hidden="true" /> {post.likeCount ?? 0}</span>}
       <Link to={'/community/post/' + post.id} aria-label={`Comments, ${post.replyCount ?? 0} total`}>
         <MessageCircle size={17} aria-hidden="true" /> {post.replyCount ?? 0}
       </Link>
@@ -68,12 +74,24 @@ export function SparkActions({ post, canInteract = true, onFavorite, onSave, thr
         aria-pressed={reshare.active} disabled={!canInteract || !shareable || working} onClick={toggleReshare}>
         <Repeat2 size={17} aria-hidden="true" /> {reshare.count}
       </button>
-      {canInteract && shareable ? <Link aria-label="Quote Spark" to={SPARK_COMPOSE + '&quote=' + original}><Quote size={17} aria-hidden="true" /></Link>
-        : <button type="button" aria-label="Quote Spark" disabled><Quote size={17} aria-hidden="true" /></button>}
       <button type="button" aria-label={saved ? 'Remove from Saved Sparks' : 'Save Spark'} aria-pressed={saved}
         disabled={!canInteract || pending} onClick={() => void toggle()}>
         <Bookmark size={17} className={saved ? 'fill-current' : ''} aria-hidden="true" />
       </button>
+      <Dialog open={shareOpen} onOpenChange={open => { setShareOpen(open); setCopyStatus(''); }}>
+        <DialogTrigger asChild><button type="button" aria-label="Share Spark"><Share size={17} /></button></DialogTrigger>
+        <DialogContent className="max-w-sm">
+          <DialogTitle>Share Spark</DialogTitle>
+          <DialogDescription>{post.audience === 'public' ? 'Share a link to this Spark.' : 'Only people with access can open this Spark.'}</DialogDescription>
+          <input readOnly aria-label="Spark link" className="w-full rounded border border-border bg-background p-2" value={shareUrl} onFocus={event => event.target.select()} />
+          <button type="button" className="min-h-11 rounded-lg border border-border" onClick={async () => {
+            try { await navigator.clipboard.writeText(shareUrl); setCopyStatus('Link copied.'); }
+            catch { setCopyStatus('Select and copy the link above.'); }
+          }}>Copy link</button>
+          {canInteract && shareable && <Link className="min-h-11 text-center text-primary underline" to={SPARK_COMPOSE + '&quote=' + original}>Quote Spark</Link>}
+          {copyStatus && <p role="status">{copyStatus}</p>}
+        </DialogContent>
+      </Dialog>
     </div>
     {(failed || error) && <p role="status" className="px-2 text-xs">{error || 'Couldn’t update Saved Sparks. Try again.'}</p>}
   </>;

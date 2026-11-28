@@ -44,6 +44,8 @@ export interface CommunityPost {
   userId: string;
   authorName: string | null;
   authorImage: string | null;
+  authorPreset?: string | null;
+  authorFrame?: string | null;
   authorUsername: string | null;
   categoryName: string | null;
   categorySlug: string | null;

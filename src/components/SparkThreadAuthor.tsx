@@ -8,7 +8,7 @@ type Author = {
   createdAt: string;
 };
 
-function shortAge(date: Date) {
+export function shortSparkAge(date: Date) {
   const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
   if (minutes < 1) return 'now';
   if (minutes < 60) return minutes + 'm';
@@ -32,7 +32,7 @@ export function SparkThreadAuthor({ author, edited }: { author: Author; edited?:
       ? <Link className="spark-thread-identity" to={'/u/' + encodeURIComponent(author.authorUsername)}>{identity}</Link>
       : <span className="spark-thread-identity">{identity}</span>}
     <span aria-hidden="true">·</span>
-    <time dateTime={author.createdAt} title={date.toLocaleString()}>{shortAge(date)}</time>
+    <time dateTime={author.createdAt} title={date.toLocaleString()}>{shortSparkAge(date)}</time>
     {edited && <span>· edited</span>}
   </div>;
 }

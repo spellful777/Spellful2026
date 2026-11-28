@@ -35,6 +35,7 @@ export async function profileActivity(
   const selection = {
     id: communityPosts.id, title: communityPosts.title, type: communityPosts.type, createdAt: communityPosts.createdAt,
     audience: communityPosts.audience, userId: communityPosts.userId, authorName: user.name, authorUsername: user.username, authorImage: memberAvatar,
+    authorFrame: user.avatarFrame, authorPreset: user.avatarPreset,
     likeCount: communityPosts.likeCount, replyCount: communityPosts.replyCount, originalSparkId: communityPosts.originalSparkId, reshareOf: communityPosts.reshareOf,
     sparkMedia: communityPosts.sparkMedia, sparkTopic: communityPosts.sparkTopic, sparkReading: communityPosts.sparkReading, imageUrl: communityPosts.imageUrl,
   };

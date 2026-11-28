@@ -991,7 +991,7 @@ export default function AccountPage() {
                         <>
                           <div className="flex items-center gap-2">
                             <span className="text-muted-foreground text-sm">@</span>
-                            <Input
+                            <Input id="profile-username"
                               value={usernameInput}
                               onChange={e => {
                                 const v = e.target.value.slice(0, 12);
