@@ -1,6 +1,6 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement } from 'react';
-import { ScrollRestoration } from 'react-router';
+import { ScrollRestoration, useLocation } from 'react-router';
 import { useCovenPressGlow } from '@/hooks/useCovenPressGlow';
 import { useSession } from '@/lib/auth/auth-client';
 
@@ -34,7 +34,10 @@ function RootLayoutInner({ children }: RootLayoutProps) {
   const { session, isPending } = useSession();
   // On mobile, the header hides itself when logged in (hidden md:block).
   // Only apply top padding when the header is actually visible.
-  const headerVisibleOnMobile = isPending || !session;
+  const { pathname, search } = useLocation();
+  const feed = new URLSearchParams(search).get('feed');
+  const hasFeedHeader = pathname === '/' && (feed === 'following' || feed === 'explore');
+  const headerVisibleOnMobile = !hasFeedHeader && (isPending || !session);
   return (
     <Website>
       <Helmet>
@@ -55,7 +58,7 @@ function RootLayoutInner({ children }: RootLayoutProps) {
       </Helmet>
       <HomepageSameAsJsonLd />
       <ScrollRestoration />
-      <Header />
+      <Header hideOnMobile={hasFeedHeader} />
       {/* pt-16 md:pt-20 clears the fixed header (h-16 mobile / h-20 desktop).
           When logged in on mobile the header hides itself, so no top padding needed there.
           pb-16 on mobile so the fixed bottom nav never covers page content */}

@@ -1,4 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { HelmetProvider } from '@dr.pogodin/react-helmet';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
 import CommunityPage from '../../pages/community/index';
@@ -7,7 +8,7 @@ import HomePage from '../../pages/index';
 const { lookup } = vi.hoisted(() => ({ lookup: vi.fn() }));
 vi.mock('better-auth/react', () => ({ createAuthClient: () => ({ useSession: lookup }) }));
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 function CurrentLocation() {
   const { pathname, search } = useLocation();
@@ -16,14 +17,14 @@ function CurrentLocation() {
 
 function openPage(path: string) {
   render(
-    <MemoryRouter initialEntries={[path]}>
+    <HelmetProvider><MemoryRouter initialEntries={[path]}>
       <CurrentLocation />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/community" element={<CommunityPage />} />
         <Route path="/login" element={<p>Sign in</p>} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter></HelmetProvider>,
   );
 }
 
@@ -41,4 +42,31 @@ it.each(memberRoutes)('retains %s as the return destination for a signed-out vis
   openPage(path);
   expect(screen.getByText('Sign in')).toBeTruthy();
   expect(screen.getByText('/login?redirect=' + encodeURIComponent(path))).toBeTruthy();
+});
+
+it.each([
+  { member: false, startingPath: '/community', filter: 'discover', tab: 'Explore' },
+  { member: false, startingPath: '/?feed=explore', filter: 'discover', tab: 'Explore' },
+  { member: true, startingPath: '/community', filter: 'following', tab: 'Following' },
+])('opens the compact Sparks feed from $startingPath for member=$member', async ({ member, startingPath, filter, tab }) => {
+  lookup.mockReturnValue({ data: member ? { user: { id: 'reader', username: 'reader' } } : null, isPending: false });
+  vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} unobserve() {} });
+  const fetch = vi.fn(async (path: string) => Response.json(path.startsWith('/api/community/posts?') ? {
+    posts: [{ id: 4, type: 'spark', title: 'A new moon reading', audience: 'public',
+      authorName: 'Juniper', createdAt: '2026-11-25T13:00:00Z' }], pages: 1,
+  } : { pendingRequests: 0 }));
+  vi.stubGlobal('fetch', fetch);
+  openPage(startingPath);
+
+  const tabs = within(await screen.findByRole('navigation', { name: 'Home feed' }));
+  expect(tabs.getByRole('link', { name: tab })).toHaveAttribute('aria-current', 'page');
+  expect(tabs.getByRole('link', { name: 'Community' })).toHaveAttribute('href', '/community?view=groups');
+  expect(screen.getByRole('link', { name: 'Spark it' })).toHaveAttribute('href', '/community/new?kind=spark');
+  expect(await screen.findByText('A new moon reading')).toBeVisible();
+  expect(fetch).toHaveBeenCalledWith('/api/community/posts?filter=' + filter + '&page=1&limit=20&order=newest&kind=spark', expect.anything());
+  if (!member) {
+    expect(screen.getByRole('link', { name: 'Moon Magic' })).toHaveAttribute('href', '/explore/topics/moon-magic');
+    expect(screen.getByRole('button', { name: 'Save Spark' })).toBeDisabled();
+    expect(fetch.mock.calls.some(([path]) => path.startsWith('/api/account/'))).toBe(false);
+  }
 });

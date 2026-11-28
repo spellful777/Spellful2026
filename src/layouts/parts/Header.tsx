@@ -373,7 +373,7 @@ function DesktopDropdown({ item, pathname, session, unread = 0 }: DropdownProps)
 
 // ─── Main Header ──────────────────────────────────────────────────────────────
 
-export default function Header() {
+export default function Header({ hideOnMobile = false }: { hideOnMobile?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [navVisible, setNavVisible] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -407,7 +407,7 @@ export default function Header() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700${(!isPending && session) ? ' hidden md:block' : ''}`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700${(hideOnMobile || (!isPending && session)) ? ' hidden md:block' : ''}`}
       style={{
         background: scrolled ? 'hsl(var(--background) / 0.92)' : 'transparent',
         backdropFilter: scrolled ? 'blur(12px)' : 'none',

@@ -1,4 +1,3 @@
-import PublicCoven from '@/components/PublicCoven';
 import { uploadedMediaUrl } from '@/lib/native-api';
 import { getTrendingTopics } from '@/lib/community-trending-topics';
 import { useState, useEffect } from 'react';
@@ -27,7 +26,7 @@ import { formatDistanceToNow } from 'date-fns';
 import FriendUpdatesFeed from '@/components/FriendUpdatesFeed';
 import SinceYouWereAwayBanner from '@/components/SinceYouWereAwayBanner';
 import CovenHearth from '@/components/CovenHearth';
-import { COMMUNITY_FEED, COMMUNITY_GROUPS, COMMUNITY_UPDATES } from '@/lib/community-navigation';
+import { COMMUNITY_FEED, COMMUNITY_GROUPS, COMMUNITY_UPDATES, HOME_EXPLORE, HOME_FEED } from '@/lib/community-navigation';
 import CosmicPulse from "@/components/CosmicPulse";
 
 // ── Community stats strip ─────────────────────────────────────────────────────
@@ -371,8 +370,9 @@ export default function CommunityPage() {
   const { session, isPending, sessionCheckFailed } = useSession();
   const location = useLocation();
   if (isPending) return <p role="status" className="p-5">Loading Coven…</p>;
+  const view = new URLSearchParams(location.search).get('view');
+  if (!view || view === 'feed') return <Navigate replace to={session ? HOME_FEED : HOME_EXPLORE} />;
   if (!session) {
-    if (!location.search) return <PublicCoven />;
     if (sessionCheckFailed) return <SessionCheckRetry />;
     const destination = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/login?redirect=${destination}`} replace />;

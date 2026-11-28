@@ -18,7 +18,7 @@ export default function SparkItLink({ iconOnly = false, linkRef, inactive = fals
       <Link
         ref={linkRef}
         to={SPARK_COMPOSE}
-        aria-label={iconOnly ? 'Create a post' : undefined}
+        aria-label={iconOnly ? 'Spark it' : undefined}
         aria-hidden={inactive || undefined}
         tabIndex={inactive ? -1 : undefined}
       >

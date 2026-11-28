@@ -1,5 +1,4 @@
 import { Navigate, useSearchParams } from 'react-router';
-import PublicCoven from '@/components/PublicCoven';
 import { COMMUNITY_FEED, HOME_FEED } from '@/lib/community-navigation';
 import HomeFeed from './home-feed';
 import { useRef, useState, useEffect } from 'react';
@@ -159,7 +158,7 @@ export default function HomePage() {
   const feed = params.get('feed');
   if (isPending && (feed === 'following' || feed === 'explore')) return <p role="status" className="p-5">Loading Coven…</p>;
   if (!session) {
-    if (feed === 'explore') return <PublicCoven />;
+    if (feed === 'explore') return <HomeFeed key="visitor" visitor />;
     if (feed === 'following' && sessionCheckFailed) return <SessionCheckRetry />;
     if (feed === 'following') return <Navigate replace to={`/login?redirect=${encodeURIComponent(HOME_FEED)}`} />;
     return <PublicHomePage />;

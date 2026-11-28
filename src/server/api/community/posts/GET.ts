@@ -17,7 +17,8 @@ export default async function handler(req: Request, res: Response) {
   const session = await getAuthSession(req);
   const topic = findTopic(req.query.topic);
   if (req.query.topic !== undefined && !topic) return res.status(404).json({ error: 'Topic not found' });
-  if (!session?.user?.id && !topic) return res.status(401).json({ error: 'Sign in to view the community' });
+  const publicExplore = req.query.filter === 'discover' && req.query.kind === 'spark';
+  if (!session?.user?.id && !topic && !publicExplore) return res.status(401).json({ error: 'Sign in to view the community' });
   const myId = session?.user?.id;
 
   const filter = (req.query.filter as string) || 'latest';

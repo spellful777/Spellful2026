@@ -6,10 +6,11 @@ interface SocialSummary {
   followerCount: number;
 }
 
-export function useSocialSummary() {
+export function useSocialSummary(enabled = true) {
   const [summary, setSummary] = useState<SocialSummary | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     let pending = false;
     async function refresh() {
@@ -36,6 +37,6 @@ export function useSocialSummary() {
       clearInterval(timer);
       window.removeEventListener('focus', refresh);
     };
-  }, []);
+  }, [enabled]);
   return summary;
 }

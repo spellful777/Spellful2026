@@ -729,7 +729,7 @@ html.high-contrast {
   pointer-events: none;
   content: '';
   background: linear-gradient(112deg, transparent 42%, hsl(44 65% 85% / 0.84) 50%, transparent 58%) 100% 0 / 260% 100%;
-  mask: url('/airo-assets/images/logo/official-white') center / contain no-repeat;
+  mask: url('/assets/media/logo-official-white-8b86d830.png') center / contain no-repeat;
   opacity: 0;
 }
 

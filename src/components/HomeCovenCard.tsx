@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Link } from 'react-router';
 import { COMMUNITY_FEED } from '@/lib/community-navigation';
 
-export default function HomeCovenCard() {
+export default function HomeCovenCard({ to = COMMUNITY_FEED }: { to?: string }) {
   return (
     <motion.section
       aria-labelledby="home-coven-heading"
@@ -22,7 +22,7 @@ export default function HomeCovenCard() {
         }}
       />
       <Link
-        to={COMMUNITY_FEED}
+        to={to}
         className="group flex min-h-14 items-center justify-between gap-3 px-3.5 py-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
       >
         <div className="min-w-0">
