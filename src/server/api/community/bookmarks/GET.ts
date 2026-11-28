@@ -1,3 +1,4 @@
+import { memberAvatar } from '@/server/lib/member-avatar.js';
 import { getBlockedUserIds } from '@/server/lib/block-check.js';
 import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
@@ -22,7 +23,7 @@ export default async function handler(req: Request, res: Response) {
     createdAt: communityPosts.createdAt,
     isHidden: communityPosts.isHidden,
     authorName: user.name,
-    authorImage: user.image,
+    authorImage: memberAvatar,
     authorUsername: user.username,
     categoryName: communityCategories.name,
     categorySlug: communityCategories.slug,

@@ -1,3 +1,4 @@
+import { memberAvatar } from '@/server/lib/member-avatar.js';
 import { communityLikePreviews } from '@/server/lib/community-like-previews.js';
 import { sparkReshares } from '@/server/lib/spark-reshares.js';
 import { loadOriginalSparks } from '@/server/lib/original-sparks.js';
@@ -36,7 +37,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     userId: communityPosts.userId,
     categoryId: communityPosts.categoryId,
     authorName: user.name,
-    authorImage: user.image,
+    authorImage: memberAvatar,
     authorUsername: user.username,
     authorLocation: sql<string | null>`case when ${user.locationVisibility} = 'public' then ${user.location} else null end`,
     categoryName: communityCategories.name,

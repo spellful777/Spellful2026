@@ -1,3 +1,4 @@
+import { memberAvatar } from '@/server/lib/member-avatar.js';
 import { communityLikePreviews } from '@/server/lib/community-like-previews.js';
 import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
@@ -42,7 +43,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     updatedAt: communityReplies.updatedAt,
     userId: communityReplies.userId,
     authorName: user.name,
-    authorImage: user.image,
+    authorImage: memberAvatar,
     authorUsername: user.username,
     authorLocation: sql<string | null>`case when ${user.locationVisibility} = 'public' then ${user.location} else null end`,
   })

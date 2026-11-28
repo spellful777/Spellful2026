@@ -74,7 +74,7 @@ export default async function handler(req: Request, res: Response): Promise<void
                 // eslint-disable-next-line security/detect-non-literal-fs-filename
                 await writeFile(join(uploadDir, filename), buffer); // safe: filename is a UUID
                 const url = '/airo-assets/uploads/avatars/' + filename;
-                await db!.update(user).set({ image: url }).where(eq(user.id, session.user.id));
+                await db!.update(user).set({ image: url, avatarPreset: '' }).where(eq(user.id, session.user.id));
                 resolve({ url });
               } catch (writeErr) {
                 resolve({ error: String(writeErr), status: 500 });

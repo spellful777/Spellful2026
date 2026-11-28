@@ -1,3 +1,4 @@
+import { memberAvatar } from '@/server/lib/member-avatar.js';
 import { sparkReshares } from '@/server/lib/spark-reshares.js';
 import { and, desc, eq, lt, or, isNotNull, inArray } from 'drizzle-orm';
 import { db } from '@/server/db/client.js';
@@ -33,7 +34,7 @@ export async function profileActivity(
 
   const selection = {
     id: communityPosts.id, title: communityPosts.title, type: communityPosts.type, createdAt: communityPosts.createdAt,
-    audience: communityPosts.audience, userId: communityPosts.userId, authorName: user.name, authorUsername: user.username, authorImage: user.image,
+    audience: communityPosts.audience, userId: communityPosts.userId, authorName: user.name, authorUsername: user.username, authorImage: memberAvatar,
     likeCount: communityPosts.likeCount, replyCount: communityPosts.replyCount, originalSparkId: communityPosts.originalSparkId, reshareOf: communityPosts.reshareOf,
     sparkMedia: communityPosts.sparkMedia, sparkTopic: communityPosts.sparkTopic, sparkReading: communityPosts.sparkReading, imageUrl: communityPosts.imageUrl,
   };

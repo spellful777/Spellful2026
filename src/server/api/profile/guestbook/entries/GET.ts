@@ -1,3 +1,4 @@
+import { memberAvatar } from '@/server/lib/member-avatar.js';
 /**
  * GET /api/profile/guestbook/entries
  * Returns all guestbook entries for the authenticated user (owner view, includes pending).
@@ -20,7 +21,7 @@ export default async function handler(req: Request, res: Response) {
       moderationState: profileGuestbookEntries.moderationState,
       createdAt: profileGuestbookEntries.createdAt,
       authorUsername: user.username,
-      authorImage: user.image,
+      authorImage: memberAvatar,
     })
     .from(profileGuestbookEntries)
     .innerJoin(user, eq(profileGuestbookEntries.authorUserId, user.id))
