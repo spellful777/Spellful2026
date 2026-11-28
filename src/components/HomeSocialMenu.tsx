@@ -1,11 +1,11 @@
 import { useEffect, useState, type Ref } from 'react';
-import { ChevronRight, Bell, Compass, MessageSquare, Pencil, Star, User } from 'lucide-react';
+import { ChevronRight, Bell, Compass, Pencil, Star, User, Users } from 'lucide-react';
 import { Link } from 'react-router';
 import { getMoonPhase, moonGlyph, type MoonPhaseName } from '@/lib/moon-phase-engine';
 import { useSocialSummary } from '@/hooks/useSocialSummary';
 import SparkItLink from '@/components/SparkItLink';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { COMMUNITY_GROUPS, HOME_FEED, COMMUNITY_REQUESTS, COMMUNITY_FAVORITES, HOME_EXPLORE } from '@/lib/community-navigation';
+import { COMMUNITY_CONNECTIONS, HOME_FEED, COMMUNITY_REQUESTS, COMMUNITY_FAVORITES, HOME_EXPLORE } from '@/lib/community-navigation';
 
 function HomeMoonLink() {
   const [phase, setPhase] = useState<MoonPhaseName | null>(null);
@@ -48,6 +48,7 @@ export default function HomeSocialMenu({ visitor, username, sparkRef, floatingSp
           <img src="/assets/media/logo-official-white-8b86d830.png" alt="" width={82} height={44} className="block h-11 w-auto" />
         </Link>
         <div className="home-header-actions flex shrink-0 items-center gap-2.5">
+          <SparkItLink linkRef={sparkRef} inactive={floatingSpark} />
           {visitor ? (
             <Link to={'/login?redirect=' + encodeURIComponent(HOME_FEED)} aria-label="Sign in to your Coven"
               className="inline-flex size-11 items-center justify-center rounded-md text-foreground focus-visible:outline focus-visible:outline-primary">
@@ -69,7 +70,7 @@ export default function HomeSocialMenu({ visitor, username, sparkRef, floatingSp
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="home-social-menu w-52 [&_[role=menuitem]]:min-h-11 [&_[role=menuitem]:focus]:text-background">
-              <DropdownMenuItem asChild><Link to={COMMUNITY_GROUPS}><MessageSquare aria-hidden="true" />Community</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link to={COMMUNITY_CONNECTIONS}><Users aria-hidden="true" />My Coven</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to="/community/discover"><Compass aria-hidden="true" />Find members</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to={HOME_EXPLORE}><Compass aria-hidden="true" />Explore</Link></DropdownMenuItem>
               <DropdownMenuItem asChild><Link to={COMMUNITY_REQUESTS}><Bell aria-hidden="true" />Coven requests</Link></DropdownMenuItem>
@@ -79,7 +80,6 @@ export default function HomeSocialMenu({ visitor, username, sparkRef, floatingSp
               <DropdownMenuItem asChild><Link to="/account/edit-profile"><Pencil aria-hidden="true" />{username ? 'Edit my profile' : 'Set up my profile'}</Link></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>}
-          <SparkItLink iconOnly linkRef={sparkRef} inactive={floatingSpark} />
         </div>
       </div>
 
