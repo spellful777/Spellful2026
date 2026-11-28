@@ -1,3 +1,4 @@
+import { memberAvatar } from '@/server/lib/member-avatar.js';
 import { findTopic } from '@/lib/spark-topics';
 import { communityLikePreviews } from '@/server/lib/community-like-previews.js';
 import { sparkReshares } from '@/server/lib/spark-reshares.js';
@@ -102,7 +103,7 @@ export default async function handler(req: Request, res: Response) {
       categoryId: communityPosts.categoryId,
       userId: communityPosts.userId,
       authorName: user.name,
-      authorImage: user.image,
+      authorImage: memberAvatar,
       authorUsername: user.username,
       categoryName: communityCategories.name,
       categorySlug: communityCategories.slug,

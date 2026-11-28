@@ -795,7 +795,7 @@ export default function UserProfilePage() {
           </div>
           <div className="profile-identity">
             <div className="profile-framed-avatar">
-              <AvatarWithFrame src={profile.image} avatarPreset={profile.avatarPreset?.replace(/^default-/, '')}
+              <AvatarWithFrame src={profile.image} avatarPreset={profile.avatarPreset ?? undefined}
                 frameKey={profile.avatarFrame ?? ''} size={66} isPlus alt={displayName} />
               {!profile.hideOnlineStatus && !previewMode && <span className="absolute bottom-1 right-1"><OnlineDot userId={profile.id} /></span>}
             </div>

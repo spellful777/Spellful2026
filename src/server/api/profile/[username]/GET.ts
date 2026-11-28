@@ -1,3 +1,4 @@
+import { memberAvatar } from '@/server/lib/member-avatar.js';
 import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import { profileActivity } from '@/server/lib/profile-activity.js';
 import { profileAudience } from '@/server/lib/profile-audience.js';
@@ -24,7 +25,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
         id: user.id,
         name: user.name,
         username: user.username,
-        image: user.image,
+        image: memberAvatar,
         bio: user.bio,
         location: user.location,
         witchPath: user.witchPath,
@@ -85,7 +86,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
       const pageSize = 30;
       const before = Number(req.query.before);
       const entries = await db
-        .select({ followId: userFollows.id, username: user.username, name: user.name, image: user.image })
+        .select({ followId: userFollows.id, username: user.username, name: user.name, image: memberAvatar })
         .from(userFollows)
         .innerJoin(user, eq(user.id, followers ? userFollows.followerId : userFollows.followingId))
         .where(and(

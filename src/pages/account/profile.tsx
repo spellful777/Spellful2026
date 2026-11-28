@@ -1,3 +1,4 @@
+import { DEFAULT_AVATARS, findDefaultAvatar, profileAvatar } from '@/lib/default-avatars';
 import { uploadedMediaUrl } from '@/lib/native-api';
 import { SPARK_TOPICS as INTEREST_SUGGESTIONS } from '@/lib/spark-topics';
 import { parseProfileFeature, type ProfileFeature } from '@/lib/profile-feature';
@@ -36,18 +37,6 @@ const THEME_OVERRIDES: Record<string, React.CSSProperties> = {
   crystal:   { '--profile-accent': 'hsl(var(--primary))',           '--profile-bg': 'hsl(270 30% 9%)' } as React.CSSProperties,
 };
 
-// ─── Default avatar presets ──────────────────────────────────────────────────
-const DEFAULT_AVATARS = [
-  { key: 'default-hat-black',   label: 'White Hat',  src: '/airo-assets/images/avatars/default-hat-black' },
-  { key: 'default-hat-blue',    label: 'Sapphire',  src: '/airo-assets/images/avatars/default-hat-blue' },
-  { key: 'default-hat-green',   label: 'Emerald',   src: '/airo-assets/images/avatars/default-hat-green' },
-  { key: 'default-hat-orange',  label: 'Amber',     src: '/airo-assets/images/avatars/default-hat-orange' },
-  { key: 'default-hat-purple',  label: 'Amethyst',  src: '/airo-assets/images/avatars/default-hat-purple' },
-  { key: 'default-hat-red',     label: 'Crimson',   src: '/airo-assets/images/avatars/default-hat-red' },
-  { key: 'default-hat-rainbow', label: 'Rainbow',   src: '/airo-assets/images/avatars/default-hat-rainbow' },
-  { key: 'default-hat-trans',   label: 'Trans',     src: '/airo-assets/images/avatars/default-hat-trans' },
-  { key: 'default-hat-lesbian', label: 'Lesbian',   src: '/airo-assets/images/avatars/default-hat-lesbian' },
-];
 
 // ─── Cover presets ────────────────────────────────────────────────────────────
 
@@ -242,7 +231,7 @@ const TABS: { id: StudioTab; label: string; icon: React.ElementType }[] = [
 
 export default function ProfileStudioPage() {
   const navigate = useNavigate();
-  const { session, isPending } = useSession();
+  const { session, isPending, refetch } = useSession();
   const ent = useEntitlement();
   const isPlus = ent.data?.isPlus ?? false;
 
@@ -407,8 +396,9 @@ export default function ProfileStudioPage() {
 
   // ── Load profile ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!(session?.user as SessionUser | undefined)?.username) return;
-    fetch(`/api/profile/${(session!.user as SessionUser).username}`, { credentials: 'include' })
+    if (!session?.user.id) return;
+    const member = (session.user as SessionUser).username || '~' + session.user.id;
+    fetch(`/api/profile/${encodeURIComponent(member)}`, { credentials: 'include' })
       .then(r => r.json())
       .then((data: { profile?: Record<string, unknown>; covenCount?: number; followerCount?: number }) => {
         if (data.covenCount !== undefined || data.followerCount !== undefined) {
@@ -444,7 +434,7 @@ export default function ProfileStudioPage() {
               tumblr: String((p.socialLinks as Record<string, string>)?.tumblr ?? ''),
               website: String((p.socialLinks as Record<string, string>)?.website ?? ''),
             },
-            avatarPreset: String(p.avatarPreset ?? ''),
+            avatarPreset: findDefaultAvatar(profileAvatar(p.image as string | null, p.avatarPreset as string | null))?.key ?? '',
             profileTheme: String(p.profileTheme ?? ''),
             avatarFrame: String(p.avatarFrame ?? ''),
             practiceLabels: Array.isArray(p.practiceLabels) ? (p.practiceLabels as string[]) : [],
@@ -459,10 +449,7 @@ export default function ProfileStudioPage() {
           };
           setForm(loaded);
           setOriginal(loaded);
-          // Seed avatar preview from the saved custom image (user.image in DB)
-          if (session?.user?.image && !session.user.image.startsWith('/airo-assets/images/avatars/')) {
-            setAvatarPreview(session.user.image);
-          }
+          setAvatarPreview(typeof p.image === 'string' ? p.image : null);
           setMessagePermission(String(p.messagePermission ?? 'everyone'));
           setInvitePermission(String(p.invitePermission ?? 'everyone'));
           setHideOnlineStatus(!!p.hideOnlineStatus);
@@ -470,7 +457,7 @@ export default function ProfileStudioPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [(session?.user as SessionUser | undefined)?.username]);
+  }, [session?.user.id, (session?.user as SessionUser | undefined)?.username]);
 
   // ── Privacy helpers ────────────────────────────────────────────────────────
   async function saveHideOnlineStatus(val: boolean) {
@@ -688,7 +675,8 @@ export default function ProfileStudioPage() {
       const data = await r.json() as { url?: string; error?: string; code?: string };
       if (r.ok && data.url) {
         setAvatarPreview(data.url);
-        // Clear preset so the custom upload is used on save
+        void refetch();
+        setOriginal(current => ({ ...current, avatarPreset: '' }));
         set('avatarPreset', '');
       } else if (data.code === 'PLUS_REQUIRED') {
         setError('Custom avatar upload requires Spellful Plus.');
@@ -715,7 +703,8 @@ export default function ProfileStudioPage() {
           name: form.name, bio: form.bio, location: form.location, pronouns: form.pronouns,
           witchPath: form.witchPath, sunSign: form.sunSign, moonSign: form.moonSign, risingSign: form.risingSign,
           profileVisibility: form.profileVisibility, profileLayout: form.profileLayout,
-          accentColor: form.accentColor, avatarPreset: form.avatarPreset, coverPreset: form.coverPreset, coverImage: form.coverImage,
+          accentColor: form.accentColor,
+          ...(form.avatarPreset !== original.avatarPreset ? { avatarPreset: form.avatarPreset } : {}), coverPreset: form.coverPreset, coverImage: form.coverImage,
           interestTags: form.interestTags, socialLinks: form.socialLinks,
           profileTheme: form.profileTheme, avatarFrame: form.avatarFrame,
           practiceLabels: form.practiceLabels, profileStatus: form.profileStatus,
@@ -730,7 +719,11 @@ export default function ProfileStudioPage() {
         }),
       });
       const data = await r.json() as { ok?: boolean; error?: string };
-      if (data.ok) { setSaved(true); setOriginal(form); }
+      if (data.ok) {
+        if (form.avatarPreset !== original.avatarPreset) void refetch();
+        setSaved(true);
+        setOriginal(form);
+      }
       else setError(data.error ?? 'Save failed');
     } catch { setError('Save failed'); }
     finally { setSaving(false); }
@@ -747,10 +740,7 @@ export default function ProfileStudioPage() {
   const previewUsername = (session?.user as SessionUser | undefined)?.username ?? '';
   const displayName = form.name || session?.user?.name || 'Your Name';
   const initials = displayName.slice(0, 2).toUpperCase();
-  const presetSrc = form.avatarPreset ? DEFAULT_AVATARS.find(a => a.key === form.avatarPreset)?.src ?? null : null;
-  // Preset selection is an explicit studio action — show it immediately in the preview
-  // even when the user already has a session profile photo.
-  const avatarSrc = avatarPreview ?? presetSrc ?? session?.user?.image ?? null;
+  const avatarSrc = findDefaultAvatar(form.avatarPreset)?.src ?? profileAvatar(avatarPreview ?? session?.user?.image);
 
   // Visibility helper — respects the preview mode toggle
   function canSee(fieldVisibility: string): boolean {
@@ -1069,13 +1059,15 @@ export default function ProfileStudioPage() {
                           {DEFAULT_AVATARS.map(av => (
                             <button
                               key={av.key}
-                              onClick={() => { set('avatarPreset', form.avatarPreset === av.key ? '' : av.key); }}
+                              onClick={() => { set('avatarPreset', av.key); }}
                               className="relative rounded-full overflow-hidden transition-all"
                               style={{
                                 width: '48px', height: '48px',
                                 outline: form.avatarPreset === av.key ? `3px solid ${accent}` : '3px solid transparent',
                                 outlineOffset: '2px',
                               }}
+                              disabled={avatarUploading}
+                              aria-pressed={form.avatarPreset === av.key}
                               aria-label={av.label}
                               title={av.label}
                             >

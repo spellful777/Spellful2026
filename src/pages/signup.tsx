@@ -1,3 +1,4 @@
+import { DEFAULT_AVATARS, STARTER_AVATAR } from '@/lib/default-avatars';
 import { signup } from 'virtual:content';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router';
@@ -27,17 +28,6 @@ const STAR_DATA = Array.from({ length: 40 }, (_, i) => {
 
 type Step = 'form' | 'verify' | 'avatar';
 
-const AVATAR_PRESETS = [
-  { key: 'default-hat-black',   label: 'White Hat',  src: '/airo-assets/images/avatars/default-hat-black' },
-  { key: 'default-hat-blue',    label: 'Sapphire',  src: '/airo-assets/images/avatars/default-hat-blue' },
-  { key: 'default-hat-green',   label: 'Emerald',   src: '/airo-assets/images/avatars/default-hat-green' },
-  { key: 'default-hat-orange',  label: 'Amber',     src: '/airo-assets/images/avatars/default-hat-orange' },
-  { key: 'default-hat-purple',  label: 'Amethyst',  src: '/airo-assets/images/avatars/default-hat-purple' },
-  { key: 'default-hat-red',     label: 'Crimson',   src: '/airo-assets/images/avatars/default-hat-red' },
-  { key: 'default-hat-rainbow', label: 'Rainbow',   src: '/airo-assets/images/avatars/default-hat-rainbow' },
-  { key: 'default-hat-trans',   label: 'Trans',     src: '/airo-assets/images/avatars/default-hat-trans' },
-  { key: 'default-hat-lesbian', label: 'Lesbian',   src: '/airo-assets/images/avatars/default-hat-lesbian' },
-];
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -46,10 +36,10 @@ export default function SignupPage() {
 
   // Redirect already-authenticated users away from signup
   useEffect(() => {
-    if (!isPending && session) {
+    if (!isPending && session && step === 'form') {
       navigate('/', { replace: true });
     }
-  }, [session, isPending, navigate]);
+  }, [session, isPending, navigate, step]);
 
   // Core auth fields
   const [name, setName] = useState('');
@@ -82,7 +72,7 @@ export default function SignupPage() {
   const [consentMoon, setConsentMoon] = useState(false);
 
   // Avatar picker
-  const [selectedAvatar, setSelectedAvatar] = useState<string>('default-hat-purple');
+  const [selectedAvatar, setSelectedAvatar] = useState<string>(STARTER_AVATAR.key);
   const [savingAvatar, setSavingAvatar] = useState(false);
 
   // Username field
@@ -190,6 +180,15 @@ export default function SignupPage() {
       if (result.error) {
         setError(result.error.message ?? 'Invalid or expired code.');
       } else {
+        // OTP verification can succeed without issuing a session.
+        const signedIn = await authClient.getSession();
+        if (!signedIn.data?.user) {
+          const login = await authClient.signIn.email({ email, password });
+          if (login.error || !login.data?.user) {
+            navigate('/login?redirect=/account/edit-profile');
+            return;
+          }
+        }
         await saveSignupMeta();
         setStep('avatar');
       }
@@ -201,20 +200,22 @@ export default function SignupPage() {
   }
 
   async function handleAvatarContinue() {
+    setError('');
     setSavingAvatar(true);
     try {
-      await fetch('/api/profile', {
+      const res = await fetch('/api/profile', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ avatarPreset: selectedAvatar }),
       });
+      if (!res.ok) throw new Error();
+      navigate('/');
     } catch {
-      // Non-critical — proceed anyway
+      setError('Your hat could not be saved. Please try again.');
     } finally {
       setSavingAvatar(false);
     }
-    navigate('/');
   }
 
   async function handleResend() {
@@ -231,7 +232,7 @@ export default function SignupPage() {
 
   // Don't render while session is resolving
   if (isPending) return null;
-  if (session) return null;
+  if (session && step === 'form') return null;
 
   return (
     <>
@@ -468,7 +469,7 @@ export default function SignupPage() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 mb-6">
-                  {AVATAR_PRESETS.map(preset => (
+                  {DEFAULT_AVATARS.map(preset => (
                     <button
                       key={preset.key}
                       onClick={() => setSelectedAvatar(preset.key)}
@@ -502,6 +503,7 @@ export default function SignupPage() {
                   ))}
                 </div>
 
+                {error && <p role="alert" className="mb-3 text-sm text-destructive">{error}</p>}
                 <Button
                   onClick={() => void handleAvatarContinue()}
                   disabled={savingAvatar}

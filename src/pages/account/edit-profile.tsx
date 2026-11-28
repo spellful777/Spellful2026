@@ -1,3 +1,5 @@
+import { DEFAULT_AVATARS, profileAvatar } from '@/lib/default-avatars';
+import { useEntitlement } from '@/lib/use-plus-entitlement';
 import { uploadedMediaUrl } from '@/lib/native-api';
 /**
  * /account/edit-profile — Compact profile identity editor
@@ -24,6 +26,7 @@ function AvatarPickerSheet({
   onSelect: (url: string) => void;
   onClose: () => void;
 }) {
+  const { data: { isPlus } } = useEntitlement();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -51,12 +54,33 @@ function AvatarPickerSheet({
     }
   }
 
+  async function selectHat(url: string) {
+    setUploadError('');
+    setUploading(true);
+    try {
+      const response = await fetch('/api/account/avatar/default', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ url }),
+      });
+      if (!response.ok) throw new Error();
+      const saved = await response.json() as { url: string };
+      onSelect(saved.url);
+      onClose();
+    } catch {
+      setUploadError('Your hat could not be saved. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     /* Backdrop */
     <div
       className="fixed inset-0 z-50 flex items-end justify-center"
       style={{ background: 'hsl(var(--background)/0.8)', backdropFilter: 'blur(4px)' }}
-      onClick={onClose}
+      onClick={uploading ? undefined : onClose}
     >
       {/* Sheet */}
       <div
@@ -74,48 +98,52 @@ function AvatarPickerSheet({
             <h2 className="font-serif text-lg font-semibold text-foreground">
               {pg.profileTab.avatarPickerTitle}
             </h2>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
+            <button disabled={uploading} aria-label="Close avatar picker" onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Upload custom */}
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed mb-4 transition-colors hover:border-primary/60"
-            style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--muted))' }}
-          >
-            {uploading ? (
-              <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'hsl(var(--primary))' }} />
-            ) : (
-              <Upload className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} />
-            )}
-            <span className="text-sm text-foreground">
-              {uploading ? 'Uploading…' : 'Upload a custom photo'}
-            </span>
-            <span className="ml-auto text-xs text-muted-foreground">JPEG · PNG · WebP · max 5 MB</span>
-          </button>
-          {uploadError && <p className="text-xs text-destructive mb-3">{uploadError}</p>}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-            className="hidden"
-            onChange={(e) => { void handleFileUpload(e); }}
-          />
+          {isPlus && <>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed mb-4 transition-colors hover:border-primary/60"
+              style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--muted))' }}
+            >
+              {uploading ? (
+                <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'hsl(var(--primary))' }} />
+              ) : (
+                <Upload className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} />
+              )}
+              <span className="text-sm text-foreground">
+                {uploading ? 'Uploading…' : 'Upload a custom photo'}
+              </span>
+              <span className="ml-auto text-xs text-muted-foreground">JPEG · PNG · WebP · max 5 MB</span>
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+              className="hidden"
+              onChange={(e) => { void handleFileUpload(e); }}
+            />
+          </>}
+          {uploadError && <p role="alert" className="text-xs text-destructive mb-3">{uploadError}</p>}
+
 
           {/* Witch hat grid */}
-          <p className="text-xs text-muted-foreground mb-3">Or choose a witch hat:</p>
           <div className="grid grid-cols-5 gap-2">
-            {pg.DEFAULT_AVATARS.map((av) => {
-              const isSelected = current === av.url;
+            {DEFAULT_AVATARS.map((av) => {
+              const isSelected = current === av.src;
               return (
                 <button
-                  key={av.id}
+                  key={av.key}
                   type="button"
-                  onClick={() => { onSelect(av.url); onClose(); }}
+                  disabled={uploading}
+                  aria-pressed={isSelected}
+                  onClick={() => { void selectHat(av.src); }}
                   className="relative flex flex-col items-center gap-1 rounded-xl p-1.5 transition-all"
                   style={{
                     background: isSelected ? 'hsl(var(--primary)/0.15)' : 'transparent',
@@ -123,7 +151,7 @@ function AvatarPickerSheet({
                   }}
                 >
                   <img
-                    src={av.url}
+                    src={av.src}
                     alt={av.label}
                     className="w-12 h-12 rounded-full object-cover"
                   />
@@ -158,7 +186,7 @@ interface ProfileData {
 }
 
 export default function EditProfilePage() {
-  const { data: session } = useSession();
+  const { data: session, refetch } = useSession();
   const navigate = useNavigate();
 
   const [form, setForm] = useState<ProfileData>({
@@ -183,14 +211,14 @@ export default function EditProfilePage() {
       .then((r) => r.json())
       .then((d: { profile?: { username?: string; bio?: string; location?: string; witchPath?: string; usernameCooldownDays?: number } }) => {
         if (d.profile) {
-          const u = session.user as { name?: string | null; image?: string | null };
+          const u = session.user as { name?: string | null; image?: string | null; avatarPreset?: string };
           setForm({
             name: u.name ?? '',
             username: d.profile.username ?? '',
             bio: d.profile.bio ?? '',
             location: d.profile.location ?? '',
             witchPath: d.profile.witchPath ?? '',
-            image: u.image ?? null,
+            image: profileAvatar(u.image, u.avatarPreset),
           });
           setOriginalUsername(d.profile.username ?? '');
           if (d.profile.usernameCooldownDays) {
@@ -200,7 +228,7 @@ export default function EditProfilePage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [session]);
+  }, [session?.user.id]);
 
   // Username availability check (debounced)
   useEffect(() => {
@@ -262,13 +290,7 @@ export default function EditProfilePage() {
 
   function handleAvatarSelect(url: string) {
     setForm((f) => ({ ...f, image: url }));
-    // Persist avatar selection
-    void fetch('/api/account/avatar/select', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ url }),
-    });
+    void refetch();
   }
 
   if (!session?.user) {

@@ -1,3 +1,4 @@
+import { profileAvatar } from '@/lib/default-avatars';
 import { SPARK_TOPICS } from '@/lib/spark-topics';
 import { loadSparkReadingDraft, clearSparkReadingDraft } from '@/lib/spark-reading-draft';
 import { SparkReadingAttachment } from '@/components/SparkReadingAttachment';
@@ -40,7 +41,8 @@ export default function SparkComposer() {
   const count = countSparkCharacters(text);
   const overLimit = count > SPARK_LIMIT;
   const author = session?.user;
-  const username = (author as { username?: string } | undefined)?.username;
+  const member = author as { username?: string; avatarPreset?: string } | undefined;
+  const username = member?.username;
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -113,8 +115,7 @@ export default function SparkComposer() {
         </header>
         <div className="spark-draft-card">
           {author && <div className="spark-draft-author">
-            {author.image ? <img src={author.image} alt="" />
-              : <span className="spark-draft-avatar" aria-hidden="true">{author.name?.charAt(0)?.toUpperCase() || '✦'}</span>}
+            <img src={profileAvatar(author.image, member?.avatarPreset)} alt="" />
             <strong>{author.name}</strong>
             {username && <span>@{username}</span>}
           </div>}

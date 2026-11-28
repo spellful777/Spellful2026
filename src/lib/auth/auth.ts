@@ -1,3 +1,5 @@
+import { APIError, createAuthMiddleware } from 'better-auth/api';
+import { STARTER_AVATAR } from '@/lib/default-avatars';
 /**
  * BetterAuth Server Configuration
  *
@@ -56,6 +58,7 @@ function createAuth() {
         // An empty-string default causes ER_DUP_ENTRY on the unique index
         // when a second user signs up before choosing a username.
         username: { type: 'string', input: false, returned: true },
+        avatarPreset: { type: 'string', input: false, returned: true },
         platformRole: { type: 'string', defaultValue: 'member', input: false, returned: true },
         accountType: { type: 'string', defaultValue: 'community_member', input: false, returned: true },
         // Birth data is sensitive — not returned in session; fetch via profile API only
@@ -187,9 +190,17 @@ function createAuth() {
     ],
 
     // ── Database Hooks — server-side lifecycle events ────────────────────────
+    hooks: {
+      before: createAuthMiddleware(async ctx => {
+        if (ctx.path === '/update-user' && ctx.body?.image !== undefined) {
+          throw new APIError('BAD_REQUEST', { message: 'Choose a witch hat or upload a Plus photo in your profile.' });
+        }
+      }),
+    },
     databaseHooks: {
       user: {
         create: {
+          before: async createdUser => ({ data: { ...createdUser, image: STARTER_AVATAR.src } }),
           after: async (createdUser) => {
             // For OAuth providers, the user is created already-verified.
             // Queue the welcome email server-side without depending on the browser.

@@ -1,3 +1,4 @@
+import { memberAvatar } from '@/server/lib/member-avatar.js';
 /**
  * GET /api/community/discover
  * Returns discoverable public members, optionally filtered by interest tags,
@@ -97,7 +98,7 @@ export default async function handler(req: Request, res: Response) {
       id: user.id,
       username: user.username,
       name: user.name,
-      image: user.image,
+      image: memberAvatar,
       bio: user.bio,
       interestTags: user.interestTags,
       witchPath: user.witchPath,

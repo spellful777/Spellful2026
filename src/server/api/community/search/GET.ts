@@ -1,3 +1,4 @@
+import { memberAvatar } from '@/server/lib/member-avatar.js';
 import { postAudienceAllows } from '@/server/lib/community-post-access.js';
 import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
@@ -43,7 +44,7 @@ export default async function handler(req: Request, res: Response) {
     replyCount: communityPosts.replyCount,
     createdAt: communityPosts.createdAt,
     authorName: user.name,
-    authorImage: user.image,
+    authorImage: memberAvatar,
     authorUsername: user.username,
     categoryName: communityCategories.name,
     categorySlug: communityCategories.slug,

@@ -1,3 +1,4 @@
+import { memberAvatar } from '@/server/lib/member-avatar.js';
 import { profileAudience } from '@/server/lib/profile-audience.js';
 /**
  * GET /api/profile/:username/guestbook
@@ -42,7 +43,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
       text: profileGuestbookEntries.text,
       createdAt: profileGuestbookEntries.createdAt,
       authorUsername: user.username,
-      authorImage: user.image,
+      authorImage: memberAvatar,
     })
     .from(profileGuestbookEntries)
     .innerJoin(user, eq(profileGuestbookEntries.authorUserId, user.id))
