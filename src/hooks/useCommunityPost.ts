@@ -38,6 +38,7 @@ export interface CommunityReply {
 }
 
 export interface CommunityPostDetail {
+  forumPost?: boolean;
   id: number;
   type: 'discussion' | 'question' | 'spark';
   title: string;

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
 import MobileBottomNav from './MobileBottomNav';
-import { HOME_EXPLORE, HOME_FEED } from '@/lib/community-navigation';
+import { COMMUNITY_FEED } from '@/lib/community-navigation';
 
 const { lookup } = vi.hoisted(() => ({ lookup: vi.fn() }));
 vi.mock('@/lib/auth/auth-client', () => ({ useSession: lookup }));
@@ -16,8 +16,8 @@ function Location() {
 }
 
 it.each([
-  { member: true, destination: HOME_FEED },
-  { member: false, destination: HOME_EXPLORE },
+  { member: true, destination: COMMUNITY_FEED },
+  { member: false, destination: COMMUNITY_FEED },
 ])('opens the appropriate Sparks timeline from Coven for member=$member', ({ member, destination }) => {
   lookup.mockReturnValue({ session: member ? { user: { id: 'reader' } } : null, isPending: false });
   render(<MemoryRouter initialEntries={['/']}><MobileBottomNav /><Location /></MemoryRouter>);

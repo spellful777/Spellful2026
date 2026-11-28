@@ -18,6 +18,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   const [post] = await db.select({
     id: communityPosts.id,
     type: communityPosts.type,
+    forumPost: communityPosts.forumPost,
     title: communityPosts.title,
     body: communityPosts.body,
     imageUrl: communityPosts.imageUrl,
@@ -46,7 +47,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     .from(communityPosts)
     .leftJoin(user, eq(communityPosts.userId, user.id))
     .leftJoin(communityCategories, eq(communityPosts.categoryId, communityCategories.id))
-    .where(and(eq(communityPosts.id, postId), postAudienceAllows(myId), myId ? undefined : eq(communityPosts.type, 'spark')))
+    .where(and(eq(communityPosts.id, postId), postAudienceAllows(myId)))
     .limit(1);
 
   if (!post) return res.status(404).json({ error: 'Post not found' });

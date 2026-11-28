@@ -1,5 +1,5 @@
 import { memberAvatar } from '@/server/lib/member-avatar.js';
-import { postAudienceAllows } from '@/server/lib/community-post-access.js';
+import { postAudienceAllows, postForumAllows } from '@/server/lib/community-post-access.js';
 import { profileActivity } from '@/server/lib/profile-activity.js';
 import { profileAudience } from '@/server/lib/profile-audience.js';
 import type { Request, Response } from 'express';
@@ -150,6 +150,9 @@ export default async function handler(req: Request<{ username: string }>, res: R
     const covenCount = Number(covenRow?.n ?? 0);
     const followerCount = Number(followerRow?.n ?? 0);
 
+    const visibleActivity = access.preview && access.coven
+      ? and(postForumAllows(), or(eq(communityPosts.audience, 'public'), eq(communityPosts.audience, 'coven')))
+      : postAudienceAllows(access.preview ? undefined : viewerId ?? undefined);
     const selected = profile.featuredAbout;
     let featuredAbout = selected;
     if (selected?.kind === 'playlist' && !access.owner) {
@@ -161,7 +164,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
     if (selected?.kind === 'spark') {
       const [spark] = await db.select({ audience: communityPosts.audience }).from(communityPosts).where(and(
         eq(communityPosts.id, selected.id), eq(communityPosts.userId, profile.id),
-        eq(communityPosts.type, 'spark'), eq(communityPosts.isHidden, false))).limit(1);
+        eq(communityPosts.type, 'spark'), eq(communityPosts.isHidden, false), visibleActivity)).limit(1);
       if (!spark || !access.allows(spark.audience)) featuredAbout = null;
     }
     const { shareFollowing: _shareFollowing, invitePermission, messagePermission, ...publicProfile } = profile;
@@ -169,9 +172,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
       id: communityPosts.id, title: communityPosts.title, createdAt: communityPosts.createdAt,
     }).from(communityPosts).where(and(
       eq(communityPosts.userId, profile.id), eq(communityPosts.isHidden, false),
-      access.preview && access.coven
-        ? or(eq(communityPosts.audience, 'public'), eq(communityPosts.audience, 'coven'))
-        : postAudienceAllows(access.preview ? undefined : viewerId ?? undefined),
+      visibleActivity,
     )).orderBy(desc(communityPosts.createdAt), desc(communityPosts.id)).limit(4);
     res.json({
       latestPosts,

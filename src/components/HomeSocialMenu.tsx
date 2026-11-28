@@ -35,15 +35,16 @@ interface HomeSocialMenuProps {
   username?: string | null;
   sparkRef: Ref<HTMLAnchorElement>;
   floatingSpark: boolean;
+  community?: boolean;
 }
 
-export default function HomeSocialMenu({ visitor, username, sparkRef, floatingSpark }: HomeSocialMenuProps) {
+export default function HomeSocialMenu({ visitor, username, sparkRef, floatingSpark, community }: HomeSocialMenuProps) {
   const pendingRequests = useSocialSummary(!visitor)?.pendingRequests ?? 0;
   const profile = username ? `/u/${encodeURIComponent(username)}` : '/account/edit-profile';
   return (
     <header className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="sr-only md:not-sr-only md:font-heading md:text-3xl">Sparks</h1>
+        <h1 className="sr-only md:not-sr-only md:font-heading md:text-3xl">{community ? 'Community' : 'Posts'}</h1>
         <Link to="/" aria-label="Spellful Home" className="home-brand relative inline-flex min-h-11 items-center rounded-sm focus-visible:outline focus-visible:outline-primary md:hidden">
           <img src="/assets/media/logo-official-white-8b86d830.png" alt="" width={82} height={44} className="block h-11 w-auto" />
         </Link>
@@ -53,7 +54,9 @@ export default function HomeSocialMenu({ visitor, username, sparkRef, floatingSp
               className="inline-flex size-11 items-center justify-center rounded-md text-foreground focus-visible:outline focus-visible:outline-primary">
               <User className="size-5" strokeWidth={1.75} aria-hidden="true" />
             </Link>
-          ) : <DropdownMenu>
+          ) : community ? <Link to={COMMUNITY_REQUESTS} aria-label={`Coven requests, ${pendingRequests} pending`} className="relative grid size-11 place-items-center">
+            <Users size={21} />{pendingRequests > 0 && <span className="social-count">{pendingRequests}</span>}
+          </Link> : <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"

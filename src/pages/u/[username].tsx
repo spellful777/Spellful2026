@@ -401,7 +401,7 @@ export default function UserProfilePage() {
     if (next === 'sparks') params.delete('tab');
     else params.set('tab', next);
     if (section) setOpenSection(section);
-    setSearchParams(params, { preventScrollReset: true });
+    setSearchParams(params, { preventScrollReset: true, replace: true });
   }
   const previewMode = searchParams.get('preview');
 
@@ -838,7 +838,7 @@ export default function UserProfilePage() {
         </header>
         <nav className="profile-tabs" aria-label="Profile sections">
           {(['sparks', 'replies', 'media', 'about'] as const).map(item => <button type="button" key={item}
-            aria-current={tab === item ? 'page' : undefined} onClick={() => openTab(item)}>{item}</button>)}
+            aria-current={tab === item ? 'page' : undefined} onClick={() => openTab(item)}>{item === 'sparks' ? 'Posts' : item[0].toUpperCase() + item.slice(1)}</button>)}
         </nav>
         {tab !== 'about' ? <ProfileActivity key={profile.id + tab + previewMode + viewerId + audienceVersion}
           author={{ authorName: profile.name, authorUsername: profile.username, authorImage: profile.image, authorPreset: profile.avatarPreset, authorFrame: profile.avatarFrame, userId: profile.id }}
@@ -850,7 +850,7 @@ export default function UserProfilePage() {
             <a href={playlist.url} target="_blank" rel="noopener noreferrer" aria-label={'Play ' + playlist.title}><Play size={14} /> Play</a>
           </div>}
           {featured?.kind === 'link' && <div className="profile-about-feature"><Globe className="size-5" /><div><strong>{featured.title}</strong></div><a href={featured.url} target="_blank" rel="noopener noreferrer">Open</a></div>}
-          {featured?.kind === 'spark' && <div className="profile-about-feature"><Sparkles className="size-5" /><div><strong>Featured Spark</strong></div><Link to={'/community/post/' + featured.id}>Open</Link></div>}
+          {featured?.kind === 'spark' && <div className="profile-about-feature"><Sparkles className="size-5" /><div><strong>Featured post</strong></div><Link to={'/community/post/' + featured.id}>Open</Link></div>}
           {[
 { id: 'about', title: 'About My Path', show: showBio || showLocation || showZodiac || !!profile.profileStatus || !!profile.witchPath || !!(identity && Object.values(identity).some(Boolean)), body: <>
           {/* ── Astrology signature row ──────────────────────────────────── */}

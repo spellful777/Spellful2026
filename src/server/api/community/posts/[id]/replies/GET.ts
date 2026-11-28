@@ -50,7 +50,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     .from(communityReplies)
     .innerJoin(communityPosts, eq(communityPosts.id, communityReplies.postId))
     .leftJoin(user, eq(communityReplies.userId, user.id))
-    .where(and(...conditions, eq(communityPosts.isHidden, false), postAudienceAllows(myId), myId ? undefined : eq(communityPosts.type, 'spark')))
+    .where(and(...conditions, eq(communityPosts.isHidden, false), postAudienceAllows(myId)))
     .orderBy(sort === 'liked' ? desc(communityReplies.likeCount) : asc(communityReplies.createdAt));
 
   // Liked state

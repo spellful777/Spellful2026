@@ -53,8 +53,8 @@ export function SparkCommentActions({ reply, onReply, locked, canInteract = true
       <DialogContent className="max-w-sm">
         <DialogTitle>Share reply</DialogTitle>
         <DialogDescription>{audience === 'public'
-          ? 'This link opens the original Spark at this reply.'
-          : 'Only members with access to the original Spark can open this reply.'}</DialogDescription>
+          ? 'This link opens the original Post at this reply.'
+          : 'Only members with access to the original Post can open this reply.'}</DialogDescription>
         <input aria-label="Reply link" readOnly value={share ? url() : ''} onFocus={event => event.target.select()} className="w-full rounded border border-border bg-background p-2" />
         <button type="button" className="min-h-11 rounded border border-border" onClick={async () => {
           try {

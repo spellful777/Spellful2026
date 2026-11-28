@@ -26,9 +26,15 @@ export function horoscopeSnapshot(forecast: Omit<SharedHoroscope, 'type'>): Shar
   return { type: 'horoscope', sign: forecast.sign, date: forecast.date, headline: forecast.headline, body: forecast.body };
 }
 
-export type SparkReading = z.infer<typeof natal> | z.infer<typeof sharedReadingSchema> | SharedHoroscope;
+const numerology = z.object({
+  type: z.literal('numerology'), label: z.enum(['Life Path', 'Expression']),
+  number: z.number().int().refine(n => (n >= 1 && n <= 9) || [11,22,33].includes(n)),
+}).strict();
+export type SparkReading = z.infer<typeof numerology> | z.infer<typeof natal> | z.infer<typeof sharedReadingSchema> | SharedHoroscope;
 
 export function parseSparkReading(value: unknown): SparkReading | null {
+  const number = numerology.safeParse(value);
+  if (number.success) return number.data;
   const daily = horoscope.safeParse(value);
   if (daily.success) return daily.data;
   const chart = natal.safeParse(value);

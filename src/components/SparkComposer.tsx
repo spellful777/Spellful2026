@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { X } from 'lucide-react';
+import { useCommunityCategories } from '@/hooks/useCommunity';
 import { SPARK_COMPOSE } from '@/lib/community-navigation';
 import { SPARK_LIMIT, countSparkCharacters } from '@/lib/sparks';
 import { useSession } from '@/lib/auth/auth-client';
@@ -18,6 +19,9 @@ export default function SparkComposer() {
   const navigate = useNavigate();
   const [text, setText] = useState('');
   const [params] = useSearchParams();
+  const { categories } = useCommunityCategories();
+  const [destination, setDestination] = useState(params.get('forum') ?? '');
+  const selectedForum = categories.find(c => c.slug === destination);
   const readingId = params.get('reading');
   const [sourceReading, setSourceReading] = useState(() => loadSparkReadingDraft(readingId));
   useEffect(() => { setSourceReading(loadSparkReadingDraft(readingId)); }, [readingId]);
@@ -33,6 +37,21 @@ export default function SparkComposer() {
     (!!text.trim() || attachments.uploads.length > 0 || !!reading) &&
     (!readingId || !!reading) && (!quotedPostId || original?.audience === 'public') && attachments.uploads.every(upload => upload.state === 'ready');
   const [audience, setAudience] = useState<'public' | 'coven'>(readingId ? 'coven' : 'public');
+  const draftKey = session?.user.id ? 'community:draft:' + session.user.id + ':' + (readingId || quotedPostId || 'post') : '';
+  const restored = useRef('');
+  useEffect(() => {
+    if (!draftKey || restored.current === draftKey) return;
+    restored.current = draftKey;
+    try {
+      const draft = JSON.parse(sessionStorage.getItem(draftKey) || 'null');
+      if (draft) { setText(draft.text || ''); setAudience(draft.audience === 'coven' ? 'coven' : 'public');
+        setDestination(params.get('forum') || draft.destination || ''); setTopic(draft.topic ?? null); }
+    } catch { /* Editing remains available if storage is disabled. */ }
+  }, [draftKey, params]);
+  function saveDraft() {
+    if (draftKey) try { sessionStorage.setItem(draftKey, JSON.stringify({text,audience,destination,topic})); } catch { /* optional storage */ }
+  }
+  useEffect(() => { window.addEventListener('pagehide',saveDraft); return () => window.removeEventListener('pagehide',saveDraft); }, [draftKey,text,audience,destination,topic]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const submitLock = useRef(false);
@@ -77,7 +96,7 @@ export default function SparkComposer() {
 
   async function publish(event: FormEvent) {
     event.preventDefault();
-    if (!session || submitLock.current || !canPublish || overLimit) return;
+    if (!session || submitLock.current || !canPublish || overLimit || (destination && !selectedForum)) return;
     submitLock.current = true;
     setSubmitting(true);
     setError('');
@@ -85,14 +104,15 @@ export default function SparkComposer() {
       const response = await fetch('/api/community/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'spark', body: text, audience, quotedPostId, sparkTopic: topic || undefined, sparkReading: reading ?? undefined, mediaIds: attachments.uploads.map(upload => upload.id) }),
+        body: JSON.stringify({ type: 'spark', categoryId: selectedForum?.id, body: text, audience, quotedPostId, sparkTopic: topic || undefined, sparkReading: reading ?? undefined, mediaIds: attachments.uploads.map(upload => upload.id) }),
       });
       const result = await response.json() as { id?: number; error?: string };
-      if (!response.ok || !result.id) throw new Error(result.error ?? 'Couldn’t publish your Spark.');
+      if (!response.ok || !result.id) throw new Error(result.error ?? 'Couldn’t publish your Post.');
+      try { sessionStorage.removeItem(draftKey); } catch { /* optional storage */ }
       clearSparkReadingDraft(readingId);
       navigate(`/community/post/${result.id}`, { replace: true });
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Couldn’t publish your Spark.');
+      setError(failure instanceof Error ? failure.message : 'Couldn’t publish your Post.');
       submitLock.current = false;
       setSubmitting(false);
     }
@@ -100,17 +120,17 @@ export default function SparkComposer() {
 
   return (
     <main className="spark-draft">
-      <Helmet><title>Spark it — Spellful</title></Helmet>
+      <Helmet><title>Post — Spellful</title></Helmet>
       <form ref={form} onSubmit={publish} className="spark-draft-form">
         <header className="spark-draft-header">
           <button type="button" className="spark-draft-close" aria-label="Close composer" disabled={submitting}
-            onClick={() => { clearSparkReadingDraft(readingId); if (window.history.state?.idx > 0) navigate(-1); else navigate('/', { replace: true }); }}>
+            onClick={() => { saveDraft(); if (window.history.state?.idx > 0) navigate(-1); else navigate('/', { replace: true }); }}>
             <X aria-hidden="true" className="size-6" />
           </button>
-          <h1>Spark it</h1>
-          <button type="submit" disabled={!session || submitting || !canPublish || overLimit}
+          <h1>Post</h1>
+          <button type="submit" disabled={!session || submitting || !canPublish || overLimit || (!!destination && !selectedForum)}
             aria-busy={submitting} className="spark-draft-post coven-press">
-            {submitting ? 'Posting…' : 'Post'}
+            {submitting ? 'Posting…' : selectedForum ? 'Post to ' + selectedForum.name : 'Post'}
           </button>
         </header>
         <div className="spark-draft-card">
@@ -119,9 +139,9 @@ export default function SparkComposer() {
             <strong>{author.name}</strong>
             {username && <span>@{username}</span>}
           </div>}
-          <label htmlFor="spark-text" className="sr-only">Your Spark</label>
+          <label htmlFor="spark-text" className="sr-only">Your Post</label>
           <textarea ref={field} id="spark-text" value={text} readOnly={submitting}
-            onChange={event => setText(event.target.value)} rows={1} placeholder={reading ? "Add a caption (optional)…" : "Write a Spark…"}
+            onChange={event => setText(event.target.value)} rows={1} placeholder={reading ? "Add a caption (optional)…" : "What’s on your mind?"}
             aria-describedby="spark-count" aria-invalid={overLimit} />
           {readingId ? reading ? <>
             <p className="text-xs text-muted-foreground">Feed preview · {audience === 'public' ? 'Public' : 'Coven only'}</p>
@@ -133,15 +153,20 @@ export default function SparkComposer() {
             <p className="text-xs text-muted-foreground">{reading.type === 'natal'
               ? 'Shares the wheel without your birth details.'
               : reading.type === 'tarot' ? 'Shares the spread and any selected card meanings. Your question and private notes stay out.'
-              : 'Shares the sign, forecast date, headline, and horoscope paragraph.'}</p>
-          </> : <p role="status" className="text-sm">This reading draft is unavailable. Open Spark from the completed reading again.</p>
-          : quotedPostId ? originalLoading ? <p>Loading original Spark…</p> : <OriginalSparkCard spark={original?.audience === 'public' ? {
+              : reading.type === 'numerology' ? 'Shares only the calculated number and its type.' : 'Shares the sign, forecast date, headline, and horoscope paragraph.'}</p>
+          </> : <p role="status" className="text-sm">This reading draft is unavailable. Open Post from the completed reading again.</p>
+          : quotedPostId ? originalLoading ? <p>Loading original Post…</p> : <OriginalSparkCard spark={original?.audience === 'public' ? {
             id: original.id, title: original.title, authorName: original.authorName, imageUrl: original.imageUrl,
             sparkMedia: original.sparkMedia ?? null, sparkReading: original.sparkReading,
           } : null} /> : <SparkAttachments attachments={attachments} disabled={submitting} />}
+          <label className="destination-picker">Destination
+            <select value={destination} onChange={e => setDestination(e.target.value)} disabled={submitting}>
+              <option value="">Community feed</option>{categories.map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}
+            </select>
+          </label>
           <div className="spark-draft-meta">
             <label>
-              <span className="sr-only">Audience</span>
+              <span>Audience </span>
               <select value={audience} disabled={submitting} onChange={event => setAudience(event.target.value === 'coven' ? 'coven' : 'public')}>
                 <option value="public">Public</option>
                 <option value="coven">Coven</option>
@@ -159,7 +184,7 @@ export default function SparkComposer() {
           </label>
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         </div>
-        {!submitting && <Link to="/community/new" state={{ discussionBody: text }} className="spark-draft-discussion">Start a discussion</Link>}
+        {!submitting && <Link onClick={saveDraft} to={'/community/new' + (selectedForum ? '?category=' + selectedForum.id : '')} state={{ discussionBody: text }} className="spark-draft-discussion">Start a discussion</Link>}
       </form>
     </main>
   );

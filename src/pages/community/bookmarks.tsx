@@ -104,7 +104,7 @@ function BookmarkRow({
           to={item.replyId ? sparkReplyPath(item.id, item.replyId) : `/community/post/${item.id}`}
           className="block text-sm font-semibold text-foreground hover:text-primary transition-colors leading-snug mb-2 line-clamp-2"
         >
-          {item.replyId ? "Open reply" : item.title || "Open Spark"}
+          {item.replyId ? "Open reply" : item.title || "Open Post"}
           {item.type === 'question' && (
             <CheckCircle2 className="inline w-3.5 h-3.5 ml-1.5 text-[hsl(var(--success))] align-middle" />
           )}

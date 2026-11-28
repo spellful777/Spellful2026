@@ -30,7 +30,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     suppressLinkPreview?: boolean; body?: string; parentId?: number; followUp?: boolean; sharedReading?: unknown; gifUrl?: unknown;
   };
   const spark = post.type === 'spark';
-  const gifUrl = spark ? commentGifUrl(rawGif) : null;
+  const gifUrl = commentGifUrl(rawGif);
   if (rawGif != null && !gifUrl) return res.status(400).json({ error: 'Invalid GIF link' });
   if (typeof body !== 'string' || (!body.trim() && !gifUrl && sharedReading === undefined)) {
     return res.status(400).json({ error: 'body is required' });

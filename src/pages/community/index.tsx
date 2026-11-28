@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { SessionCheckRetry, useSession } from '@/lib/auth/auth-client';
 import SparkCard from '@/components/SparkCard';
+import CommunitySocial from '@/components/CommunitySocial';
 import { SPARK_COMPOSE, COMMUNITY_FAVORITES } from '@/lib/community-navigation';
 import SparkHeartButton from '@/components/SparkHeartButton';
 import SparkIcon from '@/components/SparkIcon';
@@ -26,7 +27,7 @@ import { formatDistanceToNow } from 'date-fns';
 import FriendUpdatesFeed from '@/components/FriendUpdatesFeed';
 import SinceYouWereAwayBanner from '@/components/SinceYouWereAwayBanner';
 import CovenHearth from '@/components/CovenHearth';
-import { COMMUNITY_FEED, COMMUNITY_GROUPS, COMMUNITY_UPDATES, HOME_EXPLORE, HOME_FEED } from '@/lib/community-navigation';
+import { COMMUNITY_FEED, COMMUNITY_GROUPS, COMMUNITY_UPDATES } from '@/lib/community-navigation';
 import CosmicPulse from "@/components/CosmicPulse";
 
 // ── Community stats strip ─────────────────────────────────────────────────────
@@ -326,9 +327,9 @@ function TrendingSidebar({ onSelectTrending }: { onSelectTrending: () => void })
         </h3>
         <nav className="space-y-1.5">
           {[
-            { to: COMMUNITY_FAVORITES, icon: Bookmark, label: 'Favorites', desc: 'Your saved Sparks and discussions' },
+            { to: COMMUNITY_FAVORITES, icon: Bookmark, label: 'Favorites', desc: 'Your saved Posts and discussions' },
             { to: '/community/notifications', icon: Bell, label: 'Notifications', desc: 'Replies & mentions' },
-            { to: SPARK_COMPOSE, icon: SparkIcon, label: 'Spark it', desc: 'Start a conversation' },
+            { to: SPARK_COMPOSE, icon: SparkIcon, label: 'Post it', desc: 'Start a conversation' },
             { to: '/creators', icon: Star, label: 'Creators', desc: 'Browse verified creators' },
             { to: '/organizations', icon: Building2, label: 'Organizations', desc: 'Shops, studios & collectives' },
           ].map(({ to, icon: Icon, label, desc }) => (
@@ -371,7 +372,12 @@ export default function CommunityPage() {
   const location = useLocation();
   if (isPending) return <p role="status" className="p-5">Loading Coven…</p>;
   const view = new URLSearchParams(location.search).get('view');
-  if (!view || view === 'feed') return <Navigate replace to={session ? HOME_FEED : HOME_EXPLORE} />;
+  if (!view || ['feed', 'forums', 'groups'].includes(view)) {
+    if (!session && sessionCheckFailed) return <SessionCheckRetry />;
+    return <CommunitySocial key={(session?.user.id ?? 'guest') + location.key}
+      viewer={session?.user.id} username={(session?.user as {username?: string})?.username}
+      forums={view === 'groups' || view === 'forums'} />;
+  }
   if (!session) {
     if (sessionCheckFailed) return <SessionCheckRetry />;
     const destination = encodeURIComponent(location.pathname + location.search);
@@ -918,7 +924,7 @@ function MemberCommunity({ session }: { session: NonNullable<ReturnType<typeof u
               {showPosts && session && (<>
               {isFeed ? (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="font-heading text-xl">Sparks from people you follow</h2>
+                  <h2 className="font-heading text-xl">Posts from people you follow</h2>
                   {hasNewFeedPosts && <Button size="sm" onClick={reloadPosts}>Show new posts</Button>}
                 </div>
               ) : (

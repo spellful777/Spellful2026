@@ -3,7 +3,7 @@ import { and, count, eq } from 'drizzle-orm';
 import { db } from '@/server/db/client.js';
 import { communityPosts } from '@/server/db/schema.js';
 import { getAuthSession } from '@/server/lib/auth-session.js';
-import { visiblePostForMember } from '@/server/lib/community-post-access.js';
+import { visiblePostForMember, postAudienceAllows } from '@/server/lib/community-post-access.js';
 
 export default async function handler(req: Request<{ id: string }>, res: Response) {
   const viewer = (await getAuthSession(req))?.user?.id;
@@ -25,7 +25,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     if (!desired && existing) await tx.delete(communityPosts).where(owned);
     if (!source) return { reshared: false, reshareCount: 0 };
     const [totals] = await tx.select({ n: count() }).from(communityPosts)
-      .where(and(eq(communityPosts.reshareOf, id), eq(communityPosts.isHidden, false)));
+      .where(and(eq(communityPosts.reshareOf, id), eq(communityPosts.isHidden, false), postAudienceAllows(viewer)));
     return { reshared: desired, reshareCount: Number(totals.n) };
   });
   if (!result) return res.sendStatus(404);

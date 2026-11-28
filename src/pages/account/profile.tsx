@@ -1320,7 +1320,7 @@ export default function ProfileStudioPage({ editingIdentity = false }: { editing
                   </Collapsible>
 
                   <Collapsible title="Featured item" defaultOpen={!editingIdentity}>
-                    <p className="text-sm text-muted-foreground">Highlight a playlist, Spark, or link on your profile.</p>
+                    <p className="text-sm text-muted-foreground">Highlight a playlist, Post, or link on your profile.</p>
                     <label className="grid gap-2 text-sm">
                       Featured item type
                       <select className="rounded border border-border bg-background p-2" value={form.featuredAbout?.kind ?? ''}
@@ -1330,7 +1330,7 @@ export default function ProfileStudioPage({ editingIdentity = false }: { editing
                           set('featuredAbout', kind === 'playlist' ? { kind, id: playlists[0]?.id ?? 0 }
                             : kind === 'spark' ? { kind, id: 0 } : kind === 'link' ? { kind, title: '', url: '' } : null);
                         }}>
-                        <option value="">None</option><option value="playlist">Playlist</option><option value="spark">Spark</option><option value="link">External link</option>
+                        <option value="">None</option><option value="playlist">Playlist</option><option value="spark">Post</option><option value="link">External link</option>
                       </select>
                     </label>
                     {form.featuredAbout?.kind === 'playlist' && <label className="grid gap-1 text-sm">Playlist
@@ -1340,7 +1340,7 @@ export default function ProfileStudioPage({ editingIdentity = false }: { editing
                         {playlists.map(item => <option key={item.id} value={item.id}>{item.customTitle || item.provider + ' playlist'}</option>)}
                       </select>
                     </label>}
-                    {form.featuredAbout?.kind === 'spark' && <label className="grid gap-1 text-sm">Spark link
+                    {form.featuredAbout?.kind === 'spark' && <label className="grid gap-1 text-sm">Post link
                       <Input placeholder="https://spellful.com/community/post/…" value={featureSparkInput ?? (form.featuredAbout.id ? 'https://spellful.com/community/post/' + form.featuredAbout.id : '')}
                         onChange={event => { setFeatureSparkInput(event.target.value); const id = Number(event.target.value.match(/(?:^|\/community\/post\/)(\d+)\/?$/)?.[1]); set('featuredAbout', { kind: 'spark', id: Number.isSafeInteger(id) ? id : 0 }); }} />
                     </label>}

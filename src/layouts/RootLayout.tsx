@@ -36,7 +36,8 @@ function RootLayoutInner({ children }: RootLayoutProps) {
   // Only apply top padding when the header is actually visible.
   const { pathname, search } = useLocation();
   const feed = new URLSearchParams(search).get('feed');
-  const hasFeedHeader = pathname === '/' && (feed === 'following' || feed === 'explore');
+  const communityHome = pathname === '/community' && [null,'feed','groups','forums'].includes(new URLSearchParams(search).get('view'));
+  const hasFeedHeader = communityHome || (pathname === '/' && (feed === 'following' || feed === 'explore'));
   const headerVisibleOnMobile = !hasFeedHeader && (isPending || !session);
   return (
     <Website>
@@ -63,7 +64,7 @@ function RootLayoutInner({ children }: RootLayoutProps) {
           When logged in on mobile the header hides itself, so no top padding needed there.
           pb-16 on mobile so the fixed bottom nav never covers page content */}
       <div className={`${headerVisibleOnMobile ? 'pt-16' : ''} md:pt-20 pb-16 md:pb-0`}>
-        <Breadcrumbs />
+        {!communityHome && <Breadcrumbs />}
         {children}
       </div>
       <Footer />

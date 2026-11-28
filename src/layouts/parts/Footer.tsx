@@ -226,7 +226,7 @@ export default function Footer() {
           {[
             { label: 'Explore', href: '/spells' },
             { label: 'Community', href: communityDest },
-            { label: 'Sparks', href: HOME_EXPLORE },
+            { label: 'Posts', href: HOME_EXPLORE },
             { label: 'My Grimoire', href: grimDest },
           ].map((l) => (
             <Link

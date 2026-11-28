@@ -1,7 +1,6 @@
 import { HOME_EXPLORE, HOME_FEED, COMMUNITY_GROUPS } from '@/lib/community-navigation';
 import { useRef, useState, useEffect } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router';
-import HomeFeed from './home-feed';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion } from 'motion/react';
 import { Sparkles, BookOpen, Moon, Star, Leaf, Users, ArrowRight, Lock } from 'lucide-react';
@@ -157,13 +156,11 @@ export default function HomePage() {
   if (feed !== 'following' && feed !== 'explore') return <SpellfulHome />;
   if (isPending) return <p role="status" className="p-5">Loading Coven…</p>;
   if (!session) {
-    if (feed === 'explore') return <HomeFeed key="visitor" visitor />;
+    if (feed === 'explore') return <Navigate replace to="/community" />;
     if (sessionCheckFailed) return <SessionCheckRetry />;
     return <Navigate replace to={`/login?redirect=${encodeURIComponent(HOME_FEED)}`} />;
   }
-  const { user } = session;
-  const username = 'username' in user && typeof user.username === 'string' ? user.username : undefined;
-  return <HomeFeed key={user.id} username={username} />;
+  return <Navigate replace to={feed === 'following' ? '/community?filter=following' : '/community'} />;
 }
 
 function SpellfulHome() {

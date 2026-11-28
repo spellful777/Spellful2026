@@ -1828,6 +1828,8 @@ export async function runStartupMigration(): Promise<void> {
       console.error(JSON.stringify({ event: 'startup.migration.platform_settings.error', msg: msg.slice(0, 120) }));
     }
     for (const statement of [
+      'ALTER TABLE community_categories ADD COLUMN members_only BOOLEAN NOT NULL DEFAULT FALSE',
+      'ALTER TABLE community_posts ADD COLUMN forum_post BOOLEAN NOT NULL DEFAULT FALSE',
       'ALTER TABLE community_replies ADD COLUMN gif_url TEXT NULL',
       'ALTER TABLE community_posts ADD COLUMN spark_media JSON NULL',
       'ALTER TABLE community_posts ADD COLUMN spark_topic VARCHAR(40) NULL',
@@ -1862,6 +1864,15 @@ export async function runStartupMigration(): Promise<void> {
         UNIQUE KEY uq_reply_favorite (user_id, reply_id),
         FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
         FOREIGN KEY (reply_id) REFERENCES community_replies(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS community_forum_memberships (
+        category_id INT NOT NULL, user_id VARCHAR(36) NOT NULL,
+        UNIQUE KEY uq_forum_member(category_id,user_id),
+        FOREIGN KEY (category_id) REFERENCES community_categories(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 

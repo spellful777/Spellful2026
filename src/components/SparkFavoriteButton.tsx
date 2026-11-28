@@ -37,7 +37,7 @@ export default function SparkFavoriteButton({ postId, bookmarked }: { postId: nu
     <>
       <button
         type="button"
-        aria-label="Favorite Spark"
+        aria-label="Favorite Post"
         aria-pressed={saved}
         aria-disabled={pending}
         title={saved ? 'Remove from Favorites' : 'Save to Favorites'}

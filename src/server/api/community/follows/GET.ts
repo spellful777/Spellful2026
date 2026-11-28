@@ -38,6 +38,6 @@ export default async function handler(req: Request, res: Response) {
       followingCount: Number((followingRow[0] as Array<{ cnt: number }>)[0]?.cnt ?? 0),
     });
   } catch {
-    res.json({ following: false, followersCount: 0, followingCount: 0 });
+    res.status(503).json({ error: 'Following is temporarily unavailable' });
   }
 }

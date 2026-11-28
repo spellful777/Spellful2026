@@ -49,7 +49,7 @@ it.each([
   { member: false, startingPath: '/community', filter: 'discover', tab: 'Explore' },
   { member: false, startingPath: '/?feed=explore', filter: 'discover', tab: 'Explore' },
   { member: true, startingPath: '/community', filter: 'following', tab: 'Following' },
-])('opens the compact Sparks feed from $startingPath for member=$member', async ({ member, startingPath, filter, tab }) => {
+])('opens the Community feed from $startingPath for member=$member', async ({ member, startingPath }) => {
   lookup.mockReturnValue({ data: member ? { user: { id: 'reader', username: 'reader' } } : null, isPending: false });
   vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} unobserve() {} });
   const fetch = vi.fn(async (path: string) => Response.json(path.startsWith('/api/community/posts?') ? {
@@ -59,16 +59,15 @@ it.each([
   vi.stubGlobal('fetch', fetch);
   openPage(startingPath);
 
-  const tabs = within(await screen.findByRole('navigation', { name: 'Home feed' }));
-  expect(tabs.getByRole('link', { name: tab })).toHaveAttribute('aria-current', 'page');
-  expect(tabs.getByRole('link', { name: 'Community' })).toHaveAttribute('href', '/community?view=groups');
-  expect(screen.getByRole('link', { name: 'Spark it' })).toHaveAttribute('href', '/community/new?kind=spark');
+  const tabs = within(await screen.findByRole('navigation', { name: 'Community' }));
+  expect(tabs.getByRole('link', { name: 'Feed' })).toHaveAttribute('aria-current', 'page');
+  expect(tabs.getByRole('link', { name: 'Forums' })).toHaveAttribute('href', '/community?view=forums');
+  expect(screen.getByRole('link', { name: 'Post' })).toHaveAttribute('href', '/community/new?kind=spark');
   expect(await screen.findByText('A new moon reading')).toBeVisible();
-  expect(fetch).toHaveBeenCalledWith('/api/community/posts?filter=' + filter + '&page=1&limit=20&order=newest&kind=spark', expect.anything());
+  expect(fetch).toHaveBeenCalledWith('/api/community/posts?filter=feed&limit=20', expect.anything());
   if (!member) {
-    expect(screen.getByRole('link', { name: 'Moon Magic' })).toHaveAttribute('href', '/explore/topics/moon-magic');
     expect(screen.queryByRole('button', { name: 'Save Spark' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'More actions for Juniper’s Spark' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'More actions for Juniper’s Post' })).toBeEnabled();
     expect(fetch.mock.calls.some(([path]) => path.startsWith('/api/account/'))).toBe(false);
   }
 });
@@ -93,6 +92,6 @@ it('renders the member dashboard and the shared homepage sections alongside the 
   const home = homeContent({ user: { id: 'test-member', name: 'Test Member' } });
   expect(home.getByText('Your Inner Universe')).toBeTruthy();
   expect(home.getByRole('heading', { name: 'Explore the Craft' })).toBeTruthy();
-  expect(home.getByRole('link', { name: 'Spark it' })).toHaveAttribute('href', '/community/new?kind=spark');
+  expect(home.getByRole('link', { name: 'Post' })).toHaveAttribute('href', '/community/new?kind=spark');
   expect(home.getByRole('link', { name: 'Open Spark feed' })).toHaveAttribute('href', '/?feed=following');
 });
