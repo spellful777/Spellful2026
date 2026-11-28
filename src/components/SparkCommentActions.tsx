@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Heart, MessageCircle, Share, Star } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { publicShareUrl } from '@/lib/share-studio';
 import { sparkReplyPath } from '@/lib/spark-comments';
 import type { CommunityReply } from '@/hooks/useCommunityPost';
 
@@ -15,7 +16,7 @@ export function SparkCommentActions({ reply, onReply, locked, canInteract = true
   const [pending, setPending] = useState(false);
   const [share, setShare] = useState(false);
   const [status, setStatus] = useState('');
-  const url = () => new URL(sparkReplyPath(reply.postId, reply.id), window.location.origin).href;
+  const url = () => publicShareUrl(new URL(sparkReplyPath(reply.postId, reply.id), window.location.href).href);
 
   async function change(action: 'liked' | 'favorited') {
     setPending(true);

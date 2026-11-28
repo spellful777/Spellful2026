@@ -878,124 +878,130 @@ html.high-contrast {
   }
 }
 
-/* Spark comments use one continuous spine with a branch at each avatar. */
+/* Spark conversation. Only actual children draw a branch from their parent. */
 .spark-comments {
-  --comment-line: #aa87c6;
-  background: linear-gradient(160deg, #1d1022, #120c17 65%);
-  color: #f6ebdc;
+  --thread-ink: #fff2df;
+  --thread-muted: #d2b8de;
+  --thread-line: #c9a5e6;
+  --thread-rule: #674a65;
+  --thread-gold: #ffce69;
+  --avatar: 2.6rem;
+  --indent: clamp(1.8rem, 8.3vw, 2.8rem);
+  --row-top: .6rem;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: calc(100dvh - 5rem);
+  min-height: 0;
+  padding-inline: max(1rem, calc((100% - 42rem) / 2));
+  color: var(--thread-ink);
+  background: radial-gradient(ellipse at 18% 0%, #240e22, transparent 70%), #160916;
 }
-.spark-comments-header {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  max-width: 48rem;
-  margin-inline: auto;
-  padding-inline: .75rem;
-  border-bottom: 1px solid #604969;
+.spark-comments-header { display: flex; align-items: center; gap: .35rem; padding-block: .25rem; border-bottom: 1px solid var(--thread-rule); }
+.spark-comments-header h1 { font: 700 1.5rem/1.15 var(--font-heading); }
+.spark-comments-header button, .spark-thread-more, .spark-thread-heading button[aria-label="Comment options"] {
+  display: grid; place-items: center; width: 44px; height: 44px;
 }
-.spark-comments-header a, .spark-comment-actions button {
-  display: inline-flex;
-  min-width: 44px;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-}
-.spark-comments-header h1 { font-weight: 700; font-size: 1.125rem; }
-.spark-comments > div.max-w-3xl { padding-top: .75rem; }
-.spark-comments > div.max-w-3xl > * + * { margin-top: 0; }
-.spark-original {
+.spark-comments-header button { margin-left: -.6rem; }
+.spark-thread-scroll { min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; padding-bottom: 1rem; }
+.spark-original, .spark-comment-row {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  padding: 0 0 .65rem 2.6rem;
-}
-.spark-original-author { order: -1; margin: 0; }
-.spark-original-author > :first-child { position: absolute; left: 0; top: 0; }
-.spark-original-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: .15rem 0; }
-.spark-original-actions { margin-top: .25rem; padding-top: 0; border: 0; }
-.spark-comments:has(.spark-comment-thread) .spark-original::before {
-  content: '';
-  position: absolute;
-  left: 15px;
-  top: 29px;
-  bottom: 0;
-  width: 1px;
-  background: var(--comment-line);
-}
-.spark-comment-thread { margin-left: 15px; }
-.spark-comment-thread, .spark-comment-branch { --branch-width: 16px; }
-.spark-comment-thread > .spark-comment-node, .spark-comment-branch > .spark-comment-node {
-  position: relative;
-  padding-left: var(--branch-width);
-  scroll-margin-top: 6rem;
-}
-.spark-comment-node::before, .spark-comment-node::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  pointer-events: none;
-}
-.spark-comment-node::before { top: 0; bottom: 0; border-left: 1px solid var(--comment-line); }
-.spark-comment-node:last-child::before { bottom: auto; height: 20px; }
-.spark-comment-node::after {
-  top: 20px;
-  width: var(--branch-width);
-  border-bottom: 1px solid var(--comment-line);
-}
-.spark-comment-branch { margin-left: 13px; }
-.spark-comment-row { padding: .35rem 0 .15rem 2.2rem; position: relative; }
-.spark-comment-row > .flex:first-child { margin-bottom: .1rem; }
-.spark-comment-row > .flex:first-child > .flex > :first-child {
-  position: absolute;
-  left: 0;
-  top: .4rem;
-}
-.spark-comment-row :is(.prose, .spark-comment-context) {
+  padding: var(--row-top) 0 .25rem calc(var(--avatar) + .65rem);
+  min-height: calc(var(--avatar) + 2 * var(--row-top));
   overflow-wrap: anywhere;
-  white-space: pre-wrap;
 }
-.spark-comment-context { color: #cbb0db; font-size: .72rem; margin: .15rem 0; }
-.spark-comment-actions { display: flex; align-items: center; color: #dbc1ec; margin-left: -9px; }
-.spark-comment-actions button { gap: .25rem; font-size: .75rem; }
-.spark-comment-actions svg { width: 16px; height: 16px; }
-.spark-comment-actions button[aria-pressed=true] { color: #f2c869; }
+.spark-original { display: flex; flex-direction: column; align-items: stretch; }
+.spark-original > .mb-3:empty, .spark-original-text:empty, .spark-thread-dock:empty { display: none; }
+.spark-original > a { align-self: flex-start; }
+.spark-original-text, .spark-comment-row .prose {
+  margin: .12rem 0 0; color: var(--thread-ink); font: 400 1.07rem/1.34 Georgia, serif; white-space: pre-wrap;
+}
+.spark-thread-heading { display: flex; justify-content: space-between; align-items: baseline; }
+.spark-thread-byline {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem .32rem; padding-right: 2rem;
+  font-size: .8rem; line-height: 1.3; color: var(--thread-muted);
+}
+.spark-thread-identity { display: contents; }
+.spark-thread-identity strong { font: 700 1.14rem/1.12 Georgia, serif; color: var(--thread-ink); }
+.spark-thread-identity:hover strong, .spark-comment-context a:hover { text-decoration: underline; }
+.spark-thread-avatar {
+  position: absolute; left: 0; top: var(--row-top); width: var(--avatar); height: var(--avatar);
+  display: grid; place-items: center; overflow: hidden; border: 1px solid #c3a78a; border-radius: 50%;
+  background: #45283e; color: var(--thread-ink); font: 600 1.1rem Georgia, serif;
+}
+.spark-thread-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.spark-thread-identity:focus-visible strong { outline: 2px solid var(--thread-gold); }
+.spark-thread-more, .spark-thread-heading > .relative { position: absolute; right: 0; top: 0; color: var(--thread-muted); }
+.spark-thread-heading > .relative { z-index: 2; }
+.spark-thread-more svg, .spark-thread-heading button > svg { width: 1.1rem; }
+.spark-comment-thread > .spark-comment-node { border-top: 1px solid var(--thread-rule); }
+.spark-comment-node { position: relative; scroll-margin-block: .5rem; }
+.spark-comment-node:focus:not(:focus-visible) { outline: 0; }
+.spark-comment-branch { margin-inline-start: calc(var(--avatar) / 2); }
+.spark-comment-branch > .spark-comment-node { padding-inline-start: calc(var(--indent) - var(--avatar) / 2); }
+.spark-comment-branch > .spark-comment-node::after {
+  content: ''; position: absolute; pointer-events: none; top: 0; left: 0;
+  width: calc(var(--indent) - var(--avatar) / 2); height: calc(var(--row-top) + var(--avatar) / 2);
+  border: solid var(--thread-line); border-width: 0 0 2px 2px; border-bottom-left-radius: .68rem;
+}
+.spark-comment-branch > .spark-comment-node:not(:last-child)::before,
+.spark-comment-row:has(+ .spark-comment-branch)::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 0; border-left: 2px solid var(--thread-line);
+}
+.spark-comment-row:has(+ .spark-comment-branch)::before { left: calc(var(--avatar) / 2); top: calc(var(--row-top) + var(--avatar)); }
+.spark-comment-branch > .spark-comment-node > .spark-comment-row::after {
+  content: ''; position: absolute; left: -3px; top: calc(var(--row-top) + var(--avatar) / 2 - 3px);
+  width: 6px; height: 6px; background: var(--thread-line); border-radius: 50%;
+}
+.spark-comment-branch-compact { margin-inline-start: 0; }
+.spark-comment-branch-compact > .spark-comment-node { padding-inline-start: 0; }
+.spark-comment-branch-compact > .spark-comment-node::before, .spark-comment-branch-compact > .spark-comment-node::after,
+.spark-comment-branch-compact > .spark-comment-node > .spark-comment-row::after,
+.spark-comment-row:has(+ .spark-comment-branch-compact)::before { display: none; }
+.spark-comment-context { color: var(--thread-muted); font-size: .78rem; line-height: 1.3; margin: .13rem 0; }
+.spark-comments .spark-comment-context a, .spark-thread-dock a { text-decoration: none; }
+.spark-comment-actions { display: flex; flex-wrap: wrap; align-items: center; margin-left: -.65rem; color: var(--thread-muted); }
+.spark-comment-actions button {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px;
+  gap: .25rem; padding-inline: .3rem; color: inherit; font: 400 .87rem/1.1 Georgia, serif;
+}
+.spark-comment-actions svg { width: 1.12rem; height: 1.12rem; stroke-width: 1.7; }
+.spark-comment-actions button[aria-pressed=true] { color: var(--thread-gold); background: transparent; }
 .spark-comment-actions button[aria-pressed=true] svg { fill: currentColor; }
 .spark-comment-actions button:disabled { opacity: .55; }
-.spark-comment-gif { width: min(100%, 11rem); max-height: 8rem; object-fit: contain; border-radius: .5rem; margin-top: .25rem; }
-.spark-comment-link {
-  display: flex;
-  gap: .4rem;
-  min-width: 0;
-  margin-block: .3rem;
-  padding: .25rem .45rem;
-  border-left: 1px solid var(--comment-line);
-  font-size: .75rem;
-  color: #e3c7f4;
-}
+.spark-comments :is(button, a):focus-visible { outline: 2px solid var(--thread-gold); outline-offset: -2px; border-radius: .35rem; }
+.spark-thread-gif { position: relative; display: table; max-width: 100%; margin-top: .35rem; }
+.spark-thread-gif img, .spark-comment-gif { max-width: min(100%, 11rem); max-height: 9rem; border-radius: .55rem; border: 1px solid var(--thread-rule); }
+.spark-thread-gif figcaption { position: absolute; bottom: .3rem; left: .35rem; border-radius: .25rem; padding: .08rem .3rem; background: #381d41ed; color: white; font-size: .7rem; font-weight: 700; }
+.spark-comment-link { display: flex; gap: .4rem; min-width: 0; margin-block: .3rem; padding: .25rem .45rem; border-left: 2px solid var(--thread-line); font-size: .8rem; color: var(--thread-muted); }
 .spark-comment-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.spark-comment-composer { padding-block: .65rem; border-top: 1px solid #604969; }
+.spark-thread-dock { max-height: min(calc(var(--thread-height, 100dvh) * .52), 24rem); overflow-y: auto; border-top: 1px solid var(--thread-rule); padding: .55rem 0 max(.55rem, env(safe-area-inset-bottom)); }
+.spark-thread-dock > a { display: inline-flex; align-items: center; min-height: 44px; }
+.spark-comment-composer > div:first-child { color: var(--thread-muted); font-size: .83rem; }
 .spark-comment-input {
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  border: 1px solid #604969;
-  border-radius: .75rem;
-  padding-inline-end: .4rem;
-  background: #25182c;
+  display: flex; align-items: center; gap: .35rem; border: 1px solid #775773;
+  border-radius: .85rem; background: #311d30; padding: .18rem .35rem .18rem .65rem;
 }
-.spark-comment-input textarea { min-width: 0; background: transparent; border: 0; }
-.spark-comment-input button { min-height: 44px; }
-@media (max-width: 380px) {
-  .spark-comment-branch { margin-left: 7px; --branch-width: 9px; }
+.spark-comment-input:focus-within { border-color: var(--thread-line); }
+.spark-comment-input textarea {
+  field-sizing: content; min-width: 0; min-height: 44px; max-height: 5.6rem; padding: .68rem 0;
+  border: 0; background: transparent; color: var(--thread-ink); box-shadow: none; font: 1rem/1.4 Georgia, serif;
 }
+.spark-comment-input textarea::placeholder { color: #cbb5c8; }
+.spark-comment-input button { min-height: 44px; color: var(--thread-muted); }
+.spark-comment-input button[aria-label="Choose a GIF"] { border: 0; padding: 0 .25rem; background: transparent; }
+.spark-comment-input button[aria-label="Choose a GIF"] span { padding: .12rem .25rem; border: 1.5px solid currentColor; border-radius: .3rem; font-size: .8rem; }
+.spark-comment-input button:disabled { opacity: .73; }
+.spark-comment-input button:last-child:not([aria-label]) { min-width: 3.4rem; border-radius: 999px; background: var(--thread-gold); color: #2b1424; font-weight: 700; }
 body:has(.spark-comments) nav[aria-label="Breadcrumb"] { display: none; }
-.spark-comment-branch:empty { display: none; }
-.spark-original > .mb-3:empty { display: none; }
-.spark-comment-actions button:focus-visible { outline: 2px solid currentColor; border-radius: .375rem; }
-.spark-comments > div.max-w-3xl > * { margin-block: 0; }
-.spark-comment-thread { border-top: 1px solid #604969; }
-.spark-comment-branch-compact { margin-left: 0; --branch-width: 4px; }
-.spark-original-text:empty { display: none; }
+@media (max-width: 767px) {
+  body:has(.spark-comments) { overflow: hidden; }
+  body:has(.spark-comments) :is(nav[aria-label="Mobile bottom navigation"], .back-to-top-btn) { display: none !important; }
+  body:has(.spark-comments) header.fixed, body:has(.spark-comments) footer { display: none; }
+  .spark-comments { position: fixed; inset: var(--thread-top, 0px) 0 auto; height: var(--thread-height, 100dvh); padding: env(safe-area-inset-top) max(.85rem, env(safe-area-inset-right)) 0 max(.85rem, env(safe-area-inset-left)); }
+}
+@media (max-width: 360px) {
+  .spark-comments { --avatar: 2.2rem; --indent: 1.6rem; }
+}
 
 /* The mobile composer keeps one action bar above its scrollable draft. */
 .spark-draft {
@@ -1202,5 +1208,4 @@ body:has(.spark-draft) nav[aria-label="Breadcrumb"] { display: none; }
 .spark-actions button[aria-pressed=true] { color: hsl(var(--primary)); }
 .spark-actions button:disabled { opacity: .5; }
 .spark-actions :is(a,button):focus-visible { outline: 2px solid hsl(var(--primary)); border-radius: 6px; }
-.spark-comment-branch-compact { margin-left: -4px; --branch-width: 4px; }
 details[open] .cosmic-weather-preview { display: none; }

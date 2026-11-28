@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Bookmark, MessageCircle, Quote, Repeat2 } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Bookmark, Heart, MessageCircle, MoreHorizontal, Quote, Repeat2, Share, Star } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Link } from 'react-router';
 import SparkHeartButton from '@/components/SparkHeartButton';
 import { useSparkFavorite } from '@/components/SparkFavoriteButton';
@@ -10,8 +11,9 @@ type SparkActionData = {
   likeCount: number; replyCount: number; liked: boolean; bookmarked: boolean;
   reshared?: boolean; reshareCount?: number;
 };
-export function SparkActions({ post, canInteract = true, onFavorite, onSave }: {
+export function SparkActions({ post, canInteract = true, onFavorite, onSave, thread }: {
   post: SparkActionData;
+  thread?: { locked: boolean; onReply: () => void; onShare: () => void; menu: ReactNode };
   canInteract?: boolean;
   onFavorite?: (reaction: { liked: boolean; likeCount: number }) => void;
   onSave?: (saved: boolean) => void;
@@ -37,6 +39,24 @@ export function SparkActions({ post, canInteract = true, onFavorite, onSave }: {
     } catch { setError('Couldn’t update your reshare. Try again.'); }
     finally { setWorking(false); }
   }
+  if (thread) return <>
+    <div className="spark-comment-actions">
+      <button type="button" aria-label="Reply to Spark" disabled={!canInteract || thread.locked} onClick={thread.onReply}><MessageCircle /></button>
+      {canInteract ? <SparkHeartButton postId={post.id} liked={post.liked} likeCount={post.likeCount ?? 0} onChanged={onFavorite} />
+        : <button type="button" disabled aria-label={post.likeCount + ' likes'}><Heart />{post.likeCount ?? 0}</button>}
+      <button type="button" aria-label="Share Spark" onClick={thread.onShare}><Share /></button>
+      <button type="button" aria-label={saved ? 'Remove from Saved Sparks' : 'Save Spark'} aria-pressed={saved} disabled={!canInteract || pending} onClick={toggle}><Star /></button>
+    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild><button type="button" className="spark-thread-more" aria-label="Conversation options"><MoreHorizontal /></button></DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem disabled={!canInteract || !shareable || working} onSelect={toggleReshare}>{reshare.active ? 'Undo reshare' : 'Reshare'} · {reshare.count}</DropdownMenuItem>
+        {canInteract && shareable && <DropdownMenuItem asChild><Link to={SPARK_COMPOSE + '&quote=' + original}>Quote Spark</Link></DropdownMenuItem>}
+        {thread.menu}
+      </DropdownMenuContent>
+    </DropdownMenu>
+    {(failed || error) && <p role="status" className="text-xs">{error || 'Couldn’t update Saved Sparks. Try again.'}</p>}
+  </>;
   return <>
     <div className="spark-actions">
       {canInteract ? <SparkHeartButton postId={post.id} liked={post.liked} likeCount={post.likeCount ?? 0} onChanged={onFavorite} />
