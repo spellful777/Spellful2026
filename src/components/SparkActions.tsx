@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Bookmark, Heart, MessageCircle, MoreHorizontal, Repeat2, Share, Star } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Link } from 'react-router';
@@ -14,14 +14,19 @@ type SparkActionData = {
   likeCount: number; replyCount: number; liked: boolean; bookmarked: boolean;
   reshared?: boolean; reshareCount?: number;
 };
-export function SparkActions({ post, canInteract = true, onFavorite, onSave, thread }: {
+export function SparkActions({ post, canInteract = true, onFavorite, onSave, thread, cardAuthor, compact = false }: {
   post: SparkActionData;
+  cardAuthor?: string;
+  compact?: boolean;
   thread?: { locked: boolean; onReply: () => void; onShare: () => void; menu: ReactNode };
   canInteract?: boolean;
   onFavorite?: (reaction: { liked: boolean; likeCount: number }) => void;
   onSave?: (saved: boolean) => void;
 }) {
   const [reshare, setReshare] = useState({ active: !!post.reshared, count: post.reshareCount ?? 0 });
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  const shareAfterMenu = useRef(false);
+  const destination = '/community/post/' + post.id;
   const [shareOpen, setShareOpen] = useState(false);
   const [copyStatus, setCopyStatus] = useState('');
   const shareUrl = shareOpen ? publicShareUrl(new URL('/community/post/' + post.id, window.location.href).href) : '';
@@ -64,23 +69,54 @@ export function SparkActions({ post, canInteract = true, onFavorite, onSave, thr
     {(failed || error) && <p role="status" className="text-xs">{error || 'Couldn’t update Saved Sparks. Try again.'}</p>}
   </>;
   return <>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button ref={menuTrigger} type="button" aria-label={`More actions for ${cardAuthor}’s Spark`} className="spark-card-menu-trigger">
+          <MoreHorizontal className="size-5" aria-hidden="true" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="home-social-menu [&_[role=menuitem]:focus]:text-background"
+        onCloseAutoFocus={event => {
+          if (shareAfterMenu.current) {
+            event.preventDefault();
+            shareAfterMenu.current = false;
+            setShareOpen(true);
+          }
+        }}>
+        <DropdownMenuItem asChild><Link to={destination}>View Spark</Link></DropdownMenuItem>
+        {compact && <>
+          <DropdownMenuItem disabled={!canInteract || !shareable || working} onSelect={toggleReshare}>
+            {reshare.active ? 'Undo reshare' : 'Reshare'} · {reshare.count}
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={!canInteract || pending} onSelect={() => void toggle()}>
+            {saved ? 'Remove from Saved Sparks' : 'Save Spark'}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => { shareAfterMenu.current = true; }}>Share Spark</DropdownMenuItem>
+        </>}
+        <DropdownMenuItem onSelect={() => void navigator.clipboard?.writeText(new URL(destination, location.origin).href).catch(() => {})}>Copy link</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
     <div className="spark-actions">
       {canInteract ? <SparkHeartButton postId={post.id} liked={post.liked} likeCount={post.likeCount ?? 0} onChanged={onFavorite} />
         : <span aria-label={(post.likeCount ?? 0) + ' favorites'}><Heart size={17} aria-hidden="true" /> {post.likeCount ?? 0}</span>}
       <Link to={'/community/post/' + post.id} aria-label={`Comments, ${post.replyCount ?? 0} total`}>
         <MessageCircle size={17} aria-hidden="true" /> {post.replyCount ?? 0}
       </Link>
-      <button type="button" aria-label={`${reshare.active ? 'Undo reshare' : 'Reshare'}, ${reshare.count} total`}
+      {!compact && <>
+        <button type="button" aria-label={`${reshare.active ? 'Undo reshare' : 'Reshare'}, ${reshare.count} total`}
         aria-pressed={reshare.active} disabled={!canInteract || !shareable || working} onClick={toggleReshare}>
         <Repeat2 size={17} aria-hidden="true" /> {reshare.count}
-      </button>
-      <button type="button" aria-label={saved ? 'Remove from Saved Sparks' : 'Save Spark'} aria-pressed={saved}
+        </button>
+        <button type="button" aria-label={saved ? 'Remove from Saved Sparks' : 'Save Spark'} aria-pressed={saved}
         disabled={!canInteract || pending} onClick={() => void toggle()}>
         <Bookmark size={17} className={saved ? 'fill-current' : ''} aria-hidden="true" />
-      </button>
+        </button>
+      </>}
       <Dialog open={shareOpen} onOpenChange={open => { setShareOpen(open); setCopyStatus(''); }}>
-        <DialogTrigger asChild><button type="button" aria-label="Share Spark"><Share size={17} /></button></DialogTrigger>
-        <DialogContent className="max-w-sm">
+        {!compact && <DialogTrigger asChild><button type="button" aria-label="Share Spark"><Share size={17} /></button></DialogTrigger>}
+        <DialogContent className="max-w-sm" onCloseAutoFocus={event => {
+          if (compact) { event.preventDefault(); menuTrigger.current?.focus(); }
+        }}>
           <DialogTitle>Share Spark</DialogTitle>
           <DialogDescription>{post.audience === 'public' ? 'Share a link to this Spark.' : 'Only people with access can open this Spark.'}</DialogDescription>
           <input readOnly aria-label="Spark link" className="w-full rounded border border-border bg-background p-2" value={shareUrl} onFocus={event => event.target.select()} />

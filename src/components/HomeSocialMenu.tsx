@@ -48,7 +48,6 @@ export default function HomeSocialMenu({ visitor, username, sparkRef, floatingSp
           <img src="/assets/media/logo-official-white-8b86d830.png" alt="" width={82} height={44} className="block h-11 w-auto" />
         </Link>
         <div className="home-header-actions flex shrink-0 items-center gap-2.5">
-          <SparkItLink linkRef={sparkRef} inactive={floatingSpark} />
           {visitor ? (
             <Link to={'/login?redirect=' + encodeURIComponent(HOME_FEED)} aria-label="Sign in to your Coven"
               className="inline-flex size-11 items-center justify-center rounded-md text-foreground focus-visible:outline focus-visible:outline-primary">
@@ -80,6 +79,7 @@ export default function HomeSocialMenu({ visitor, username, sparkRef, floatingSp
               <DropdownMenuItem asChild><Link to="/account/edit-profile"><Pencil aria-hidden="true" />{username ? 'Edit my profile' : 'Set up my profile'}</Link></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>}
+          <SparkItLink iconOnly linkRef={sparkRef} inactive={floatingSpark} />
         </div>
       </div>
 

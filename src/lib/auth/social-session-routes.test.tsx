@@ -67,7 +67,8 @@ it.each([
   expect(fetch).toHaveBeenCalledWith('/api/community/posts?filter=' + filter + '&page=1&limit=20&order=newest&kind=spark', expect.anything());
   if (!member) {
     expect(screen.getByRole('link', { name: 'Moon Magic' })).toHaveAttribute('href', '/explore/topics/moon-magic');
-    expect(screen.getByRole('button', { name: 'Save Spark' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Save Spark' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'More actions for Juniper’s Spark' })).toBeEnabled();
     expect(fetch.mock.calls.some(([path]) => path.startsWith('/api/account/'))).toBe(false);
   }
 });

@@ -142,7 +142,7 @@ export default function HomeFeed({ username, visitor = false }: { username?: str
           </div>
         ) : (
           <>
-            {visiblePosts.slice(0, 2).map(post => <SparkCard key={post.id} post={post} canInteract={!visitor} />)}
+            {visiblePosts.slice(0, 2).map(post => <SparkCard compact key={post.id} post={post} canInteract={!visitor} />)}
             {loading && !anchor.current && <p role="status">Loading posts…</p>}
             {!loading && !posts.length && (
               <section className="rounded-xl border border-border bg-card px-4 py-5">
@@ -159,7 +159,7 @@ export default function HomeFeed({ username, visitor = false }: { username?: str
           </>
         )}
         {!visitor && <HomeCovenCard to={COMMUNITY_CONNECTIONS} />}
-        {visiblePosts.slice(2).map(post => <SparkCard key={post.id} post={post} canInteract={!visitor} />)}
+        {visiblePosts.slice(2).map(post => <SparkCard compact key={post.id} post={post} canInteract={!visitor} />)}
       </div>
       {filter === 'discover' && <nav aria-label="Explore topics" className="flex flex-wrap items-center gap-x-3 px-1 py-1 text-xs text-primary">
         {['Astrology', 'Tarot', 'Moon Magic', 'Shadow Work'].map(topic => <Link className="inline-flex min-h-8 items-center" key={topic} to={topicPath(topic)}>{topic}</Link>)}
