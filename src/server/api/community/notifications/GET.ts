@@ -65,8 +65,8 @@ export default async function handler(req: Request, res: Response) {
       const row = byId.get(group.id ?? 0);
       if (!row) return [];
       if (!group.key.startsWith('spark:')) return [row];
-      return [{ ...row, type: 'conversation', replyId: null, actorName: null, actorImage: null, actorUsername: null,
-        message: group.size === 1 ? '1 new reply to your Spark.' : `${group.size} new replies to your Spark.` }];
+      return [{ ...row, type: 'conversation', replyId: row.replyId, actorName: null, actorImage: null, actorUsername: null,
+        message: group.size === 1 ? '1 new reply to your Post.' : `${group.size} new replies to your Post.` }];
     }),
     unread: total?.unread ?? 0,
   });

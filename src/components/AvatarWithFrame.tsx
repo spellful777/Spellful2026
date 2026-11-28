@@ -1,3 +1,4 @@
+import { profileAvatar } from '@/lib/default-avatars';
 import { uploadedMediaUrl } from '@/lib/native-api';
 /**
  * AvatarWithFrame — shared component used by Profile Studio AND the live
@@ -66,18 +67,6 @@ export const FRAME_DEFS: FrameDef[] = [
   { key: 'astral',      label: 'Astral Twilight',    cssVar: 'frame-astral',      highlightVar: 'frame-astral-hi'      },
 ];
 
-// ─── Default avatar presets ───────────────────────────────────────────────────
-export const DEFAULT_AVATARS: { key: string; src: string; label: string }[] = [
-  { key: 'hat-black',   src: '/airo-assets/images/avatars/default-hat-black',   label: 'White Hat'   },
-  { key: 'hat-blue',    src: '/airo-assets/images/avatars/default-hat-blue',    label: 'Blue Hat'    },
-  { key: 'hat-green',   src: '/airo-assets/images/avatars/default-hat-green',   label: 'Green Hat'   },
-  { key: 'hat-orange',  src: '/airo-assets/images/avatars/default-hat-orange',  label: 'Orange Hat'  },
-  { key: 'hat-purple',  src: '/airo-assets/images/avatars/default-hat-purple',  label: 'Purple Hat'  },
-  { key: 'hat-rainbow', src: '/airo-assets/images/avatars/default-hat-rainbow', label: 'Rainbow Hat' },
-  { key: 'hat-red',     src: '/airo-assets/images/avatars/default-hat-red',     label: 'Red Hat'     },
-  { key: 'hat-trans',   src: '/airo-assets/images/avatars/default-hat-trans',   label: 'Trans Hat'   },
-  { key: 'hat-lesbian', src: '/airo-assets/images/avatars/default-hat-lesbian', label: 'Lesbian Hat' },
-];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 export interface AvatarWithFrameProps {
@@ -104,10 +93,7 @@ export default function AvatarWithFrame({
   className = '',
 }: AvatarWithFrameProps) {
   // Resolve avatar image source
-  const presetSrc = avatarPreset
-    ? DEFAULT_AVATARS.find(a => a.key === avatarPreset)?.src ?? null
-    : null;
-  const avatarSrc = src ?? presetSrc;
+  const avatarSrc = profileAvatar(src, avatarPreset);
 
   // Resolve frame def
   const frameDef = FRAME_DEFS.find(f => f.key === frameKey) ?? null;
@@ -154,33 +140,13 @@ export default function AvatarWithFrame({
           position: 'relative',
         }}
       >
-        {avatarSrc ? (
-          <img
-            src={uploadedMediaUrl(avatarSrc)}
-            alt={alt}
-            width={size}
-            height={size}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          />
-        ) : (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'hsl(var(--primary) / 0.15)',
-              color: 'hsl(var(--primary))',
-              fontSize: Math.round(size * 0.38),
-              fontFamily: 'var(--font-heading)',
-              userSelect: 'none',
-            }}
-            aria-hidden="true"
-          >
-            ✦
-          </div>
-        )}
+        <img
+          src={uploadedMediaUrl(avatarSrc)}
+          alt={alt}
+          width={size}
+          height={size}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
       </div>
     </div>
   );

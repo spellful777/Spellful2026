@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Play } from 'lucide-react';
+import { SparkByline, type SparkAuthor } from '@/components/SparkByline';
 import SparkCard from '@/components/SparkCard';
 import { CommunityPostBody } from '@/components/CommunityPostBody';
 import { sparkReplyPath } from '@/lib/spark-comments';
@@ -12,8 +13,8 @@ type Post = CommunityPost & { featured?: boolean };
 type Reply = { id: number; postId: number; body: string; originalAuthor: string | null; originalName: string | null; originalText: string; createdAt: string | null; gifUrl?: string };
 type Page = { posts?: Post[]; replies?: Reply[]; next?: number | null };
 
-export function ProfileActivity({ endpoint, tab, preview, canInteract }: {
-  endpoint: string; tab: Exclude<ProfileTab, 'about'>; preview?: string | null; canInteract: boolean;
+export function ProfileActivity({ endpoint, tab, preview, canInteract, author }: {
+  endpoint: string; tab: Exclude<ProfileTab, 'about'>; preview?: string | null; canInteract: boolean; author: SparkAuthor;
 }) {
   const [page, setPage] = useState<Page | null>(null);
   const [cursor, setCursor] = useState(0);
@@ -52,25 +53,31 @@ export function ProfileActivity({ endpoint, tab, preview, canInteract }: {
 
   return <div className="profile-activity" aria-busy={loading}>
     {tab === 'sparks' && page?.posts?.map(post => <div key={post.id}>
-      {post.featured && <p className="profile-feature-label">Featured Spark</p>}
+      {post.featured && <p className="profile-feature-label">Featured Post</p>}
       <SparkCard post={post} canInteract={canInteract} />
     </div>)}
     {tab === 'replies' && page?.replies?.map(reply => <article key={reply.id} className="profile-reply">
-      <Link className="block font-medium" to={sparkReplyPath(reply.postId, reply.id)}>
-        Spark by {reply.originalAuthor ? '@' + reply.originalAuthor : reply.originalName ?? 'a member'}
-        <span className="sr-only"> · Open reply</span>
-      </Link>
-      <CommunityPostBody html={reply.body} />
-      {reply.gifUrl && <img src={reply.gifUrl} alt="GIF attachment" className="mt-1 max-h-24 rounded" loading="lazy" referrerPolicy="no-referrer" />}
-      {reply.originalText && <blockquote>{reply.originalText}</blockquote>}
+      <SparkByline author={author} createdAt={reply.createdAt} />
+      <div className="profile-reply-thread">
+        <Link className="text-sm text-muted-foreground" to={sparkReplyPath(reply.postId, reply.id)}>
+          Replying to a Post by {reply.originalAuthor ? '@' + reply.originalAuthor : reply.originalName ?? 'a member'}
+        </Link>
+        <CommunityPostBody html={reply.body} />
+        {reply.gifUrl && <img src={reply.gifUrl} alt="GIF attachment" className="mt-1 max-h-24 rounded" loading="lazy" referrerPolicy="no-referrer" />}
+        <Link to={`/community/post/${reply.postId}`} className="profile-reply-original">
+          <strong>{reply.originalName || reply.originalAuthor || 'Member'}</strong>
+          {reply.originalAuthor && <small> @{reply.originalAuthor}</small>}
+          <blockquote>{reply.originalText}</blockquote>
+        </Link>
+      </div>
     </article>)}
     {tab === 'media' && <div className="profile-media-grid">
-      {media.map(item => <Link key={item.key} to={`/community/post/${item.postId}`} aria-label={`Open ${item.video ? 'video' : 'photo'} Spark`}>
+      {media.map(item => <Link key={item.key} to={`/community/post/${item.postId}`} aria-label={`Open ${item.video ? 'video' : 'photo'} Post`}>
         <img src={item.src} alt="" loading="lazy" referrerPolicy="no-referrer" />
         {item.video && <Play className="profile-media-play" aria-hidden="true" />}
       </Link>)}
     </div>}
-    {empty && !loading && !error && <p className="profile-empty">No {tab === 'media' ? 'media' : tab} to show.</p>}
+    {empty && !loading && !error && <p className="profile-empty">No {tab === 'media' ? 'media' : tab === 'sparks' ? 'posts' : tab} to show.</p>}
     {loading && <p className="profile-empty" role="status">Loading…</p>}
     {error && <button className="profile-empty" type="button" onClick={() => setRetry(value => value + 1)}>Couldn’t load this tab. Try again.</button>}
     {page?.next && !loading && !error && <button className="profile-empty" onClick={() => setCursor(page.next!)}>Load more</button>}

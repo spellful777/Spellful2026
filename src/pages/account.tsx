@@ -1,3 +1,5 @@
+import { DEFAULT_AVATARS, profileAvatar } from '@/lib/default-avatars';
+import { useEntitlement } from '@/lib/use-plus-entitlement';
 import { uploadedMediaUrl } from '@/lib/native-api';
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router';
@@ -243,7 +245,8 @@ const OFFICIAL_BADGE_LABELS: Record<string, { label: string; emoji: string }> = 
 
 export default function AccountPage() {
   const navigate = useNavigate();
-  const { session, isPending } = useSession();
+  const { session, isPending, refetch } = useSession();
+  const { data: { isPlus } } = useEntitlement();
 
   // Profile state
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -406,7 +409,7 @@ export default function AccountPage() {
   useEffect(() => {
     if (!session?.user) return;
     const u = session.user as { image?: string; twoFactorEnabled?: boolean; birthDate?: string; birthTime?: string; birthLocation?: string; sunSign?: string; moonSign?: string; risingSign?: string };
-    setAvatarUrl(u.image ?? '/airo-assets/images/avatars/default-hat-purple');
+    setAvatarUrl(profileAvatar(u.image, (u as { avatarPreset?: string }).avatarPreset));
     setTwoFaEnabled(u.twoFactorEnabled ?? false);
     const extUser = u as { username?: string; bio?: string; location?: string; witchPath?: string; profileVisibility?: string };
     setUsername(extUser.username ?? '');
@@ -472,7 +475,7 @@ export default function AccountPage() {
       formData.append('avatar', file);
       const res = await fetch('/api/account/avatar', { method: 'POST', body: formData, credentials: 'include' });
       const data = await res.json() as { url?: string; error?: string };
-      if (data.url) { setAvatarUrl(data.url); }
+      if (res.ok && data.url) { setAvatarUrl(data.url); void refetch(); }
       else if (data.error) { setAvatarError(data.error); }
     } catch {
       setAvatarError('Upload failed. Please try again.');
@@ -493,8 +496,9 @@ export default function AccountPage() {
         body: JSON.stringify({ url: avatarSlotUrl }),
       });
       const data = await res.json() as { url?: string; error?: string };
-      if (data.url) { setAvatarUrl(data.url); }
-    } catch { /* silent */ }
+      if (res.ok && data.url) { setAvatarUrl(data.url); void refetch(); }
+      else setAvatarError(data.error ?? 'Your hat could not be saved.');
+    } catch { setAvatarError('Your hat could not be saved. Please try again.'); }
     finally { setAvatarLoading(false); }
   }
 
@@ -871,7 +875,7 @@ export default function AccountPage() {
                   <div className="mb-1">
                     <h2 className="font-serif text-lg" style={{ color: 'hsl(var(--foreground))' }}>Choose Your Magical Look</h2>
                     <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                      Every witch has their own style. Pick the avatar that feels like you, or upload a little magic of your own.
+                      Choose the witch hat that feels like you.
                     </p>
                   </div>
 
@@ -892,21 +896,23 @@ export default function AccountPage() {
                           <span className="text-2xl font-serif" style={{ color: 'hsl(var(--primary))' }}>{initials}</span>
                         )}
                       </div>
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
-                        style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
-                        aria-label="Upload custom photo"
-                      >
-                        <Camera className="w-3.5 h-3.5" />
-                      </button>
-                      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
-                        className="hidden" onChange={handleAvatarChange} />
+                      {isPlus && <>
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary"
+                          style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
+                          aria-label="Upload custom photo"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                        </button>
+                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+                          className="hidden" onChange={handleAvatarChange} />
+                      </>}
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>Your current look</p>
-                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{account.profileTab.uploadHint}</p>
-                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{account.profileTab.uploadConstraints}</p>
+                      <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{isPlus ? account.profileTab.uploadHint : 'Choose from the nine witch hats below.'}</p>
+                      {isPlus && <p className="text-xs text-muted-foreground">{account.profileTab.uploadConstraints}</p>}
                       {avatarError && <p className="text-xs mt-1" style={{ color: 'hsl(var(--destructive))' }}>{avatarError}</p>}
                     </div>
                   </div>
@@ -918,12 +924,12 @@ export default function AccountPage() {
                       {account.profileTab.avatarPickerTitle}
                     </p>
                     <div className="grid grid-cols-5 sm:grid-cols-9 gap-2 sm:gap-3">
-                      {account.DEFAULT_AVATARS.map(function(avatar) {
-                        const isSelected = avatarUrl === avatar.url;
+                      {DEFAULT_AVATARS.map(function(avatar) {
+                        const isSelected = avatarUrl === avatar.src;
                         return (
                           <button
-                            key={avatar.id}
-                            onClick={function() { void handleSelectDefaultAvatar(avatar.url); }}
+                            key={avatar.key}
+                            onClick={function() { void handleSelectDefaultAvatar(avatar.src); }}
                             disabled={avatarLoading}
                             className="relative rounded-full overflow-hidden aspect-square transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                             style={isSelected ? {
@@ -933,7 +939,7 @@ export default function AccountPage() {
                             aria-pressed={isSelected}
                             title={avatar.label}
                           >
-                            <img src={avatar.url} alt={avatar.label} className="w-full h-full object-cover" loading="lazy" />
+                            <img src={avatar.src} alt={avatar.label} className="w-full h-full object-cover" loading="lazy" />
                             {isSelected && (
                               <div className="absolute inset-0 flex items-center justify-center rounded-full pointer-events-none"
                                 style={{ background: 'hsl(var(--primary) / 0.2)' }}>
@@ -985,7 +991,7 @@ export default function AccountPage() {
                         <>
                           <div className="flex items-center gap-2">
                             <span className="text-muted-foreground text-sm">@</span>
-                            <Input
+                            <Input id="profile-username"
                               value={usernameInput}
                               onChange={e => {
                                 const v = e.target.value.slice(0, 12);

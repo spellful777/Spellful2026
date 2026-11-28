@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { commentGifUrl } from '@/lib/spark-comments';
+import { CANDLELIGHT_GIF, commentGifUrl } from '@/lib/spark-comments';
 
 type Gif = { url: string; title: string };
 export function CommentGifPicker({ onPick }: { onPick: (url: string) => void }) {
@@ -32,6 +32,7 @@ export function CommentGifPicker({ onPick }: { onPick: (url: string) => void }) 
 
   const valid = commentGifUrl(link);
   return <div className="space-y-2 pb-2">
+    <button type="button" aria-label="Attach candlelight GIF" onClick={() => onPick(CANDLELIGHT_GIF)}><img src={CANDLELIGHT_GIF} alt="Candlelight" width={96} height={54} className="rounded" /></button>
     {key && <>
       <form onSubmit={search} className="flex gap-2">
         <input aria-label="Search GIFs" className="min-w-0 flex-1 rounded border border-border bg-background px-2" maxLength={60}

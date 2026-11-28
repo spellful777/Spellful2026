@@ -1,3 +1,5 @@
+import { startSparkReadingDraft } from '@/lib/spark-reading-draft';
+import { useNavigate } from 'react-router';
 import { numerology } from 'virtual:content';
 /**
  * /numerology — Spellful Numerology Discovery Center
@@ -393,6 +395,7 @@ function NumberLibraryCard({ num }: { num: number }) {
 // ─── Main page ─────────────────────────────────────────────────────────────
 
 export default function NumerologyPage() {
+  const navigate = useNavigate();
   const [calcTab, setCalcTab] = useState<'lifepath' | 'name' | 'full'>('lifepath');
   const [birthdate, setBirthdate] = useState('');
   const [fullName, setFullName] = useState('');
@@ -837,6 +840,9 @@ export default function NumerologyPage() {
                       />
                     )}
 
+                    {session && (lifePathResult || nameResult) && <Button size="sm" variant="outline" onClick={() => {
+                      navigate(startSparkReadingDraft({type:'numerology', label:lifePathResult ? 'Life Path' : 'Expression', number:lifePathResult?.result ?? nameResult!.expression}));
+                    }}>Share {lifePathResult ? 'Life Path' : 'Expression'} number</Button>}
                     {/* Post-results actions */}
                     {(lifePathResult || nameResult) && (
                       <div className="space-y-2 pt-2">

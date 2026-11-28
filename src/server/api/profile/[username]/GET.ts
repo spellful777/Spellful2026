@@ -1,4 +1,5 @@
-import { postAudienceAllows } from '@/server/lib/community-post-access.js';
+import { memberAvatar } from '@/server/lib/member-avatar.js';
+import { postAudienceAllows, postForumAllows } from '@/server/lib/community-post-access.js';
 import { profileActivity } from '@/server/lib/profile-activity.js';
 import { profileAudience } from '@/server/lib/profile-audience.js';
 import type { Request, Response } from 'express';
@@ -24,7 +25,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
         id: user.id,
         name: user.name,
         username: user.username,
-        image: user.image,
+        image: memberAvatar,
         bio: user.bio,
         location: user.location,
         witchPath: user.witchPath,
@@ -50,6 +51,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
         hideOnlineStatus: user.hideOnlineStatus,
         shareFollowing: user.shareFollowing,
         invitePermission: user.invitePermission,
+        messagePermission: user.messagePermission,
         profileLayout: user.profileLayout,
         bioVisibility: user.bioVisibility,
         locationVisibility: user.locationVisibility,
@@ -85,7 +87,7 @@ export default async function handler(req: Request<{ username: string }>, res: R
       const pageSize = 30;
       const before = Number(req.query.before);
       const entries = await db
-        .select({ followId: userFollows.id, username: user.username, name: user.name, image: user.image })
+        .select({ followId: userFollows.id, username: user.username, name: user.name, image: memberAvatar })
         .from(userFollows)
         .innerJoin(user, eq(user.id, followers ? userFollows.followerId : userFollows.followingId))
         .where(and(
@@ -148,6 +150,9 @@ export default async function handler(req: Request<{ username: string }>, res: R
     const covenCount = Number(covenRow?.n ?? 0);
     const followerCount = Number(followerRow?.n ?? 0);
 
+    const visibleActivity = access.preview && access.coven
+      ? and(postForumAllows(), or(eq(communityPosts.audience, 'public'), eq(communityPosts.audience, 'coven')))
+      : postAudienceAllows(access.preview ? undefined : viewerId ?? undefined);
     const selected = profile.featuredAbout;
     let featuredAbout = selected;
     if (selected?.kind === 'playlist' && !access.owner) {
@@ -159,22 +164,21 @@ export default async function handler(req: Request<{ username: string }>, res: R
     if (selected?.kind === 'spark') {
       const [spark] = await db.select({ audience: communityPosts.audience }).from(communityPosts).where(and(
         eq(communityPosts.id, selected.id), eq(communityPosts.userId, profile.id),
-        eq(communityPosts.type, 'spark'), eq(communityPosts.isHidden, false))).limit(1);
+        eq(communityPosts.type, 'spark'), eq(communityPosts.isHidden, false), visibleActivity)).limit(1);
       if (!spark || !access.allows(spark.audience)) featuredAbout = null;
     }
-    const { shareFollowing: _shareFollowing, invitePermission, ...publicProfile } = profile;
+    const { shareFollowing: _shareFollowing, invitePermission, messagePermission, ...publicProfile } = profile;
     const latestPosts = await db.select({
       id: communityPosts.id, title: communityPosts.title, createdAt: communityPosts.createdAt,
     }).from(communityPosts).where(and(
       eq(communityPosts.userId, profile.id), eq(communityPosts.isHidden, false),
-      access.preview && access.coven
-        ? or(eq(communityPosts.audience, 'public'), eq(communityPosts.audience, 'coven'))
-        : postAudienceAllows(access.preview ? undefined : viewerId ?? undefined),
+      visibleActivity,
     )).orderBy(desc(communityPosts.createdAt), desc(communityPosts.id)).limit(4);
     res.json({
       latestPosts,
       profile: {
         ...publicProfile, featuredAbout,
+        ...(isOwn ? { invitePermission, messagePermission } : {}),
         interestTags: !isOwn && profile.profileSections?.some(section => section.id === 'interests' && !section.enabled) ? null : profile.interestTags,
         bio: access.allows(profile.bioVisibility) ? profile.bio : null,
         location: access.allows(profile.locationVisibility) ? profile.location : null,

@@ -3,6 +3,8 @@ import { projectTarot } from '@/lib/shared-reading';
 import { natalWheelSvg, type SparkReading } from '@/lib/spark-reading';
 
 export function SparkReadingAttachment({ reading, postId }: { reading: SparkReading; postId?: number }) {
+  if (reading.type === 'numerology') return <figure className="number-reading">
+    <figcaption>Numerology · {reading.label}</figcaption><strong>{reading.number}</strong></figure>;
   if (reading.type === 'horoscope') {
     return <figure className="my-2 min-w-0 rounded-lg border border-border bg-background/60 p-3" aria-label="Shared horoscope">
       <figcaption className="text-xs text-muted-foreground">

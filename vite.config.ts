@@ -30,10 +30,20 @@ function apiDevPlugin(): Plugin {
     name: "api-dev",
     apply: "serve",
     configureServer(server: ViteDevServer) {
+      let startupMigration: Promise<void> | undefined;
+
       server.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith("/api")) return next();
         try {
           const mod = await server.ssrLoadModule("/src/server/entry.ts");
+          // GoDaddy can serve the published app through Vite, where the
+          // standalone server's startup code does not run.
+          if (process.env.NODE_ENV === "production") {
+            startupMigration ??= server
+              .ssrLoadModule("/src/server/db/migrate-startup.ts")
+              .then(({ runStartupMigration }) => runStartupMigration());
+            await startupMigration;
+          }
           const handler = mod.default;
           handler(req, res, next);
         } catch (err) {

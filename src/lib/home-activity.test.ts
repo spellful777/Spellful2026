@@ -5,13 +5,15 @@ import { mobileDestination } from './mobile-navigation';
 
 describe('Home mobile navigation', () => {
   it.each([
-    ['/', '', 'Home'], ['/', '?feed=explore', 'Explore'],
+    ['/', '', 'Home'], ['/', '?feed=following', 'Coven'], ['/', '?feed=explore', 'Coven'],
+    ['/explore', '', 'Explore'], ['/community', '?view=groups', 'Coven'],
     ['/explore/topics/astrology', '', 'Explore'], ['/spells/candle-ritual', '', 'Explore'],
     ['/community/discover', '', 'Explore'], ['/community/post/17', '', 'Coven'],
     ['/community', '?view=coven&tab=requests', 'Coven'], ['/messages', '', 'Coven'],
     ['/dream-journal', '', 'Grimoire'], ['/grimoire', '?sparks=favorite', 'Grimoire'],
     ['/account/profile', '', 'You'], ['/u/member', '?tab=about', 'You'],
     ['/login', '?redirect=%2Fcommunity%3Fview%3Dcoven', 'Coven'],
+    ['/login', '?redirect=%2F%3Ffeed%3Dfollowing', 'Coven'],
   ])('uses the parent destination for %s %s', (path, search, tab) => expect(mobileDestination(path, search)).toBe(tab));
 });
 

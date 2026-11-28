@@ -10,8 +10,9 @@ import {
   Bell, Bookmark, TrendingUp, MessageSquare, HelpCircle,
   Pin, Lock, Eye, ChevronRight, Search, Users, Star, Building2,
 } from 'lucide-react';
-import { useSession } from '@/lib/auth/auth-client';
+import { SessionCheckRetry, useSession } from '@/lib/auth/auth-client';
 import SparkCard from '@/components/SparkCard';
+import CommunitySocial from '@/components/CommunitySocial';
 import { SPARK_COMPOSE, COMMUNITY_FAVORITES } from '@/lib/community-navigation';
 import SparkHeartButton from '@/components/SparkHeartButton';
 import SparkIcon from '@/components/SparkIcon';
@@ -326,9 +327,9 @@ function TrendingSidebar({ onSelectTrending }: { onSelectTrending: () => void })
         </h3>
         <nav className="space-y-1.5">
           {[
-            { to: COMMUNITY_FAVORITES, icon: Bookmark, label: 'Favorites', desc: 'Your saved Sparks and discussions' },
+            { to: COMMUNITY_FAVORITES, icon: Bookmark, label: 'Favorites', desc: 'Your saved Posts and discussions' },
             { to: '/community/notifications', icon: Bell, label: 'Notifications', desc: 'Replies & mentions' },
-            { to: SPARK_COMPOSE, icon: SparkIcon, label: 'Spark it', desc: 'Start a conversation' },
+            { to: SPARK_COMPOSE, icon: SparkIcon, label: 'Post it', desc: 'Start a conversation' },
             { to: '/creators', icon: Star, label: 'Creators', desc: 'Browse verified creators' },
             { to: '/organizations', icon: Building2, label: 'Organizations', desc: 'Shops, studios & collectives' },
           ].map(({ to, icon: Icon, label, desc }) => (
@@ -367,7 +368,25 @@ const COMMUNITY_VIEWS = [
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CommunityPage() {
-  const { session, isPending } = useSession();
+  const { session, isPending, sessionCheckFailed } = useSession();
+  const location = useLocation();
+  if (isPending) return <p role="status" className="p-5">Loading Coven…</p>;
+  const view = new URLSearchParams(location.search).get('view');
+  if (!view || ['feed', 'forums', 'groups'].includes(view)) {
+    if (!session && sessionCheckFailed) return <SessionCheckRetry />;
+    return <CommunitySocial key={(session?.user.id ?? 'guest') + location.key}
+      viewer={session?.user.id} username={(session?.user as {username?: string})?.username}
+      forums={view === 'groups' || view === 'forums'} />;
+  }
+  if (!session) {
+    if (sessionCheckFailed) return <SessionCheckRetry />;
+    const destination = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?redirect=${destination}`} replace />;
+  }
+  return <MemberCommunity key={session.user.id} session={session} />;
+}
+
+function MemberCommunity({ session }: { session: NonNullable<ReturnType<typeof useSession>['session']> }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [filter, setFilter] = useState<PostFilter>('latest');
@@ -436,14 +455,7 @@ export default function CommunityPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id]);
 
-  // Auth gate — redirect to login
-  if (!isPending && !session) {
-    const destination = encodeURIComponent(location.pathname + location.search);
-    return <Navigate to={`/login?redirect=${destination}`} replace />;
-  }
-
-  // Username gate — must choose a username before participating
-  const needsUsername = !isPending && session && !(session.user as { username?: string }).username;
+  const needsUsername = !(session.user as { username?: string }).username;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -912,7 +924,7 @@ export default function CommunityPage() {
               {showPosts && session && (<>
               {isFeed ? (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="font-heading text-xl">Sparks from people you follow</h2>
+                  <h2 className="font-heading text-xl">Posts from people you follow</h2>
                   {hasNewFeedPosts && <Button size="sm" onClick={reloadPosts}>Show new posts</Button>}
                 </div>
               ) : (

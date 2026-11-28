@@ -4,13 +4,13 @@ import { Link, useSearchParams } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Button } from '@/components/ui/button';
 import { useCommunityPosts } from '@/hooks/useCommunity';
-import { COMMUNITY_FEED, HOME_EXPLORE, HOME_FEED } from '@/lib/community-navigation';
+import { COMMUNITY_CONNECTIONS, COMMUNITY_GROUPS, HOME_EXPLORE, HOME_FEED } from '@/lib/community-navigation';
 import SparkItLink from '@/components/SparkItLink';
 import HomeSocialMenu from '@/components/HomeSocialMenu';
 import HomeCovenCard from '@/components/HomeCovenCard';
-import { PostCard } from './community/index';
+import SparkCard from '@/components/SparkCard';
 
-export default function HomeFeed({ username }: { username?: string | null }) {
+export default function HomeFeed({ username, visitor = false }: { username?: string | null; visitor?: boolean }) {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get('feed') === 'explore' ? 'discover' : 'following';
   const [pagination, setPagination] = useState({ filter, page: 1 });
@@ -123,22 +123,18 @@ export default function HomeFeed({ username }: { username?: string | null }) {
 
   return (
     <main
-      className="home-feed mx-auto max-w-3xl space-y-2 px-3 pb-[calc(var(--home-mobile-nav-height)+4.75rem)] pt-3 sm:px-4 md:pb-24"
+      className="home-feed mx-auto min-h-[calc(100svh-4rem)] max-w-3xl space-y-2 px-3 pb-[calc(var(--home-mobile-nav-height)+4.75rem)] pt-3 sm:px-4 md:pb-24"
       style={{ '--home-mobile-nav-height': navHeight ? `${navHeight}px` : 'calc(57px + env(safe-area-inset-bottom))' } as CSSProperties}
     >
-      <Helmet><title>Home feed | Spellful</title><meta name="robots" content="noindex" /></Helmet>
-      <HomeSocialMenu username={username} sparkRef={headerSpark} floatingSpark={floatingSpark} />
+      <Helmet><title>Sparks | Spellful</title><meta name="robots" content="noindex" /></Helmet>
+      <HomeSocialMenu visitor={visitor} username={username} sparkRef={headerSpark} floatingSpark={floatingSpark} />
       <nav aria-label="Home feed" className="home-feed-tabs sticky top-0 z-30 grid grid-cols-3 md:top-20">
         <Link to={HOME_FEED} className="home-feed-link coven-press" aria-current={filter === 'following' ? 'page' : undefined}>Following</Link>
         <Link to={HOME_EXPLORE} className="home-feed-link coven-press" aria-current={filter === 'discover' ? 'page' : undefined}>Explore</Link>
-        <Link to={COMMUNITY_FEED} className="home-feed-link coven-press">Community</Link>
+        <Link to={COMMUNITY_GROUPS} className="home-feed-link coven-press">Community</Link>
       </nav>
-      {filter === 'discover' && <nav aria-label="Explore topics" className="flex flex-wrap items-center gap-x-3 px-1 py-1 text-xs text-primary">
-        {['Astrology', 'Tarot', 'Moon Magic', 'Shadow Work'].map(topic => <Link className="inline-flex min-h-8 items-center" key={topic} to={topicPath(topic)}>{topic}</Link>)}
-        <Link className="inline-flex min-h-8 items-center underline" to="/explore">All topics</Link>
-      </nav>}
       {newPosts && <Button onClick={refresh} size="sm">New posts</Button>}
-      <div ref={list} className="space-y-3" aria-busy={loading}>
+      <div ref={list} className="space-y-2" aria-busy={loading}>
         {error ? (
           <div role="status" className="rounded-xl border border-border p-4">
             <p>Couldn’t load your feed.</p>
@@ -146,16 +142,29 @@ export default function HomeFeed({ username }: { username?: string | null }) {
           </div>
         ) : (
           <>
-            {visiblePosts.slice(0, 2).map(post => <PostCard key={post.id} post={post} />)}
+            {visiblePosts.slice(0, 2).map(post => <SparkCard compact key={post.id} post={post} canInteract={!visitor} />)}
             {loading && !anchor.current && <p role="status">Loading posts…</p>}
             {!loading && !posts.length && (
-              <p role="status">{filter === 'following' ? 'Follow members to see their Sparks here.' : 'No public Sparks to explore yet.'}</p>
+              <section className="rounded-xl border border-border bg-card px-4 py-5">
+                <h2 className="font-heading text-xl text-foreground">{filter === 'following' ? 'Your Following feed' : 'Explore Sparks'}</h2>
+                <p role="status" className="mt-1 text-sm text-muted-foreground">
+                  {filter === 'following' ? 'Sparks from your Coven and the people you follow appear here.' : 'No public Sparks to explore yet.'}
+                </p>
+                <Link className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary underline underline-offset-4"
+                  to={filter === 'following' ? '/community/discover' : '/explore'}>
+                  {filter === 'following' ? 'Find members' : 'Browse all topics'}
+                </Link>
+              </section>
             )}
           </>
         )}
-        <HomeCovenCard />
-        {visiblePosts.slice(2).map(post => <PostCard key={post.id} post={post} />)}
+        {!visitor && <HomeCovenCard to={COMMUNITY_CONNECTIONS} />}
+        {visiblePosts.slice(2).map(post => <SparkCard compact key={post.id} post={post} canInteract={!visitor} />)}
       </div>
+      {filter === 'discover' && <nav aria-label="Explore topics" className="flex flex-wrap items-center gap-x-3 px-1 py-1 text-xs text-primary">
+        {['Astrology', 'Tarot', 'Moon Magic', 'Shadow Work'].map(topic => <Link className="inline-flex min-h-8 items-center" key={topic} to={topicPath(topic)}>{topic}</Link>)}
+        {(posts.length > 0 || loading || error) && <Link className="inline-flex min-h-8 items-center underline" to="/explore">All topics</Link>}
+      </nav>}
       {!loading && !error && pages > 1 && (
         <nav aria-label="Feed pages" className="flex items-center gap-3">
           <Button variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>

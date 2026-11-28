@@ -8,6 +8,7 @@
  * without touching the live database, leaving the two out of sync.
  */
 import mysql from 'mysql2/promise';
+import categories from './community-categories.json';
 import { getDatabaseCredentials } from './config.js';
 
 interface ColumnRow {
@@ -17,6 +18,7 @@ interface ColumnRow {
 export async function runStartupMigration(): Promise<void> {
   const cfg = getDatabaseCredentials();
   let conn: mysql.Connection | null = null;
+  let step = 'connect';
 
   try {
     conn = await mysql.createConnection({
@@ -29,8 +31,10 @@ export async function runStartupMigration(): Promise<void> {
     });
 
     // ── user table ────────────────────────────────────────────────────────────
+    step = 'read-user-schema';
     const [cols] = await (conn.execute('SHOW COLUMNS FROM user') as unknown as Promise<[ColumnRow[], unknown]>);
     const existing = new Set(cols.map((c) => c.Field));
+    step = 'apply-schema';
 
     const userAlters: Array<{ col: string; sql: string }> = [
       { col: 'comment_gifs_enabled', sql: 'ALTER TABLE user ADD COLUMN comment_gifs_enabled BOOLEAN NULL' },
@@ -1824,6 +1828,8 @@ export async function runStartupMigration(): Promise<void> {
       console.error(JSON.stringify({ event: 'startup.migration.platform_settings.error', msg: msg.slice(0, 120) }));
     }
     for (const statement of [
+      'ALTER TABLE community_categories ADD COLUMN members_only BOOLEAN NOT NULL DEFAULT FALSE',
+      'ALTER TABLE community_posts ADD COLUMN forum_post BOOLEAN NOT NULL DEFAULT FALSE',
       'ALTER TABLE community_replies ADD COLUMN gif_url TEXT NULL',
       'ALTER TABLE community_posts ADD COLUMN spark_media JSON NULL',
       'ALTER TABLE community_posts ADD COLUMN spark_topic VARCHAR(40) NULL',
@@ -1861,10 +1867,43 @@ export async function runStartupMigration(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS community_forum_memberships (
+        category_id INT NOT NULL, user_id VARCHAR(36) NOT NULL,
+        UNIQUE KEY uq_forum_member(category_id,user_id),
+        FOREIGN KEY (category_id) REFERENCES community_categories(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // An accounts-only restore leaves the category table empty. Respect any
+    // categories already configured by an administrator, including disabled ones.
+    step = 'initialize-community-categories';
+    const [existingCategories] = await conn.execute<mysql.RowDataPacket[]>(
+      'SELECT id FROM community_categories LIMIT 1'
+    );
+    if (!existingCategories.length) {
+      const rows = categories.map(c => [c.name, c.slug, c.description, c.icon, c.sort]);
+      await conn.query(
+        `INSERT INTO community_categories (name, slug, description, icon, sort_order)
+         VALUES ? ON DUPLICATE KEY UPDATE id = id`,
+        [rows]
+      );
+    }
   } catch (e) {
     // Non-fatal — log and continue; the server still starts
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error(JSON.stringify({ event: 'startup.migration.failed', msg: msg.slice(0, 200) }));
+    const code = e instanceof Error && 'code' in e && typeof e.code === 'string'
+      && /^[A-Z0-9_]{1,64}$/.test(e.code) ? e.code : 'UNKNOWN';
+    // The hosting dashboard displays the event name and omits structured fields.
+    console.error(`startup.migration.failed step=${step} code=${code}`);
+    if (conn && step === 'read-user-schema' && code === 'ER_NO_SUCH_TABLE') {
+      try {
+        const [tables] = await conn.query<mysql.RowDataPacket[]>('SHOW TABLES');
+        console.error(`startup.migration.visible-tables count=${tables.length}`);
+      } catch {
+        console.error('startup.migration.visible-tables count=unknown');
+      }
+    }
   } finally {
     if (conn) await conn.end().catch(() => undefined);
   }

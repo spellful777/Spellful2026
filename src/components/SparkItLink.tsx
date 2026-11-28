@@ -18,12 +18,12 @@ export default function SparkItLink({ iconOnly = false, linkRef, inactive = fals
       <Link
         ref={linkRef}
         to={SPARK_COMPOSE}
-        aria-label={iconOnly ? 'Create a post' : undefined}
+        aria-label={iconOnly ? 'Post' : undefined}
         aria-hidden={inactive || undefined}
         tabIndex={inactive ? -1 : undefined}
       >
         <SparkIcon className="size-5 shrink-0" monochrome />
-        {!iconOnly && 'Spark it'}
+        {!iconOnly && 'Post'}
       </Link>
     </Button>
   );

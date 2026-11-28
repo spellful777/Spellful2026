@@ -29,11 +29,6 @@ const _authClient = createAuthClient({
   ],
 });
 
-// How long an unsettled session may stay pending before we treat it as a stuck
-// stale-cookie state and attempt recovery. Generous enough to clear a slow but
-// healthy first load; short enough that a blank preview self-heals quickly.
-const SESSION_RECOVERY_PENDING_TIMEOUT_MS = 8000;
-
 /**
  * Clear the stale HttpOnly session cookie server-side, then reload into a clean
  * unauthenticated state. One-shot per tab (see `claimSessionRecovery`) so an
@@ -53,33 +48,16 @@ function recoverFromStaleSession(): void {
     });
 }
 
-/**
- * Self-heal a stale-cookie session. A failed session lookup is a returned
- * `error`, not a thrown one, so no error boundary fires and the app would sit
- * blank. Recover on an explicit error, or when the session never settles within
- * the pending timeout. A healthy session resets the guard so a later genuine
- * failure can recover again in the same tab.
- */
-function useStaleSessionRecovery(error: unknown, isPending: boolean, isAuthenticated: boolean): void {
-  useEffect(
-    function staleSessionRecovery() {
-      if (typeof window === 'undefined') return;
-
-      if (error) {
-        recoverFromStaleSession();
-        return;
-      }
-      if (isAuthenticated) {
-        clearSessionRecovery(window.sessionStorage);
-        return;
-      }
-      if (!isPending) return;
-
-      const timer = setTimeout(recoverFromStaleSession, SESSION_RECOVERY_PENDING_TIMEOUT_MS);
-      return () => clearTimeout(timer);
-    },
-    [error, isPending, isAuthenticated],
-  );
+// A cold start or temporary server error can leave a valid cookie in place.
+// Clear it only after the session endpoint explicitly rejects authentication.
+function useStaleSessionRecovery(status: number | undefined, isAuthenticated: boolean): void {
+  useEffect(() => {
+    if (isAuthenticated) {
+      clearSessionRecovery(window.sessionStorage);
+    } else if (status === 401) {
+      recoverFromStaleSession();
+    }
+  }, [status, isAuthenticated]);
 }
 
 export const authClient = _authClient;
@@ -96,10 +74,10 @@ export const { signIn, signUp, signOut } = _authClient;
  *   return isAuthenticated ? <span>{user.name}</span> : <a href="/login">Sign In</a>;
  */
 export function useSession() {
-  const { data: session, isPending, error } = _authClient.useSession();
+  const { data: session, isPending, error, refetch } = _authClient.useSession();
   const isAuthenticated = !isPending && !!session?.user;
 
-  useStaleSessionRecovery(error, isPending, isAuthenticated);
+  useStaleSessionRecovery(error?.status, isAuthenticated);
 
   return {
     data: session,
@@ -108,6 +86,8 @@ export function useSession() {
     isPending,
     error,
     isAuthenticated,
+    sessionCheckFailed: !isAuthenticated && !!error && error.status !== 401,
+    refetch,
   };
 }
 
@@ -133,31 +113,38 @@ export const AuthProvider = SessionProvider;
 // Session timeout for loading state (30 seconds)
 const SESSION_TIMEOUT_MS = 30000;
 
+export function SessionCheckRetry() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <p className="text-gray-600">We couldn’t check your session. Please try again.</p>
+      <button
+        onClick={() => window.location.reload()}
+        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
 // ProtectedRoute component with timeout handling
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isPending } = useSession();
+  const { isAuthenticated, isPending, sessionCheckFailed } = useSession();
   const location = useLocation();
   const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    if (!isPending) return;
+    if (!isPending) {
+      setTimedOut(false);
+      return;
+    }
 
     const timeout = setTimeout(() => setTimedOut(true), SESSION_TIMEOUT_MS);
     return () => clearTimeout(timeout);
   }, [isPending]);
 
-  if (timedOut) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-gray-600">Session check timed out. Please try again.</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        >
-          Retry
-        </button>
-      </div>
-    );
+  if ((isPending && timedOut) || sessionCheckFailed) {
+    return <SessionCheckRetry />;
   }
 
   if (isPending) {
@@ -170,7 +157,8 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (!isAuthenticated) {
     // Preserve intended destination so AuthPage can redirect back after login
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    const destination = location.pathname + location.search + location.hash;
+    return <Navigate to={`/login?redirect=${encodeURIComponent(destination)}`} replace />;
   }
 
   return <>{children}</>;

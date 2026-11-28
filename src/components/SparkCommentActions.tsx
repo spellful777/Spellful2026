@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Heart, MessageCircle, Share, Star } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { publicShareUrl } from '@/lib/share-studio';
 import { sparkReplyPath } from '@/lib/spark-comments';
 import type { CommunityReply } from '@/hooks/useCommunityPost';
 
@@ -15,7 +16,7 @@ export function SparkCommentActions({ reply, onReply, locked, canInteract = true
   const [pending, setPending] = useState(false);
   const [share, setShare] = useState(false);
   const [status, setStatus] = useState('');
-  const url = () => new URL(sparkReplyPath(reply.postId, reply.id), window.location.origin).href;
+  const url = () => publicShareUrl(new URL(sparkReplyPath(reply.postId, reply.id), window.location.href).href);
 
   async function change(action: 'liked' | 'favorited') {
     setPending(true);
@@ -52,8 +53,8 @@ export function SparkCommentActions({ reply, onReply, locked, canInteract = true
       <DialogContent className="max-w-sm">
         <DialogTitle>Share reply</DialogTitle>
         <DialogDescription>{audience === 'public'
-          ? 'This link opens the original Spark at this reply.'
-          : 'Only members with access to the original Spark can open this reply.'}</DialogDescription>
+          ? 'This link opens the original Post at this reply.'
+          : 'Only members with access to the original Post can open this reply.'}</DialogDescription>
         <input aria-label="Reply link" readOnly value={share ? url() : ''} onFocus={event => event.target.select()} className="w-full rounded border border-border bg-background p-2" />
         <button type="button" className="min-h-11 rounded border border-border" onClick={async () => {
           try {

@@ -1,4 +1,4 @@
-export const SPARK_LIMIT = 160;
+export const SPARK_LIMIT = 280;
 
 export function countSparkCharacters(text: string) {
   return Array.from(text).length;

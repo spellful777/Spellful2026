@@ -270,7 +270,7 @@ function DiscussionComposer() {
 
   // Form state
   const [postType, setPostType] = useState<PostType>('discussion');
-  const [categoryId, setCategoryId] = useState<number | ''>('');
+  const [categoryId, setCategoryId] = useState<number | ''>(() => Number(params.get('category')) || '');
   const [title, setTitle] = useState(reading ? 'My tarot reading' : '');
   const [body, setBody] = useState(() => typeof location.state?.discussionBody === 'string' ? location.state.discussionBody : '');
   const [tags, setTags] = useState('');

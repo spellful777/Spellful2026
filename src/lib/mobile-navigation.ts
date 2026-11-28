@@ -3,7 +3,10 @@ const belongsTo = (path: string, roots: string[]) => roots.some(root => path ===
 
 export function mobileDestination(path: string, search = ''): MobileDestination {
   const params = new URLSearchParams(search);
-  if (path === '/') return params.get('feed') === 'explore' ? 'Explore' : 'Home';
+  if (path === '/') {
+    const feed = params.get('feed');
+    return feed === 'following' || feed === 'explore' ? 'Coven' : 'Home';
+  }
   if (path === '/login') {
     const redirect = params.get('redirect');
     if (redirect?.startsWith('/') && !redirect.startsWith('//')) {

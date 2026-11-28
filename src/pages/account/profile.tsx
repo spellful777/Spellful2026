@@ -1,13 +1,14 @@
+import { DEFAULT_AVATARS, findDefaultAvatar, profileAvatar } from '@/lib/default-avatars';
 import { uploadedMediaUrl } from '@/lib/native-api';
 import { SPARK_TOPICS as INTEREST_SUGGESTIONS } from '@/lib/spark-topics';
 import { parseProfileFeature, type ProfileFeature } from '@/lib/profile-feature';
 import { ACCENTS, COVER_PRESETS } from '@/lib/profile-look';
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useLocation, useNavigate, Link } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import ProfileLinkShareSheet from '@/components/ProfileLinkShareSheet';
-import { useSession } from '@/lib/auth/auth-client';
+import { SessionCheckRetry, useSession } from '@/lib/auth/auth-client';
 import { useEntitlement } from '@/lib/use-plus-entitlement';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,19 +36,6 @@ const THEME_OVERRIDES: Record<string, React.CSSProperties> = {
   cottage:   { '--profile-accent': 'hsl(var(--secondary))',         '--profile-bg': 'hsl(80 15% 8%)' } as React.CSSProperties,
   crystal:   { '--profile-accent': 'hsl(var(--primary))',           '--profile-bg': 'hsl(270 30% 9%)' } as React.CSSProperties,
 };
-
-// ─── Default avatar presets ──────────────────────────────────────────────────
-const DEFAULT_AVATARS = [
-  { key: 'default-hat-black',   label: 'White Hat',  src: '/airo-assets/images/avatars/default-hat-black' },
-  { key: 'default-hat-blue',    label: 'Sapphire',  src: '/airo-assets/images/avatars/default-hat-blue' },
-  { key: 'default-hat-green',   label: 'Emerald',   src: '/airo-assets/images/avatars/default-hat-green' },
-  { key: 'default-hat-orange',  label: 'Amber',     src: '/airo-assets/images/avatars/default-hat-orange' },
-  { key: 'default-hat-purple',  label: 'Amethyst',  src: '/airo-assets/images/avatars/default-hat-purple' },
-  { key: 'default-hat-red',     label: 'Crimson',   src: '/airo-assets/images/avatars/default-hat-red' },
-  { key: 'default-hat-rainbow', label: 'Rainbow',   src: '/airo-assets/images/avatars/default-hat-rainbow' },
-  { key: 'default-hat-trans',   label: 'Trans',     src: '/airo-assets/images/avatars/default-hat-trans' },
-  { key: 'default-hat-lesbian', label: 'Lesbian',   src: '/airo-assets/images/avatars/default-hat-lesbian' },
-];
 
 // ─── Cover presets ────────────────────────────────────────────────────────────
 
@@ -93,6 +81,7 @@ const DEFAULT_SECTIONS = [
 type SectionConfig = { id: string; enabled: boolean; order: number };
 
 type FormState = {
+  messagePermission: string; invitePermission: string;
   name: string; bio: string; location: string; pronouns: string;
   witchPath: string; sunSign: string; moonSign: string; risingSign: string;
   profileVisibility: string; accentColor: string; avatarPreset: string; coverPreset: string;
@@ -166,6 +155,7 @@ const PROFILE_LAYOUTS = [
 ];
 
 const DEFAULT_FORM_REAL: FormState = {
+  messagePermission: 'everyone', invitePermission: 'everyone',
   name: '', bio: '', location: '', pronouns: '', witchPath: '',
   sunSign: '', moonSign: '', risingSign: '', profileVisibility: 'public',
   accentColor: 'gold', coverPreset: 'spellful-default', coverImage: null,
@@ -189,7 +179,7 @@ function accentCss(key: string): string {
 function Collapsible({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid hsl(var(--border))' }}>
+    <div className="studio-section rounded-xl overflow-hidden" style={{ border: '1px solid hsl(var(--border))' }}>
       <button
         aria-expanded={open}
         onClick={() => setOpen(o => !o)}
@@ -240,15 +230,20 @@ const TABS: { id: StudioTab; label: string; icon: React.ElementType }[] = [
   { id: 'more',  label: 'More',  icon: Settings2 },
 ];
 
-export default function ProfileStudioPage() {
+export default function ProfileStudioPage({ editingIdentity = false }: { editingIdentity?: boolean } = {}) {
+  const location = useLocation();
   const navigate = useNavigate();
-  const { session, isPending } = useSession();
+  const { session, isPending, sessionCheckFailed, refetch } = useSession();
+  const memberSlug = (session?.user as SessionUser | undefined)?.username || (session?.user.id && '~' + session.user.id);
   const ent = useEntitlement();
   const isPlus = ent.data?.isPlus ?? false;
 
   const [form, setForm] = useState<FormState>(DEFAULT_FORM_REAL);
   const [original, setOriginal] = useState<FormState>(DEFAULT_FORM_REAL);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [username, setUsername] = useState('');
   const [saving, setSaving] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [featureSparkInput, setFeatureSparkInput] = useState<string | null>(null);
@@ -258,7 +253,7 @@ export default function ProfileStudioPage() {
   const [offerUpgrade, setOfferUpgrade] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<StudioTab>('look');
+  const [activeTab, setActiveTab] = useState<StudioTab>(editingIdentity ? 'about' : 'look');
   const [previewMode, setPreviewMode] = useState<'me' | 'public' | 'coven'>('me');
   const [tagInput, setTagInput] = useState('');
 
@@ -284,8 +279,6 @@ export default function ProfileStudioPage() {
   const [addingItem, setAddingItem] = useState(false);
 
   // Privacy permissions
-  const [messagePermission, setMessagePermission] = useState('everyone');
-  const [invitePermission, setInvitePermission] = useState('everyone');
 
   // Creator application status
   const [appStatus, setAppStatus] = useState<AppStatus | null>(null);
@@ -330,8 +323,8 @@ export default function ProfileStudioPage() {
 
   // ── Auth redirect ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!isPending && !session) navigate('/login?redirect=/account/profile');
-  }, [session, isPending, navigate]);
+    if (!isPending && !session && !sessionCheckFailed) navigate('/login?redirect=' + encodeURIComponent(location.pathname), { replace: true });
+  }, [session, isPending, sessionCheckFailed, location.pathname, navigate]);
 
   // ── Load identity ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -407,10 +400,16 @@ export default function ProfileStudioPage() {
 
   // ── Load profile ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!(session?.user as SessionUser | undefined)?.username) return;
-    fetch(`/api/profile/${(session!.user as SessionUser).username}`, { credentials: 'include' })
-      .then(r => r.json())
+    if (!memberSlug) return;
+    const controller = new AbortController();
+    setLoading(true);
+    setLoadFailed(false);
+    fetch('/api/profile/' + encodeURIComponent(memberSlug), { credentials: 'include', signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then((data: { profile?: Record<string, unknown>; covenCount?: number; followerCount?: number }) => {
+        if (controller.signal.aborted) return;
+        if (!data.profile) throw new Error();
+        setUsername(String(data.profile.username ?? ''));
         if (data.covenCount !== undefined || data.followerCount !== undefined) {
           setPreviewStats({ covenCount: data.covenCount ?? 0, followerCount: data.followerCount ?? 0 });
         }
@@ -423,6 +422,8 @@ export default function ProfileStudioPage() {
           });
           const loaded: FormState = {
             name: String(p.name ?? ''),
+            messagePermission: String(p.messagePermission ?? 'everyone'),
+            invitePermission: String(p.invitePermission ?? 'everyone'),
             bio: String(p.bio ?? ''),
             location: String(p.location ?? ''),
             pronouns: String(p.pronouns ?? ''),
@@ -444,7 +445,7 @@ export default function ProfileStudioPage() {
               tumblr: String((p.socialLinks as Record<string, string>)?.tumblr ?? ''),
               website: String((p.socialLinks as Record<string, string>)?.website ?? ''),
             },
-            avatarPreset: String(p.avatarPreset ?? ''),
+            avatarPreset: findDefaultAvatar(profileAvatar(p.image as string | null, p.avatarPreset as string | null))?.key ?? '',
             profileTheme: String(p.profileTheme ?? ''),
             avatarFrame: String(p.avatarFrame ?? ''),
             practiceLabels: Array.isArray(p.practiceLabels) ? (p.practiceLabels as string[]) : [],
@@ -460,17 +461,14 @@ export default function ProfileStudioPage() {
           setForm(loaded);
           setOriginal(loaded);
           // Seed avatar preview from the saved custom image (user.image in DB)
-          if (session?.user?.image && !session.user.image.startsWith('/airo-assets/images/avatars/')) {
-            setAvatarPreview(session.user.image);
-          }
-          setMessagePermission(String(p.messagePermission ?? 'everyone'));
-          setInvitePermission(String(p.invitePermission ?? 'everyone'));
+          setAvatarPreview(typeof p.image === 'string' ? p.image : null);
           setHideOnlineStatus(!!p.hideOnlineStatus);
         }
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [(session?.user as SessionUser | undefined)?.username]);
+      .catch(() => { if (!controller.signal.aborted) setLoadFailed(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [memberSlug, loadAttempt]);
 
   // ── Privacy helpers ────────────────────────────────────────────────────────
   async function saveHideOnlineStatus(val: boolean) {
@@ -688,7 +686,8 @@ export default function ProfileStudioPage() {
       const data = await r.json() as { url?: string; error?: string; code?: string };
       if (r.ok && data.url) {
         setAvatarPreview(data.url);
-        // Clear preset so the custom upload is used on save
+        void refetch();
+        setOriginal(current => ({ ...current, avatarPreset: '' }));
         set('avatarPreset', '');
       } else if (data.code === 'PLUS_REQUIRED') {
         setError('Custom avatar upload requires Spellful Plus.');
@@ -711,26 +710,18 @@ export default function ProfileStudioPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          name: form.name, bio: form.bio, location: form.location, pronouns: form.pronouns,
-          witchPath: form.witchPath, sunSign: form.sunSign, moonSign: form.moonSign, risingSign: form.risingSign,
-          profileVisibility: form.profileVisibility, profileLayout: form.profileLayout,
-          accentColor: form.accentColor, avatarPreset: form.avatarPreset, coverPreset: form.coverPreset, coverImage: form.coverImage,
-          interestTags: form.interestTags, socialLinks: form.socialLinks,
-          profileTheme: form.profileTheme, avatarFrame: form.avatarFrame,
-          practiceLabels: form.practiceLabels, profileStatus: form.profileStatus,
-          profileSections: form.profileSections,
-          featuredAbout: form.featuredAbout,
-          messagePermission,
-          invitePermission,
-          bioVisibility: form.bioVisibility,
-          locationVisibility: form.locationVisibility,
-          zodiacVisibility: form.zodiacVisibility,
-          socialLinksVisibility: form.socialLinksVisibility,
-        }),
+        body: JSON.stringify(Object.fromEntries(
+          (Object.keys(form) as (keyof FormState)[])
+            .filter(key => JSON.stringify(form[key]) !== JSON.stringify(original[key]))
+            .map(key => [key, form[key]])
+        )),
       });
       const data = await r.json() as { ok?: boolean; error?: string };
-      if (data.ok) { setSaved(true); setOriginal(form); }
+      if (r.ok && data.ok) {
+        if (form.avatarPreset !== original.avatarPreset) void refetch();
+        setSaved(true);
+        setOriginal(form);
+      }
       else setError(data.error ?? 'Save failed');
     } catch { setError('Save failed'); }
     finally { setSaving(false); }
@@ -744,13 +735,11 @@ export default function ProfileStudioPage() {
     : { backgroundImage: `url(${COVER_PRESETS.find(p => p.key === form.coverPreset)?.image ?? COVER_PRESETS[0].image})`, backgroundSize: 'cover', backgroundPosition: 'center' };
   const previewAllowed = previewMode === 'me' || form.profileVisibility === 'public' ||
     (previewMode === 'coven' && form.profileVisibility === 'coven');
-  const previewUsername = (session?.user as SessionUser | undefined)?.username ?? '';
+  const previewUsername = username;
+  const profilePath = '/u/' + encodeURIComponent(username || memberSlug || '');
   const displayName = form.name || session?.user?.name || 'Your Name';
   const initials = displayName.slice(0, 2).toUpperCase();
-  const presetSrc = form.avatarPreset ? DEFAULT_AVATARS.find(a => a.key === form.avatarPreset)?.src ?? null : null;
-  // Preset selection is an explicit studio action — show it immediately in the preview
-  // even when the user already has a session profile photo.
-  const avatarSrc = avatarPreview ?? presetSrc ?? session?.user?.image ?? null;
+  const avatarSrc = findDefaultAvatar(form.avatarPreset)?.src ?? profileAvatar(avatarPreview ?? session?.user?.image);
 
   // Visibility helper — respects the preview mode toggle
   function canSee(fieldVisibility: string): boolean {
@@ -760,15 +749,12 @@ export default function ProfileStudioPage() {
     return fieldVisibility === 'public';
   }
 
-  // ── Completion score (5 signals) ───────────────────────────────────────────
-  const completionScore = [
-    !!avatarSrc,
-    !!form.name,
-    !!form.profileTheme || !!form.accentColor,
-    !!form.bio,
-    form.interestTags.length > 0,
-  ].filter(Boolean).length;
-
+  if (sessionCheckFailed) return <SessionCheckRetry />;
+  if (loadFailed) return <main className="mx-auto max-w-lg space-y-3 p-6">
+    <h1 className="font-serif text-xl">Profile Studio</h1>
+    <p role="alert">Couldn’t load your profile.</p>
+    <Button onClick={() => setLoadAttempt(attempt => attempt + 1)}>Try again</Button>
+  </main>;
   if (isPending || loading) return (
     <main className="min-h-screen flex items-center justify-center">
       <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
@@ -784,19 +770,18 @@ export default function ProfileStudioPage() {
       </Helmet>
 
       <main className="studio-profile min-h-screen py-3 px-3">
-        <div className="max-w-2xl mx-auto space-y-4">
+        <div className="studio-shell">
 
           {/* ── Top bar ── */}
-          <div className="flex items-center justify-between gap-3">
+          <div className="studio-topbar">
             <button
-              onClick={() => navigate('/account')}
+              aria-label="Back to your profile" onClick={() => navigate(profilePath)}
               className="flex items-center gap-1.5 text-sm transition-colors"
               style={{ color: 'hsl(var(--muted-foreground))' }}
             >
               <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">My Account</span>
             </button>
-            <h1 className="text-lg font-serif font-bold flex-1 text-center sm:text-left" style={{ color: 'hsl(var(--foreground))' }}>
+            <h1 className="text-lg font-serif font-bold flex-1 text-left" style={{ color: 'hsl(var(--foreground))' }}>
               Profile Studio
             </h1>
             {/* Preview mode toggle */}
@@ -818,18 +803,9 @@ export default function ProfileStudioPage() {
                 </button>
               ))}
             </div>
-            <Link
-              to={`/u/${encodeURIComponent(previewUsername)}${previewMode === "me" ? "" : "?preview=" + previewMode}`}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--muted-foreground))' }}
-              title="View live profile"
-              aria-label="View live public profile"
-            >
-              <Eye className="w-3.5 h-3.5" />
-            </Link>
           </div>
 
-          <div className="studio-preview">
+          <div className="studio-preview" style={THEME_OVERRIDES[form.profileTheme]}>
             {previewAllowed ? <>
               <div className="studio-preview-cover" style={{ ...coverBg, height: form.profileLayout === 'compact' ? 40 : form.profileLayout === 'immersive' ? 64 : 52 }} />
               <div className="studio-preview-identity">
@@ -838,11 +814,14 @@ export default function ProfileStudioPage() {
                 <div><strong>{displayName}</strong> <span>{previewUsername && '@' + previewUsername}</span>
                   {canSee(form.bioVisibility) && form.bio && <p>{form.bio}</p>}
                 </div>
-                <Eye className="size-4 shrink-0" aria-label="Live preview" />
+                <Link className="studio-preview-link" to={profilePath + (previewMode === 'me' ? '' : '?preview=' + previewMode)}>
+                  <span><Eye size={14} /> Live Preview</span>
+                  {previewMode !== 'me' && <small>{previewMode}</small>}
+                </Link>
               </div>
               <details className="studio-preview-fields"><summary>Preview profile details</summary>
                             {/* Profile info */}
-            <div className="pt-9 pb-3 px-4" style={{ background: (THEME_OVERRIDES[form.profileTheme] as Record<string, string> | undefined)?.['--profile-bg'] ?? 'hsl(var(--card))' }}>
+            <div className="pb-3 px-4" style={{ background: (THEME_OVERRIDES[form.profileTheme] as Record<string, string> | undefined)?.['--profile-bg'] ?? 'hsl(var(--card))' }}>
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="font-serif font-semibold text-sm" style={{ color: 'hsl(var(--foreground))' }}>{displayName}</p>
@@ -964,31 +943,16 @@ export default function ProfileStudioPage() {
             Applying this look requires Spellful Plus. <Link className="text-primary underline" to="/plus">Explore Plus</Link>
           </div>}
 
-          {/* ── Completion bar (only if < 5/5) ── */}
-          {completionScore < 5 && (
-            <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
-              <Sparkles className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium" style={{ color: 'hsl(var(--foreground))' }}>Profile completion</span>
-                  <span className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{completionScore}/5</span>
-                </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'hsl(var(--border))' }}>
-                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(completionScore / 5) * 100}%`, background: accent }} />
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* ── Tab nav ── */}
-          <div className="grid grid-cols-4 gap-1 p-1 rounded-xl" style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
+          <div className="studio-tabs" aria-label="Studio sections" style={{ background: 'hsl(var(--muted))', border: '1px solid hsl(var(--border))' }}>
             {TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
+                aria-pressed={activeTab === id}
                 onClick={() => setActiveTab(id)}
                 className="flex flex-col items-center gap-1 py-2.5 rounded-lg text-xs font-medium transition-all"
                 style={activeTab === id
-                  ? { background: 'hsl(var(--card))', color: accent, boxShadow: '0 1px 3px hsl(var(--background) / 0.5)' }
+                  ? { background: '#342044', color: '#edcaff' }
                   : { color: 'hsl(var(--muted-foreground))' }
                 }
               >
@@ -1006,7 +970,7 @@ export default function ProfileStudioPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.18 }}
-              className="space-y-3"
+              className="studio-sections"
             >
 
               {/* ════════════════════════════════════════════════════════════
@@ -1014,8 +978,162 @@ export default function ProfileStudioPage() {
               ════════════════════════════════════════════════════════════ */}
               {activeTab === 'look' && (
                 <>
+                  {/* Cover */}
+                  <Collapsible title="Cover" defaultOpen>
+                    <p className="text-sm text-muted-foreground">Choose a profile cover.</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {COVER_PRESETS.map(p => (
+                        <button
+                          key={p.key}
+                          onClick={() => { setCoverPreview(null); setOfferUpgrade(false); set('coverPreset', p.key); set('coverImage', null); }}
+                          className="relative rounded-lg overflow-hidden transition-all"
+                          style={{ height: '44px', backgroundImage: `url(${p.image})`, backgroundSize: 'cover', backgroundPosition: 'center', outline: form.coverPreset === p.key && !form.coverImage ? `2px solid ${accent}` : '2px solid transparent', outlineOffset: '2px' }}
+                          aria-pressed={form.coverPreset === p.key && !form.coverImage}
+                          aria-label={p.label}
+                          title={p.label}
+                        >
+                          {form.coverPreset === p.key && !form.coverImage && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <Check className="w-3.5 h-3.5 text-white drop-shadow" />
+                            </div>
+                          )}
+                          <span className="absolute bottom-1 left-0 right-0 text-center bg-black/50 text-white text-xs">{p.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      {ent.data.isPlus ? (
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => coverRef.current?.click()} disabled={coverUploading} className="gap-1.5 text-xs">
+                            <Camera className="w-3.5 h-3.5" />
+                            {coverUploading ? 'Uploading…' : 'Upload photo'}
+                          </Button>
+                          {form.coverImage && (
+                            <Button variant="ghost" size="sm" onClick={() => { set('coverImage', null); set('coverPreset', 'midnight'); }} className="gap-1.5 text-xs text-destructive">
+                              <X className="w-3.5 h-3.5" /> Remove
+                            </Button>
+                          )}
+                          <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" className="hidden"
+                            onChange={e => { const f = e.target.files?.[0]; if (f) void uploadCover(f); }} />
+                        </>
+                      ) : (
+                        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm text-primary">
+                          <span className="studio-plus-badge">Plus</span> Preview a custom cover
+                          <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
+                            onChange={event => {
+                              const file = event.currentTarget.files?.[0];
+                              if (file) { setCoverPreview(URL.createObjectURL(file)); setOfferUpgrade(false); }
+                              event.currentTarget.value = '';
+                            }} />
+                        </label>
+                      )}
+                    </div>
+                  </Collapsible>
+
+                  <Collapsible title="Avatar Frame">
+                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                      {AVATAR_FRAMES.map(f => {
+                        const isSelected = (previewFrame ?? form.avatarFrame) === f.key;
+                        const locked = f.plusOnly && !isPlus;
+                        return (
+                          <button
+                            key={f.key}
+                            onClick={() => {
+                              setOfferUpgrade(false);
+                              if (locked) setPreviewFrame(f.key);
+                              else { setPreviewFrame(null); set('avatarFrame', f.key); }
+                            }}
+                            aria-label={`${f.label}${locked ? ' (Plus only)' : ''}`}
+                            className="relative flex flex-col items-center gap-1 rounded-xl p-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed"
+                            style={{
+                              background: isSelected ? `${accent}18` : 'hsl(var(--muted)/0.5)',
+                              outline: isSelected ? `2px solid ${accent}` : '2px solid transparent',
+                              outlineOffset: '2px',
+                            }}
+                          >
+                            <AvatarWithFrame
+                              frameKey={f.key}
+                              size={44}
+                              isPlus
+                            />
+                            <span className="text-[9px] leading-tight text-center line-clamp-2"
+                              style={{ color: isSelected ? accent : 'hsl(var(--muted-foreground))' }}>
+                              {f.label}
+                            </span>
+                            {f.plusOnly && <span className="studio-plus-badge">Plus</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Collapsible>
+
+                  {/* Theme */}
+                  <Collapsible title="Theme">
+                    <div className="grid grid-cols-1 gap-2">
+                      {PROFILE_THEMES.map(t => (
+                        <button
+                          key={t.key}
+                          onClick={() => set('profileTheme', t.key)}
+                          className="flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-all"
+                          style={{
+                            background: form.profileTheme === t.key ? `${accent}15` : 'hsl(var(--muted))',
+                            border: `1px solid ${form.profileTheme === t.key ? accent : 'hsl(var(--border))'}`,
+                          }}
+                        >
+                          <div>
+                            <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>{t.label}</p>
+                            <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{t.desc}</p>
+                          </div>
+                          {form.profileTheme === t.key && <Check className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />}
+                        </button>
+                      ))}
+                    </div>
+                  </Collapsible>
+
+                  {/* Accent color */}
+                  <Collapsible title="Accent Color">
+                    <div className="flex flex-wrap gap-2">
+                      {ACCENTS.map(a => (
+                        <button
+                          key={a.key}
+                          onClick={() => set('accentColor', a.key)}
+                          className="w-9 h-9 rounded-full transition-all flex items-center justify-center"
+                          style={{ background: a.color, outline: form.accentColor === a.key ? `3px solid ${a.color}` : '3px solid transparent', outlineOffset: '2px' }}
+                          aria-label={a.label}
+                          title={a.label}
+                        >
+                          {form.accentColor === a.key && <Check className="w-4 h-4 text-white drop-shadow" />}
+                        </button>
+                      ))}
+                    </div>
+                  </Collapsible>
+
+
+
+                  {/* Layout */}
+                  <Collapsible title="Profile Layout">
+                    <div className="space-y-2">
+                      {PROFILE_LAYOUTS.map(l => (
+                        <button
+                          key={l.key}
+                          onClick={() => set('profileLayout', l.key)}
+                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-all"
+                          style={{
+                            background: form.profileLayout === l.key ? `${accent}15` : 'hsl(var(--muted))',
+                            border: `1px solid ${form.profileLayout === l.key ? accent : 'hsl(var(--border))'}`,
+                          }}
+                        >
+                          <div>
+                            <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>{l.label}</p>
+                            <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{l.desc}</p>
+                          </div>
+                          {form.profileLayout === l.key && <Check className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />}
+                        </button>
+                      ))}
+                    </div>
+                  </Collapsible>
                   {/* Avatar */}
-                  <Collapsible title="Avatar" defaultOpen>
+                  <Collapsible title="Profile picture">
                     <div className="space-y-3">
                       {/* Current avatar preview + upload button */}
                       <div className="flex items-center gap-4">
@@ -1069,13 +1187,15 @@ export default function ProfileStudioPage() {
                           {DEFAULT_AVATARS.map(av => (
                             <button
                               key={av.key}
-                              onClick={() => { set('avatarPreset', form.avatarPreset === av.key ? '' : av.key); }}
+                              onClick={() => set('avatarPreset', av.key)}
                               className="relative rounded-full overflow-hidden transition-all"
                               style={{
                                 width: '48px', height: '48px',
                                 outline: form.avatarPreset === av.key ? `3px solid ${accent}` : '3px solid transparent',
                                 outlineOffset: '2px',
                               }}
+                              disabled={avatarUploading}
+                              aria-pressed={form.avatarPreset === av.key}
                               aria-label={av.label}
                               title={av.label}
                             >
@@ -1091,186 +1211,6 @@ export default function ProfileStudioPage() {
                       </div>
                     </div>
                   </Collapsible>
-
-                  {/* Cover */}
-                  <Collapsible title="Cover" defaultOpen>
-                    <div className="grid grid-cols-3 gap-2">
-                      {COVER_PRESETS.map(p => (
-                        <button
-                          key={p.key}
-                          onClick={() => { setCoverPreview(null); setOfferUpgrade(false); set('coverPreset', p.key); set('coverImage', null); }}
-                          className="relative rounded-lg overflow-hidden transition-all"
-                          style={{ height: '44px', backgroundImage: `url(${p.image})`, backgroundSize: 'cover', backgroundPosition: 'center', outline: form.coverPreset === p.key && !form.coverImage ? `2px solid ${accent}` : '2px solid transparent', outlineOffset: '2px' }}
-                          aria-label={p.label}
-                          title={p.label}
-                        >
-                          {form.coverPreset === p.key && !form.coverImage && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <Check className="w-3.5 h-3.5 text-white drop-shadow" />
-                            </div>
-                          )}
-                          <span className="absolute bottom-1 left-0 right-0 text-center text-white/80 text-[10px]">{p.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2 pt-1">
-                      {ent.data.isPlus ? (
-                        <>
-                          <Button variant="outline" size="sm" onClick={() => coverRef.current?.click()} disabled={coverUploading} className="gap-1.5 text-xs">
-                            <Camera className="w-3.5 h-3.5" />
-                            {coverUploading ? 'Uploading…' : 'Upload photo'}
-                          </Button>
-                          {form.coverImage && (
-                            <Button variant="ghost" size="sm" onClick={() => { set('coverImage', null); set('coverPreset', 'midnight'); }} className="gap-1.5 text-xs text-destructive">
-                              <X className="w-3.5 h-3.5" /> Remove
-                            </Button>
-                          )}
-                          <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" className="hidden"
-                            onChange={e => { const f = e.target.files?.[0]; if (f) void uploadCover(f); }} />
-                        </>
-                      ) : (
-                        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm text-primary">
-                          <span className="studio-plus-badge">Plus</span> Preview a custom cover
-                          <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only"
-                            onChange={event => {
-                              const file = event.currentTarget.files?.[0];
-                              if (file) { setCoverPreview(URL.createObjectURL(file)); setOfferUpgrade(false); }
-                              event.currentTarget.value = '';
-                            }} />
-                        </label>
-                      )}
-                    </div>
-                  </Collapsible>
-
-                  {/* Plus upgrade nudge — shown only to free users */}
-                  {!ent.data.isPlus && (
-                    <Link
-                      to="/plus"
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
-                      style={{
-                        background: 'hsl(var(--primary) / 0.07)',
-                        border: '1px solid hsl(var(--primary) / 0.25)',
-                      }}
-                    >
-                      <div
-                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'hsl(var(--primary) / 0.15)' }}
-                      >
-                        <Sparkles className="w-3.5 h-3.5" style={{ color: 'hsl(var(--primary))' }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium" style={{ color: 'hsl(var(--primary))' }}>
-                          Unlock more with Spellful Plus
-                        </p>
-                        <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                          More themes, frames &amp; personalization
-                        </p>
-                      </div>
-                      <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                    </Link>
-                  )}
-
-                  {/* Theme */}
-                  <Collapsible title="Theme">
-                    <div className="grid grid-cols-1 gap-2">
-                      {PROFILE_THEMES.map(t => (
-                        <button
-                          key={t.key}
-                          onClick={() => set('profileTheme', t.key)}
-                          className="flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-all"
-                          style={{
-                            background: form.profileTheme === t.key ? `${accent}15` : 'hsl(var(--muted))',
-                            border: `1px solid ${form.profileTheme === t.key ? accent : 'hsl(var(--border))'}`,
-                          }}
-                        >
-                          <div>
-                            <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>{t.label}</p>
-                            <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{t.desc}</p>
-                          </div>
-                          {form.profileTheme === t.key && <Check className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />}
-                        </button>
-                      ))}
-                    </div>
-                  </Collapsible>
-
-                  {/* Accent color */}
-                  <Collapsible title="Accent Color">
-                    <div className="flex flex-wrap gap-2">
-                      {ACCENTS.map(a => (
-                        <button
-                          key={a.key}
-                          onClick={() => set('accentColor', a.key)}
-                          className="w-9 h-9 rounded-full transition-all flex items-center justify-center"
-                          style={{ background: a.color, outline: form.accentColor === a.key ? `3px solid ${a.color}` : '3px solid transparent', outlineOffset: '2px' }}
-                          aria-label={a.label}
-                          title={a.label}
-                        >
-                          {form.accentColor === a.key && <Check className="w-4 h-4 text-white drop-shadow" />}
-                        </button>
-                      ))}
-                    </div>
-                  </Collapsible>
-
-                  {/* Avatar frame */}
-                  <Collapsible title="Avatar Frame">
-                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-                      {AVATAR_FRAMES.map(f => {
-                        const isSelected = (previewFrame ?? form.avatarFrame) === f.key;
-                        const locked = f.plusOnly && !isPlus;
-                        return (
-                          <button
-                            key={f.key}
-                            onClick={() => {
-                              setOfferUpgrade(false);
-                              if (locked) setPreviewFrame(f.key);
-                              else { setPreviewFrame(null); set('avatarFrame', f.key); }
-                            }}
-                            aria-label={`${f.label}${locked ? ' (Plus only)' : ''}`}
-                            className="relative flex flex-col items-center gap-1 rounded-xl p-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed"
-                            style={{
-                              background: isSelected ? `${accent}18` : 'hsl(var(--muted)/0.5)',
-                              outline: isSelected ? `2px solid ${accent}` : '2px solid transparent',
-                              outlineOffset: '2px',
-                            }}
-                          >
-                            <AvatarWithFrame
-                              frameKey={f.key}
-                              size={44}
-                              isPlus
-                            />
-                            <span className="text-[9px] leading-tight text-center line-clamp-2"
-                              style={{ color: isSelected ? accent : 'hsl(var(--muted-foreground))' }}>
-                              {f.label}
-                            </span>
-                            {f.plusOnly && <span className="studio-plus-badge">Plus</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </Collapsible>
-
-                  {/* Layout */}
-                  <Collapsible title="Profile Layout">
-                    <div className="space-y-2">
-                      {PROFILE_LAYOUTS.map(l => (
-                        <button
-                          key={l.key}
-                          onClick={() => set('profileLayout', l.key)}
-                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-all"
-                          style={{
-                            background: form.profileLayout === l.key ? `${accent}15` : 'hsl(var(--muted))',
-                            border: `1px solid ${form.profileLayout === l.key ? accent : 'hsl(var(--border))'}`,
-                          }}
-                        >
-                          <div>
-                            <p className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>{l.label}</p>
-                            <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{l.desc}</p>
-                          </div>
-                          {form.profileLayout === l.key && <Check className="w-4 h-4 flex-shrink-0" style={{ color: accent }} />}
-                        </button>
-                      ))}
-                    </div>
-                  </Collapsible>
                 </>
               )}
 
@@ -1279,41 +1219,10 @@ export default function ProfileStudioPage() {
               ════════════════════════════════════════════════════════════ */}
               {activeTab === 'about' && (
                 <>
-                  <Collapsible title="Featured item">
-                    <label className="grid gap-2 text-sm">
-                      Featured item type
-                      <select className="rounded border border-border bg-background p-2" value={form.featuredAbout?.kind ?? ''}
-                        onChange={event => {
-                          const kind = event.target.value;
-                          setFeatureSparkInput(null);
-                          set('featuredAbout', kind === 'playlist' ? { kind, id: playlists[0]?.id ?? 0 }
-                            : kind === 'spark' ? { kind, id: 0 } : kind === 'link' ? { kind, title: '', url: '' } : null);
-                        }}>
-                        <option value="">None</option><option value="playlist">Playlist</option><option value="spark">Spark</option><option value="link">External link</option>
-                      </select>
-                    </label>
-                    {form.featuredAbout?.kind === 'playlist' && <label className="grid gap-1 text-sm">Playlist
-                      <select className="rounded border border-border bg-background p-2" value={form.featuredAbout.id}
-                        onChange={event => set('featuredAbout', { kind: 'playlist', id: Number(event.target.value) })}>
-                        <option value={0}>Choose a playlist</option>
-                        {playlists.map(item => <option key={item.id} value={item.id}>{item.customTitle || item.provider + ' playlist'}</option>)}
-                      </select>
-                    </label>}
-                    {form.featuredAbout?.kind === 'spark' && <label className="grid gap-1 text-sm">Spark link
-                      <Input placeholder="https://spellful.com/community/post/…" value={featureSparkInput ?? (form.featuredAbout.id ? 'https://spellful.com/community/post/' + form.featuredAbout.id : '')}
-                        onChange={event => { setFeatureSparkInput(event.target.value); const id = Number(event.target.value.match(/(?:^|\/community\/post\/)(\d+)\/?$/)?.[1]); set('featuredAbout', { kind: 'spark', id: Number.isSafeInteger(id) ? id : 0 }); }} />
-                    </label>}
-                    {form.featuredAbout?.kind === 'link' && <>
-                      <Field label="Link title"><Input maxLength={100} value={form.featuredAbout.title} onChange={event => {
-                        const current = form.featuredAbout; if (current?.kind === 'link') set('featuredAbout', { ...current, title: event.target.value });
-                      }} /></Field>
-                      <Field label="HTTPS URL"><Input type="url" value={form.featuredAbout.url} onChange={event => {
-                        const current = form.featuredAbout; if (current?.kind === 'link') set('featuredAbout', { ...current, url: event.target.value });
-                      }} /></Field>
-                    </>}
-                  </Collapsible>
 
-                  <Collapsible title="Display Name & Bio" defaultOpen>
+
+                  <Collapsible title="Display Name & Bio" defaultOpen={editingIdentity}>
+                    <Link to="/account#profile-username" className="text-sm text-primary underline">Manage username</Link>
                     <Field label="Display name">
                       <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Your name or craft name" className="text-sm" />
                     </Field>
@@ -1324,7 +1233,7 @@ export default function ProfileStudioPage() {
                       <Input value={form.profileStatus} onChange={e => set('profileStatus', e.target.value)} placeholder="e.g. Under the new moon…" className="text-sm" />
                     </Field>
                     <Field label="Bio">
-                      <Textarea value={form.bio} onChange={e => set('bio', e.target.value)} placeholder="Tell your story…" rows={3} className="text-sm resize-none" />
+                      <Textarea maxLength={160} value={form.bio} onChange={e => set('bio', e.target.value)} placeholder="Tell your story…" rows={3} className="text-sm resize-none" />
                     </Field>
                     <Field label="Location">
                       <Input value={form.location} onChange={e => set('location', e.target.value)} placeholder="e.g. Pacific Northwest" className="text-sm" />
@@ -1343,7 +1252,7 @@ export default function ProfileStudioPage() {
                     </Field>
                   </Collapsible>
 
-                  <Collapsible title="Interests" defaultOpen>
+                  <Collapsible title="Interests">
                     <div className="flex flex-wrap gap-1.5 mb-2">
                       {form.interestTags.map(tag => (
                         <span key={tag} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full" style={{ background: `${accent}20`, color: accent, border: `1px solid ${accent}40` }}>
@@ -1408,6 +1317,41 @@ export default function ProfileStudioPage() {
                         <Input value={form.socialLinks[s.key]} onChange={e => setSocial(s.key, e.target.value)} placeholder={s.placeholder} className="text-sm" />
                       </Field>
                     ))}
+                  </Collapsible>
+
+                  <Collapsible title="Featured item" defaultOpen={!editingIdentity}>
+                    <p className="text-sm text-muted-foreground">Highlight a playlist, Post, or link on your profile.</p>
+                    <label className="grid gap-2 text-sm">
+                      Featured item type
+                      <select className="rounded border border-border bg-background p-2" value={form.featuredAbout?.kind ?? ''}
+                        onChange={event => {
+                          const kind = event.target.value;
+                          setFeatureSparkInput(null);
+                          set('featuredAbout', kind === 'playlist' ? { kind, id: playlists[0]?.id ?? 0 }
+                            : kind === 'spark' ? { kind, id: 0 } : kind === 'link' ? { kind, title: '', url: '' } : null);
+                        }}>
+                        <option value="">None</option><option value="playlist">Playlist</option><option value="spark">Post</option><option value="link">External link</option>
+                      </select>
+                    </label>
+                    {form.featuredAbout?.kind === 'playlist' && <label className="grid gap-1 text-sm">Playlist
+                      <select className="rounded border border-border bg-background p-2" value={form.featuredAbout.id}
+                        onChange={event => set('featuredAbout', { kind: 'playlist', id: Number(event.target.value) })}>
+                        <option value={0}>Choose a playlist</option>
+                        {playlists.map(item => <option key={item.id} value={item.id}>{item.customTitle || item.provider + ' playlist'}</option>)}
+                      </select>
+                    </label>}
+                    {form.featuredAbout?.kind === 'spark' && <label className="grid gap-1 text-sm">Post link
+                      <Input placeholder="https://spellful.com/community/post/…" value={featureSparkInput ?? (form.featuredAbout.id ? 'https://spellful.com/community/post/' + form.featuredAbout.id : '')}
+                        onChange={event => { setFeatureSparkInput(event.target.value); const id = Number(event.target.value.match(/(?:^|\/community\/post\/)(\d+)\/?$/)?.[1]); set('featuredAbout', { kind: 'spark', id: Number.isSafeInteger(id) ? id : 0 }); }} />
+                    </label>}
+                    {form.featuredAbout?.kind === 'link' && <>
+                      <Field label="Link title"><Input maxLength={100} value={form.featuredAbout.title} onChange={event => {
+                        const current = form.featuredAbout; if (current?.kind === 'link') set('featuredAbout', { ...current, title: event.target.value });
+                      }} /></Field>
+                      <Field label="HTTPS URL"><Input type="url" value={form.featuredAbout.url} onChange={event => {
+                        const current = form.featuredAbout; if (current?.kind === 'link') set('featuredAbout', { ...current, url: event.target.value });
+                      }} /></Field>
+                    </>}
                   </Collapsible>
                 </>
               )}
@@ -1666,7 +1610,7 @@ export default function ProfileStudioPage() {
                           Messaging & invites
                         </p>
                         <Field label="Who can message me">
-                          <Select value={messagePermission} onValueChange={setMessagePermission}>
+                          <Select value={form.messagePermission} onValueChange={value => set('messagePermission', value)}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="everyone">Everyone</SelectItem>
@@ -1676,7 +1620,7 @@ export default function ProfileStudioPage() {
                           </Select>
                         </Field>
                         <Field label="Who can invite me to Coven">
-                          <Select value={invitePermission} onValueChange={setInvitePermission}>
+                          <Select value={form.invitePermission} onValueChange={value => set('invitePermission', value)}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="everyone">Everyone</SelectItem>
@@ -1990,7 +1934,7 @@ export default function ProfileStudioPage() {
 
                   <Collapsible title="Advanced">
                     <p className="text-xs mb-3" style={{ color: 'hsl(var(--muted-foreground))' }}>View your public profile as others see it.</p>
-                    <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate(`/u/${(session?.user as SessionUser | undefined)?.username ?? ''}`)}>
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate(profilePath)}>
                       <ExternalLink className="w-3.5 h-3.5" /> View public profile
                     </Button>
                   </Collapsible>
@@ -2004,42 +1948,23 @@ export default function ProfileStudioPage() {
           <ProfileLinkShareSheet
             open={shareOpen}
             onClose={() => setShareOpen(false)}
-            username={(session?.user as SessionUser | undefined)?.username ?? ''}
+            username={username || memberSlug || ''}
             displayName={form.name || null}
             bio={form.bio || null}
             isOwn
           />
 
           {/* ── Install Spellful ── */}
-          <InstallSection />
+          {activeTab === 'more' && <InstallSection />}
 
           {/* ── Save bar ── */}
-          <div
-            className="sticky bottom-4 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 transition-all"
-            style={{
-              background: isDirty ? 'hsl(var(--card))' : 'hsl(var(--muted))',
-              border: `1px solid ${isDirty ? accent : 'hsl(var(--border))'}`,
-              boxShadow: isDirty ? `0 4px 24px ${accent}25` : 'none',
-            }}
-          >
-            <div className="flex items-center gap-2">
-              {isDirty && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: accent }} />}
-              <span className="text-xs" style={{ color: isDirty ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))' }}>
-                {saved ? 'All changes saved' : isDirty ? 'Unsaved changes' : 'No changes'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              {isDirty && (
-                <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setForm(original); setSaved(false); setError(''); }}>
-                  Discard
-                </Button>
-              )}
+          <div className="studio-save">
+            {isDirty && <Button variant="ghost" size="sm" onClick={() => { setForm(original); setSaved(false); setError(''); }}>Discard</Button>}
               <Button
                 size="sm"
                 onClick={() => void handleSave()}
                 disabled={saving || (!isDirty && !previewFrame && !coverPreview)}
-                className="gap-1.5 text-xs"
-                style={isDirty ? { background: accent, color: 'hsl(var(--primary-foreground))', border: 'none' } : {}}
+                className="studio-save-button"
               >
                 {saving ? (
                   <span className="flex items-center gap-1.5">
@@ -2052,11 +1977,10 @@ export default function ProfileStudioPage() {
                   'Save Changes'
                 )}
               </Button>
-            </div>
           </div>
 
           {error && (
-            <p className="text-xs text-center text-destructive pb-2">{error}</p>
+            <p role="alert" className="text-sm text-center text-destructive pb-2">{error}</p>
           )}
 
         </div>

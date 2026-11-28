@@ -1,3 +1,4 @@
+import { findDefaultAvatar } from '@/lib/default-avatars';
 import { getEntitlement } from '@/server/lib/plus-entitlement.js';
 import { parseProfileFeature } from '@/lib/profile-feature';
 import type { Request, Response } from 'express';
@@ -19,7 +20,6 @@ const VALID_FRAMES = [
   'frame-1', 'frame-2', 'frame-3', 'frame-4', 'frame-5',
   'frame-6', 'frame-7', 'frame-8', 'frame-9', 'frame-10',
 ];
-const VALID_PRESETS = ['', 'default-hat-black', 'default-hat-blue', 'default-hat-green', 'default-hat-lesbian', 'default-hat-orange', 'default-hat-purple', 'default-hat-rainbow', 'default-hat-red', 'default-hat-trans'];
 
 // Canonical base URLs for platforms that accept @username handles.
 // The handle is appended directly after the base (base already ends with / or @).
@@ -129,7 +129,8 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'Invalid profile theme' });
     if (avatarFrame !== undefined && !VALID_FRAMES.includes(avatarFrame))
       return res.status(400).json({ error: 'Invalid avatar frame' });
-    if (avatarPreset !== undefined && !VALID_PRESETS.includes(avatarPreset))
+    const hat = findDefaultAvatar(avatarPreset);
+    if (avatarPreset !== undefined && avatarPreset !== '' && !hat)
       return res.status(400).json({ error: 'Invalid avatar preset' });
     if (profileStatus !== undefined && profileStatus.length > 100)
       return res.status(400).json({ error: 'Status must be 100 characters or fewer' });
@@ -205,7 +206,7 @@ export default async function handler(req: Request, res: Response) {
       ...(interestTags !== undefined ? { interestTags } : {}),
       ...(socialLinks !== undefined ? { socialLinks: cleanSocial } : {}),
       ...(profileTheme !== undefined ? { profileTheme } : {}),
-      ...(avatarPreset !== undefined ? { avatarPreset } : {}),
+      ...(hat ? { avatarPreset: hat.key, image: hat.src } : avatarPreset === '' ? { avatarPreset: '' } : {}),
       ...(avatarFrame !== undefined ? { avatarFrame } : {}),
       ...(practiceLabels !== undefined ? { practiceLabels } : {}),
       ...(profileStatus !== undefined ? { profileStatus } : {}),

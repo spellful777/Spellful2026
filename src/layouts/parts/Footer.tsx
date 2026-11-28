@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
-import { ArrowRight } from 'lucide-react';
+import { COMMUNITY_GROUPS, HOME_EXPLORE } from '@/lib/community-navigation';
 import { useSession } from '@/lib/auth/auth-client';
-import { COMMUNITY_FEED } from '@/lib/community-navigation';
 import { getMoonPhase } from '@/lib/moon-phase-engine';
 
 // ─── Seeded star field (SSR-safe) ────────────────────────────────────────────
@@ -58,6 +57,7 @@ export default function Footer() {
     setMoonIllum(Math.round(data.illumination));
   }, []);
 
+  const communityDest = isAuthenticated ? COMMUNITY_GROUPS : '/login?redirect=' + encodeURIComponent(COMMUNITY_GROUPS);
   const grimDest = isAuthenticated ? '/grimoire' : '/login?redirect=/grimoire';
   const glyph = PHASE_GLYPHS[moonPhase] ?? '\u{1F315}';
 
@@ -100,21 +100,8 @@ export default function Footer() {
         ))}
       </div>
 
-      <nav aria-labelledby="footer-coven-heading" className="relative z-10 mx-auto px-5 pt-8 text-center">
-        <h2 id="footer-coven-heading" className="font-heading text-3xl font-bold leading-tight sm:text-4xl">
-          <Link
-            to={COMMUNITY_FEED}
-            className="coven-press inline-flex min-h-11 items-center gap-2 rounded-sm text-[hsl(var(--footer-ivory))] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            Coven
-            <ArrowRight className="size-4 shrink-0 text-[hsl(var(--footer-gold))]" aria-hidden="true" />
-          </Link>
-        </h2>
-        <p className="mt-1.5 text-sm text-[hsl(var(--footer-ivory)/0.76)]">Connect with friends and follow people.</p>
-      </nav>
-
       {/* 1. Celestial Divider */}
-      <div className="relative flex flex-col items-center pt-5 pb-6" aria-hidden="true">
+      <div className="relative flex flex-col items-center pt-10 pb-2" aria-hidden="true">
         <div
           className="relative mb-3 text-3xl select-none"
           style={{
@@ -145,7 +132,76 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Site and legal links */}
+      {/* 2. Main Message */}
+      <motion.div
+        className="relative z-10 flex flex-col items-center text-center px-6 pt-8 pb-6"
+        initial={{ opacity: 0, y: 18 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.7, ease: 'easeOut' as const }}
+      >
+        <h2
+          className="text-3xl sm:text-4xl md:text-5xl mb-4 leading-tight"
+          style={{ fontFamily: 'var(--font-heading)', color: 'hsl(var(--footer-ivory))', letterSpacing: '0.01em' }}
+        >
+          Your{' '}
+          <em style={{ fontStyle: 'italic', color: 'hsl(var(--footer-gold))', textShadow: '0 0 18px hsl(var(--footer-gold) / 0.4)' }}>
+            magic
+          </em>{' '}
+          continues here.
+        </h2>
+        <p
+          className="text-sm sm:text-base max-w-sm"
+          style={{ color: 'hsl(var(--footer-lavender))', fontFamily: 'var(--font-sans)', fontWeight: 300, lineHeight: 1.7 }}
+        >
+          Return to your rituals, explore the stars,
+          <br className="hidden sm:block" /> and find your circle.
+        </p>
+      </motion.div>
+
+      {/* 3. Community Button */}
+      <motion.div
+        className="relative z-10 flex justify-center pb-10"
+        initial={{ opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6, delay: 0.15, ease: 'easeOut' as const }}
+      >
+        <Link
+          to={communityDest}
+          className="group relative inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-sm font-medium transition-all duration-300"
+          style={{
+            fontFamily: 'var(--font-sans)',
+            background: 'linear-gradient(135deg, hsl(var(--footer-lavender) / 0.8) 0%, hsl(var(--accent) / 0.7) 100%)',
+            border: '1px solid hsl(var(--footer-gold) / 0.4)',
+            color: 'hsl(var(--footer-ivory))',
+            boxShadow: '0 0 18px hsl(var(--footer-lavender) / 0.2), inset 0 1px 0 hsl(var(--footer-ivory) / 0.1)',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLAnchorElement).style.boxShadow =
+              '0 0 32px hsl(var(--footer-lavender) / 0.4), 0 0 60px hsl(var(--footer-gold) / 0.2), inset 0 1px 0 hsl(var(--footer-ivory) / 0.15)';
+            (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLAnchorElement).style.boxShadow =
+              '0 0 18px hsl(var(--footer-lavender) / 0.2), inset 0 1px 0 hsl(var(--footer-ivory) / 0.1)';
+            (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(0)';
+          }}
+        >
+          Enter the Community
+          <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">
+            &#x2192;
+          </span>
+        </Link>
+      </motion.div>
+
+      {/* Thin separator */}
+      <div
+        className="relative z-10 mx-auto max-w-lg h-px mb-8"
+        style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--footer-gold) / 0.3), transparent)' }}
+      />
+
+      {/* 4. Minimal Navigation */}
       <motion.div
         className="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 px-6 pb-8"
         initial={{ opacity: 0 }}
@@ -169,6 +225,8 @@ export default function Footer() {
         <nav aria-label="Footer navigation" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
           {[
             { label: 'Explore', href: '/spells' },
+            { label: 'Community', href: communityDest },
+            { label: 'Posts', href: HOME_EXPLORE },
             { label: 'My Grimoire', href: grimDest },
           ].map((l) => (
             <Link

@@ -13,7 +13,7 @@ import type { Request, Response } from 'express';
 import { db } from '@/server/db/client.js';
 import { communityPosts, communityCategories, communityPolls, sparkMediaUploads } from '@/server/db/schema.js';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { visiblePostForMember } from '@/server/lib/community-post-access.js';
+import { visiblePostForMember, forumAllows } from '@/server/lib/community-post-access.js';
 import { getAuthSession } from '@/server/lib/auth-session.js';
 
 export default async function handler(req: Request, res: Response) {
@@ -84,7 +84,7 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'Invalid audience' });
     }
     const [category] = await db.select({ id: communityCategories.id }).from(communityCategories)
-      .where(eq(communityCategories.isActive, true))
+      .where(and(forumAllows(session.user.id), categoryId === undefined ? eq(communityCategories.membersOnly, false) : eq(communityCategories.id, categoryId)))
       .orderBy(desc(sql`${communityCategories.slug} = 'witches-lounge'`), asc(communityCategories.sortOrder), asc(communityCategories.id))
       .limit(1);
     if (!category) return res.status(503).json({ error: 'Sparks are temporarily unavailable' });
@@ -98,7 +98,7 @@ export default async function handler(req: Request, res: Response) {
       if (uploads.length !== mediaIds.length || !fitsSparkMedia(uploads.map(upload => upload.kind))) return null;
       const byId = new Map(uploads.map(upload => [upload.id, upload]));
       const [created] = await tx.insert(communityPosts).values({
-        userId: session.user.id, categoryId: category.id, type, title: text, body: sparkBodyHtml(text),
+        userId: session.user.id, categoryId: category.id, forumPost: categoryId !== undefined, type, title: text, body: sparkBodyHtml(text),
         audience, imageUrl: imageUrl ?? null, originalSparkId, sparkTopic: topic, sparkReading: reading,
         sparkMedia: mediaIds.length ? mediaIds.map(id => byId.get(id)!) : null,
       }).$returningId();
@@ -141,7 +141,7 @@ export default async function handler(req: Request, res: Response) {
   }
 
   // Verify category exists
-  const [cat] = await db.select({ id: communityCategories.id }).from(communityCategories).where(eq(communityCategories.id, categoryId)).limit(1);
+  const [cat] = await db.select({ id: communityCategories.id }).from(communityCategories).where(and(eq(communityCategories.id, categoryId), forumAllows(session.user.id))).limit(1);
   if (!cat) return res.status(404).json({ error: 'Category not found' });
 
   const [result] = await db.insert(communityPosts).values({

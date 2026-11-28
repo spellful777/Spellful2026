@@ -1,3 +1,4 @@
+import { memberAvatar } from '@/server/lib/member-avatar.js';
 import { communityLikePreviews } from '@/server/lib/community-like-previews.js';
 import { sparkReshares } from '@/server/lib/spark-reshares.js';
 import { loadOriginalSparks } from '@/server/lib/original-sparks.js';
@@ -17,6 +18,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
   const [post] = await db.select({
     id: communityPosts.id,
     type: communityPosts.type,
+    forumPost: communityPosts.forumPost,
     title: communityPosts.title,
     body: communityPosts.body,
     imageUrl: communityPosts.imageUrl,
@@ -36,7 +38,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     userId: communityPosts.userId,
     categoryId: communityPosts.categoryId,
     authorName: user.name,
-    authorImage: user.image,
+    authorImage: memberAvatar,
     authorUsername: user.username,
     authorLocation: sql<string | null>`case when ${user.locationVisibility} = 'public' then ${user.location} else null end`,
     categoryName: communityCategories.name,
@@ -45,7 +47,7 @@ export default async function handler(req: Request<{ id: string }>, res: Respons
     .from(communityPosts)
     .leftJoin(user, eq(communityPosts.userId, user.id))
     .leftJoin(communityCategories, eq(communityPosts.categoryId, communityCategories.id))
-    .where(and(eq(communityPosts.id, postId), postAudienceAllows(myId), myId ? undefined : eq(communityPosts.type, 'spark')))
+    .where(and(eq(communityPosts.id, postId), postAudienceAllows(myId)))
     .limit(1);
 
   if (!post) return res.status(404).json({ error: 'Post not found' });

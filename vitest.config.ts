@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { contentPlugin } from './export-plugins/content-plugin';
 import { existsSync } from 'node:fs';
 import path from 'path';
 
@@ -8,7 +9,7 @@ const contentRuntimeStub: string = path.resolve(__dirname, './src/test/content-r
 const contentRuntimeAlias: string = existsSync(contentRuntimeFixture) ? contentRuntimeFixture : contentRuntimeStub;
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), contentPlugin()],
   test: {
     environment: 'jsdom',
     globals: true,

@@ -15,6 +15,7 @@ export interface CommunityCategory {
   sortOrder: number;
   postCount: number;
   isActive: boolean;
+  joined?: boolean;
 }
 
 export interface CommunityPost {
@@ -22,6 +23,8 @@ export interface CommunityPost {
   type: 'discussion' | 'question' | 'spark';
   title: string;
   preview?: string;
+  forumPost?: boolean;
+  replyPreviews?: { id: number; name: string | null; username: string | null; body: string; gifUrl: string | null }[];
   audience?: string | null;
   sparkTopic?: string | null;
   sparkReading?: SparkReading | null;
@@ -44,6 +47,8 @@ export interface CommunityPost {
   userId: string;
   authorName: string | null;
   authorImage: string | null;
+  authorPreset?: string | null;
+  authorFrame?: string | null;
   authorUsername: string | null;
   categoryName: string | null;
   categorySlug: string | null;
@@ -52,7 +57,7 @@ export interface CommunityPost {
   bookmarked: boolean;
 }
 
-export type PostFilter = 'personalized' | 'chronological' | 'all' | 'latest' | 'popular' | 'trending' | 'discover' | 'unanswered' | 'following' | 'mine';
+export type PostFilter = 'feed' | 'active' | 'personalized' | 'chronological' | 'all' | 'latest' | 'popular' | 'trending' | 'discover' | 'unanswered' | 'following' | 'mine';
 
 interface PostsResult {
   posts: CommunityPost[];
@@ -77,7 +82,7 @@ export function useCommunityCategories() {
   return { categories, loading };
 }
 
-export function useCommunityPosts(filter: PostFilter, category?: string, page = 1, order?: 'newest', enabled = true, kind?: 'spark' | 'discussion') {
+export function useCommunityPosts(filter: PostFilter, category?: string, page = 1, order?: 'newest', enabled = true, kind?: 'spark' | 'discussion' | 'forum') {
   const [result, setResult] = useState<PostsResult>({ posts: [], total: 0, page: 1, pages: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -93,7 +98,8 @@ export function useCommunityPosts(filter: PostFilter, category?: string, page = 
     const params = new URLSearchParams({ filter, page: String(page), limit: '20' });
     if (category) params.set('category', category);
     if (order) params.set('order', order);
-    if (kind) params.set('kind', kind);
+    if (kind === 'forum') params.set('forum','1');
+    else if (kind) params.set('kind', kind);
     const empty: PostsResult = { posts: [], total: 0, page, pages: 0 };
 
     fetch(`/api/community/posts?${params}`, { signal: controller.signal })

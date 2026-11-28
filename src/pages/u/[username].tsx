@@ -2,7 +2,7 @@ import { findTopic, topicPath } from '@/lib/spark-topics';
 import { ProfileActivity, type ProfileTab } from '@/components/ProfileActivity';
 import { ACCENTS } from '@/lib/profile-look';
 import type { ProfileFeature } from '@/lib/profile-feature';
-import { ChevronDown, Bookmark, Bell } from 'lucide-react';
+import { ChevronDown, Bookmark, Bell, Pencil, SlidersHorizontal, CirclePlus, Play } from 'lucide-react';
 /**
  * /u/:username — Immersive public member profile (Redesign v2)
  *
@@ -229,30 +229,6 @@ function formatMilestoneDate(dateStr: string | null | undefined): string {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 /** Animated star field for the cover banner */
-function StarField() {
-  const stars = Array.from({ length: 55 }, (_, i) => ({
-    id: i,
-    x: (i * 37.3 + 11) % 100,
-    y: (i * 53.7 + 7) % 100,
-    size: (i % 3) * 0.8 + 0.6,
-    opacity: ((i % 5) + 2) / 10,
-    dur: 2.2 + (i % 4) * 0.7,
-  }));
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      {stars.map(s => (
-        <motion.div
-          key={s.id}
-          className="absolute rounded-full bg-white"
-          style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size }}
-          animate={{ opacity: [s.opacity, s.opacity * 0.15, s.opacity] }}
-          transition={{ duration: s.dur, repeat: Infinity, ease: 'easeInOut' as const }}
-        />
-      ))}
-    </div>
-  );
-}
-
 /** Waveform decoration for soundscape rows */
 function Waveform({ active = false }: { active?: boolean }) {
   const bars = [3, 7, 11, 14, 9, 5, 12, 16, 8, 4, 13, 9, 6, 11, 14, 5, 9, 12, 7, 4, 10, 8, 13, 6, 9];
@@ -420,27 +396,14 @@ export default function UserProfilePage() {
   const requestedTab = searchParams.get('tab');
   const tab: ProfileTab = requestedTab === 'replies' || requestedTab === 'media' || requestedTab === 'about' ? requestedTab : 'sparks';
   const [openSection, setOpenSection] = useState<string | null>(null);
-  const [bioExpanded, setBioExpanded] = useState(false);
-  const [bioClipped, setBioClipped] = useState(false);
-  const bioRef = useRef<HTMLParagraphElement>(null);
   function openTab(next: ProfileTab, section?: string) {
     const params = new URLSearchParams(searchParams);
     if (next === 'sparks') params.delete('tab');
     else params.set('tab', next);
     if (section) setOpenSection(section);
-    setSearchParams(params, { preventScrollReset: true });
+    setSearchParams(params, { preventScrollReset: true, replace: true });
   }
   const previewMode = searchParams.get('preview');
-
-  useEffect(() => {
-    const bio = bioRef.current;
-    if (!bio || bioExpanded) return;
-    const measure = () => setBioClipped(bio.scrollHeight > bio.clientHeight + 1);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(bio);
-    return () => observer.disconnect();
-  });
 
   // Core profile
   const [audienceVersion, setAudienceVersion] = useState(0);
@@ -748,7 +711,7 @@ export default function UserProfilePage() {
       <main className="member-profile" data-layout={profile.profileLayout}
         style={{ ...theme, ...(chosenAccent ? { '--profile-accent': chosenAccent } : {}) } as CSSProperties}>
         <header className="profile-hero">
-          <div className="profile-cover" style={coverStyle}><StarField /></div>
+          <div className="profile-cover" style={coverStyle} />
           <div className="profile-hero-options">
             {isOwn && <button type="button" className="profile-share bg-card/70" aria-label="Share profile"
               onClick={() => setShowShareSheet(true)}><Share2 className="size-4" /></button>}
@@ -770,6 +733,7 @@ export default function UserProfilePage() {
                         transition={{ duration: 0.15 }}
                         className="absolute right-0 top-11 w-44 rounded-xl border border-border bg-card shadow-xl z-50 overflow-hidden"
                       >
+                        <button type="button" className="w-full px-4 py-3 text-left text-sm hover:bg-muted" onClick={() => { setShowMenu(false); setShowShareSheet(true); }}>Share profile</button>
                         {canInteract && <button type="button" className="w-full text-left px-4 py-3 text-sm hover:bg-muted"
                           onClick={() => navigate(`/messages?user=${profile.id}`)}>Message</button>}
                         <button
@@ -795,17 +759,20 @@ export default function UserProfilePage() {
           </div>
           <div className="profile-identity">
             <div className="profile-framed-avatar">
-              <AvatarWithFrame src={profile.image} avatarPreset={profile.avatarPreset?.replace(/^default-/, '')}
+              <AvatarWithFrame src={profile.image} avatarPreset={profile.avatarPreset ?? undefined}
                 frameKey={profile.avatarFrame ?? ''} size={66} isPlus alt={displayName} />
               {!profile.hideOnlineStatus && !previewMode && <span className="absolute bottom-1 right-1"><OnlineDot userId={profile.id} /></span>}
             </div>
-            <h1>{displayName}</h1>
-            <p className="profile-handle">{handle}{profile.pronouns && <span> · {profile.pronouns}</span>}</p>
-            {showBio && <div>
-              <p ref={bioRef} className={bioExpanded ? 'profile-bio' : 'profile-bio line-clamp-2'}>{profile.bio}</p>
-              {(bioClipped || bioExpanded) && <button type="button" className="profile-more" aria-expanded={bioExpanded}
-                onClick={() => setBioExpanded(value => !value)}>{bioExpanded ? 'Less' : 'More'}</button>}
-            </div>}
+            <div className="profile-title-row">
+              <h1>{displayName}</h1>
+              {isOwn && <div className="profile-edit-links">
+                <Link to="/account/edit-profile"><Pencil size={15} /> Edit profile</Link>
+                <Link className="profile-gold" to="/account/profile"><SlidersHorizontal size={15} /> Profile Studio</Link>
+              </div>}
+            </div>
+            {handle && <p className="profile-handle">{handle}</p>}
+            {profile.pronouns && <p className="profile-handle">{profile.pronouns}</p>}
+            {showBio && <p className="profile-bio">{profile.bio}</p>}
             <div className="profile-stats">
               {isOwn ? <Link className="profile-stat" to={COMMUNITY_CONNECTIONS}><strong>{covenCount}</strong>Coven</Link>
                 : <button className="profile-stat" disabled={!covenCount} onClick={() => openTab('about', 'coven')}><strong>{covenCount}</strong>Coven</button>}
@@ -814,7 +781,6 @@ export default function UserProfilePage() {
                 : <span className="profile-stat"><strong>{followingCount ?? 0}</strong>Following</span>}
             </div>
             {isOwn && <div className="profile-owner-actions">
-              <Link to="/account/edit-profile">Edit profile</Link><Link className="profile-gold" to="/account/profile">Profile Studio</Link>
               <ProfileRequests /><Link to="/grimoire?sparks=saved"><Bookmark className="size-4" /> Saved</Link>
             </div>}
             {!isOwn && canInteract && (
@@ -849,7 +815,6 @@ export default function UserProfilePage() {
                       <Users className="h-4 w-4" aria-hidden="true" /> Add to Coven
                     </Button>
                   )}
-                  <button type="button" className="profile-share" onClick={() => setShowShareSheet(true)} aria-label="Share profile"><Share2 className="size-4" /></button>
                 </div>
                 <div aria-live="polite" className="text-sm text-muted-foreground">
                   {connectionStatus === 'pending_sent' && 'Coven request sent.'}
@@ -860,28 +825,32 @@ export default function UserProfilePage() {
               </>
             )}
 
+            {!isOwn && viewerId && previewMode && <div className="profile-visitor-actions" aria-label="Profile actions preview">
+              <button disabled className="profile-preview-action profile-gold"><UserPlus size={16} /> Follow</button>
+              {isCovenMember ? <span className="profile-preview-action"><Check size={16} /> In Coven</span> : canRequestCoven && <button disabled className="profile-preview-action"><CirclePlus size={16} /> Add to Coven</button>}
+            </div>}
             {!isOwn && !viewerId && <div className="profile-visitor-actions">
-              <Link className="profile-gold" to={`/login?redirect=${encodeURIComponent('/u/' + profile.username)}`}>Follow</Link>
-              {canRequestCoven && <Link to={`/login?redirect=${encodeURIComponent('/u/' + profile.username)}`}>Add to Coven</Link>}
-              <button type="button" className="profile-share" aria-label="Share profile" onClick={() => setShowShareSheet(true)}><Share2 className="size-4" /></button>
+              <Link className="profile-gold" to={`/login?redirect=${encodeURIComponent('/u/' + username)}`}><UserPlus size={16} /> Follow</Link>
+              {canRequestCoven && <Link to={`/login?redirect=${encodeURIComponent('/u/' + username)}`}><CirclePlus size={16} /> Add to Coven</Link>}
             </div>}
             {links.length > 0 && <div className="profile-social">{renderSocial(links.slice(0, 3))}</div>}
           </div>
         </header>
         <nav className="profile-tabs" aria-label="Profile sections">
           {(['sparks', 'replies', 'media', 'about'] as const).map(item => <button type="button" key={item}
-            aria-current={tab === item ? 'page' : undefined} onClick={() => openTab(item)}>{item}</button>)}
+            aria-current={tab === item ? 'page' : undefined} onClick={() => openTab(item)}>{item === 'sparks' ? 'Posts' : item[0].toUpperCase() + item.slice(1)}</button>)}
         </nav>
         {tab !== 'about' ? <ProfileActivity key={profile.id + tab + previewMode + viewerId + audienceVersion}
+          author={{ authorName: profile.name, authorUsername: profile.username, authorImage: profile.image, authorPreset: profile.avatarPreset, authorFrame: profile.avatarFrame, userId: profile.id }}
           endpoint={profileUrl} tab={tab} preview={previewMode} canInteract={canInteract} /> : <div className="profile-about">
           {playlist && <div className="profile-about-feature">
             {playlist.coverImage ? <img src={playlist.coverImage} alt="" /> : <img className="profile-playlist-art" src="/airo-assets/images/pages/home/resource-moon-cycles" alt="" />}
             <div><span className="profile-feature-label">Featured playlist</span><strong>{playlist.title}</strong>
               {playlist.description && <small>{playlist.description}</small>}</div>
-            <a href={playlist.url} target="_blank" rel="noopener noreferrer">Open</a>
+            <a href={playlist.url} target="_blank" rel="noopener noreferrer" aria-label={'Play ' + playlist.title}><Play size={14} /> Play</a>
           </div>}
           {featured?.kind === 'link' && <div className="profile-about-feature"><Globe className="size-5" /><div><strong>{featured.title}</strong></div><a href={featured.url} target="_blank" rel="noopener noreferrer">Open</a></div>}
-          {featured?.kind === 'spark' && <div className="profile-about-feature"><Sparkles className="size-5" /><div><strong>Featured Spark</strong></div><Link to={'/community/post/' + featured.id}>Open</Link></div>}
+          {featured?.kind === 'spark' && <div className="profile-about-feature"><Sparkles className="size-5" /><div><strong>Featured post</strong></div><Link to={'/community/post/' + featured.id}>Open</Link></div>}
           {[
 { id: 'about', title: 'About My Path', show: showBio || showLocation || showZodiac || !!profile.profileStatus || !!profile.witchPath || !!(identity && Object.values(identity).some(Boolean)), body: <>
           {/* ── Astrology signature row ──────────────────────────────────── */}

@@ -5,7 +5,10 @@ export function sparkReplyPath(postId: number, replyId: number) {
   return `/community/post/${postId}#reply-${replyId}`;
 }
 
+export const CANDLELIGHT_GIF = '/assets/media/candlelight-reply.gif';
+
 export function commentGifUrl(value: unknown) {
+  if (value === CANDLELIGHT_GIF) return CANDLELIGHT_GIF;
   if (typeof value !== 'string' || value.length > 2048) return null;
   try {
     const url = new URL(value);

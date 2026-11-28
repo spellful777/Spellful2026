@@ -604,6 +604,7 @@ export const candles = mysqlTable('candles', {
 // ─── Spellful Community ───────────────────────────────────────────────────────
 
 export const communityCategories = mysqlTable('community_categories', {
+  membersOnly: boolean('members_only').notNull().default(false),
   id: int('id').primaryKey().autoincrement(),
   name: varchar('name', { length: 100 }).notNull(),
   slug: varchar('slug', { length: 100 }).notNull().unique(),
@@ -614,10 +615,16 @@ export const communityCategories = mysqlTable('community_categories', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+export const forumMemberships = mysqlTable('community_forum_memberships', {
+  categoryId: int('category_id').notNull().references(() => communityCategories.id, { onDelete: 'cascade' }),
+  userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
+}, table => [uniqueIndex('uq_forum_member').on(table.categoryId, table.userId)]);
+
 export const communityPosts = mysqlTable('community_posts', {
   id: int('id').primaryKey().autoincrement(),
   userId: varchar('user_id', { length: 36 }).notNull().references(() => user.id, { onDelete: 'cascade' }),
   categoryId: int('category_id').notNull().references(() => communityCategories.id, { onDelete: 'cascade' }),
+  forumPost: boolean('forum_post').notNull().default(false),
   type: varchar('type', { length: 20 }).notNull().default('discussion'), // discussion | question
   title: varchar('title', { length: 300 }).notNull(),
   body: text('body').notNull(),
