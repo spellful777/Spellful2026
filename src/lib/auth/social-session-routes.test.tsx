@@ -1,3 +1,4 @@
+import { renderToStaticMarkup } from 'react-dom/server';
 import { HelmetProvider } from '@dr.pogodin/react-helmet';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
@@ -69,4 +70,28 @@ it.each([
     expect(screen.getByRole('button', { name: 'Save Spark' })).toBeDisabled();
     expect(fetch.mock.calls.some(([path]) => path.startsWith('/api/account/'))).toBe(false);
   }
+});
+
+function homeContent(data: unknown) {
+  lookup.mockReturnValue({ data, isPending: false, error: null });
+  const element = document.createElement('div');
+  element.innerHTML = renderToStaticMarkup(
+    <HelmetProvider><MemoryRouter><HomePage /></MemoryRouter></HelmetProvider>,
+  );
+  return within(element);
+}
+
+it('keeps the public reading directory and adds an independent link to Sparks', () => {
+  const home = homeContent(null);
+  expect(home.getByRole('link', { name: 'Explore Spellful' })).toHaveAttribute('href', '#explore');
+  expect(home.getByRole('link', { name: 'Explore public Sparks' })).toHaveAttribute('href', '/?feed=explore');
+  expect(home.getByRole('heading', { name: 'A community of seekers' })).toBeTruthy();
+});
+
+it('renders the member dashboard and the shared homepage sections alongside the Spark composer link', () => {
+  const home = homeContent({ user: { id: 'test-member', name: 'Test Member' } });
+  expect(home.getByText('Your Inner Universe')).toBeTruthy();
+  expect(home.getByRole('heading', { name: 'Explore the Craft' })).toBeTruthy();
+  expect(home.getByRole('link', { name: 'Spark it' })).toHaveAttribute('href', '/community/new?kind=spark');
+  expect(home.getByRole('link', { name: 'Open Spark feed' })).toHaveAttribute('href', '/?feed=following');
 });

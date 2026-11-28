@@ -1,8 +1,7 @@
-import { Navigate, useSearchParams } from 'react-router';
-import { COMMUNITY_FEED, HOME_FEED } from '@/lib/community-navigation';
-import HomeFeed from './home-feed';
+import { HOME_EXPLORE, HOME_FEED, COMMUNITY_GROUPS } from '@/lib/community-navigation';
 import { useRef, useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link, Navigate, useSearchParams } from 'react-router';
+import HomeFeed from './home-feed';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion } from 'motion/react';
 import { Sparkles, BookOpen, Moon, Star, Leaf, Users, ArrowRight, Lock } from 'lucide-react';
@@ -14,7 +13,6 @@ import AstroFeed from '@/components/AstroFeed';
 import CommandCenter from '@/components/CommandCenter';
 import { SessionCheckRetry, useSession } from '@/lib/auth/auth-client.tsx';
 import { getMoonPhase, moonGlyph } from '@/lib/moon-phase-engine';
-import HomeCovenCard from '@/components/HomeCovenCard';
 import { InstallBanner } from '@/components/InstallSpellful';
 
 // ─── Seeded stars (SSR-safe) ──────────────────────────────────────────────────
@@ -153,24 +151,22 @@ function BenefitRow({ icon: Icon, title, desc, accent }: {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
-  const { session, isPending, sessionCheckFailed } = useSession();
   const [params] = useSearchParams();
+  const { session, isPending, sessionCheckFailed } = useSession();
   const feed = params.get('feed');
-  if (isPending && (feed === 'following' || feed === 'explore')) return <p role="status" className="p-5">Loading Coven…</p>;
+  if (feed !== 'following' && feed !== 'explore') return <SpellfulHome />;
+  if (isPending) return <p role="status" className="p-5">Loading Coven…</p>;
   if (!session) {
     if (feed === 'explore') return <HomeFeed key="visitor" visitor />;
-    if (feed === 'following' && sessionCheckFailed) return <SessionCheckRetry />;
-    if (feed === 'following') return <Navigate replace to={`/login?redirect=${encodeURIComponent(HOME_FEED)}`} />;
-    return <PublicHomePage />;
+    if (sessionCheckFailed) return <SessionCheckRetry />;
+    return <Navigate replace to={`/login?redirect=${encodeURIComponent(HOME_FEED)}`} />;
   }
   const { user } = session;
   const username = 'username' in user && typeof user.username === 'string' ? user.username : undefined;
-  return feed === 'following' || feed === 'explore'
-    ? <HomeFeed key={user.id} username={username} />
-    : <CommandCenter key={user.id} />;
+  return <HomeFeed key={user.id} username={username} />;
 }
 
-function PublicHomePage() {
+function SpellfulHome() {
   const { session } = useSession();
   const heroRef = useRef<HTMLDivElement>(null);
   const liveMoon = useLiveMoon();
@@ -265,7 +261,7 @@ function PublicHomePage() {
                   My Sanctuary
                 </Link>
               </motion.div>
-              <CommandCenter />
+              <CommandCenter key={session.user.id} />
             </div>
           </section>
         )}
@@ -386,13 +382,13 @@ function PublicHomePage() {
                   <Sparkles size={15} />
                   Create Your Free Sanctuary
                 </Link>
-                <Link
-                  to={COMMUNITY_FEED}
+                <a
+                  href="#explore"
                   className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-sm transition-all duration-200 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   style={{ background: 'transparent', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground) / 0.8)', fontFamily: 'var(--font-sans)', letterSpacing: '0.04em' }}
                 >
-                  Explore the Coven
-                </Link>
+                  Explore Spellful
+                </a>
               </motion.div>
 
               <motion.p
@@ -625,10 +621,6 @@ function PublicHomePage() {
           </section>
         )}
 
-        <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
-          <HomeCovenCard />
-        </div>
-
         {/* ══════════════════════════════════════════════════════════════
             5. WHY JOIN SPELLFUL — guests only
         ══════════════════════════════════════════════════════════════ */}
@@ -705,6 +697,75 @@ function PublicHomePage() {
                   Free forever · No credit card required
                 </p>
               </motion.div>
+            </div>
+          </section>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════
+            6. COMMUNITY — guests only
+        ══════════════════════════════════════════════════════════════ */}
+        {!session && (
+          <section className="py-xxl px-6 relative overflow-hidden" style={{ background: 'hsl(var(--card))' }}>
+            <div className="max-w-5xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7 }}
+                >
+                  <SectionLabel>{home.communityBanner.eyebrow}</SectionLabel>
+                  <h2 className="mb-5" style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 400, color: 'hsl(var(--foreground))', lineHeight: 1.15 }}>
+                    {home.communityBanner.heading}
+                  </h2>
+                  <p className="text-sm leading-relaxed mb-8" style={{ color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)', fontWeight: 300 }}>
+                    {home.communityBanner.body}
+                  </p>
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
+                    <Link
+                      to={COMMUNITY_GROUPS}
+                      className="inline-flex items-center gap-2 px-7 py-3 rounded-full text-sm transition-all duration-200 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontFamily: 'var(--font-sans)', letterSpacing: '0.04em' }}
+                    >
+                      <Users size={14} />
+                      {home.communityBanner.cta}
+                    </Link>
+                    <Link
+                      to="/about"
+                      className="inline-flex items-center gap-2 px-7 py-3 rounded-full text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      style={{ background: 'transparent', border: '1px solid hsl(var(--border))', color: 'hsl(var(--muted-foreground))', fontFamily: 'var(--font-sans)', letterSpacing: '0.04em' }}
+                    >
+                      {home.communityBanner.ctaSecondary}
+                    </Link>
+                    <Link to={HOME_EXPLORE} className="inline-flex min-h-11 items-center gap-2 text-sm text-primary hover:underline">
+                      Explore public Sparks <ArrowRight size={14} aria-hidden="true" />
+                    </Link>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.7, delay: 0.15 }}
+                  className="relative"
+                >
+                  <div
+                    className="rounded-2xl overflow-hidden aspect-[4/3]"
+                    style={{ border: '1px solid hsl(var(--border))' }}
+                  >
+                    <img
+                      src="/airo-assets/images/pages/home/community-banner"
+                      alt="Spellful community — witches and seekers gathered together"
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      width={600}
+                      height={450}
+                    />
+                    <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to top, hsl(var(--card) / 0.6) 0%, transparent 50%)' }} />
+                  </div>
+                </motion.div>
+              </div>
             </div>
           </section>
         )}

@@ -3,7 +3,7 @@ import { uploadedMediaUrl } from '@/lib/native-api';
  * CommandCenter — signed-in dashboard, mobile-first compact layout.
  *
  * Order (matches design spec):
- *  1. Top header bar — logo centered, hamburger left, profile right
+ *  1. Top header bar — logo left, account and Spark it right
  *  2. Welcome — "Welcome back, [Name] ✦", italic subtitle, moon-phase dot strip
  *  3. Tonight's Moon — compact card, clickable → /moon-ritual
  *  4. Your Daily Guidance — compact card, clickable → /horoscope
@@ -11,15 +11,16 @@ import { uploadedMediaUrl } from '@/lib/native-api';
  *  6. Private Correspondence — full-width row → /messages
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { motion } from 'motion/react';
-import { Menu, User, Bell, Mail, Stars, Moon, BookOpen, Orbit, PenLine, CircleDot, ChevronRight, Sparkles } from 'lucide-react';
+import { User, Bell, Mail, Stars, Moon, BookOpen, Orbit, PenLine, CircleDot, ChevronRight, Sparkles } from 'lucide-react';
 import { HOME_FEED } from '@/lib/community-navigation';
 import { useSocialSummary } from '@/hooks/useSocialSummary';
 import { useSession } from '@/lib/auth/auth-client';
 import type { DailyHoroscope } from '@/lib/horoscope-engine';
 import { getUpcomingEvents, formatEventDate, formatEventDay } from '@/lib/astro-feed';
 import type { AstroEvent } from '@/lib/astro-feed';
+import SparkItLink from '@/components/SparkItLink';
 import HoroscopeShareMenu from '@/components/HoroscopeShareMenu';
 import { getMoonPhase } from '@/lib/moon-phase-engine';
 import TwinkleStars from '@/components/TwinkleStars';
@@ -660,7 +661,6 @@ function CosmicCalendarCard() {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CommandCenter() {
   const { session } = useSession();
-  const navigate = useNavigate();
   const guidance = useDailyGuidance();
 
   // Compute moon data internally — safe on SSR (static initial) and hydrates client-side
@@ -727,16 +727,6 @@ export default function CommandCenter() {
           borderBottom: '1px solid hsl(var(--border))',
         }}
       >
-        {/* Hamburger */}
-        <button
-          className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          style={{ color: 'hsl(var(--foreground) / 0.7)' }}
-          aria-label="Open Spark feed"
-          onClick={() => navigate(HOME_FEED)}
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
         {/* Logo */}
         <Link to="/" className="flex items-center" aria-label="Spellful home">
           <img
@@ -747,24 +737,25 @@ export default function CommandCenter() {
           />
         </Link>
 
-        {/* Profile */}
-        <button
-          className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          style={{ color: 'hsl(var(--foreground) / 0.7)' }}
-          aria-label="Account"
-          onClick={() => { void navigate('/account'); }}
-        >
-          {userImage ? (
-            <img
-              src={uploadedMediaUrl(userImage)}
-              alt={user.name ?? 'Profile'}
-              className="w-7 h-7 rounded-full object-cover"
-              style={{ outline: '1.5px solid hsl(var(--primary) / 0.5)', outlineOffset: '1px' }}
-            />
-          ) : (
-            <User className="w-5 h-5" />
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link to="/account"
+            className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            style={{ color: 'hsl(var(--foreground) / 0.7)' }}
+            aria-label="Account"
+          >
+            {userImage ? (
+              <img
+                src={uploadedMediaUrl(userImage)}
+                alt={user.name ?? 'Profile'}
+                className="w-7 h-7 rounded-full object-cover"
+                style={{ outline: '1.5px solid hsl(var(--primary) / 0.5)', outlineOffset: '1px' }}
+              />
+            ) : (
+              <User className="w-5 h-5" />
+            )}
+          </Link>
+          <SparkItLink />
+        </div>
       </div>
 
       {/* ── Welcome + moon dots ── */}
